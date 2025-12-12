@@ -20,7 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui";
 import { ImageUpload } from "@/components/recipe/image-upload";
+import { RecipeImportModal } from "@/components/recipe/recipe-import-modal";
 import type { Ingredient, Instruction, Difficulty, Category } from "@/types/recipe";
+import type { ExtractedRecipe } from "@/types/extraction";
 import {
   Plus,
   X,
@@ -34,6 +36,7 @@ import {
   Flame,
   Timer,
   UtensilsCrossed,
+  Camera,
 } from "lucide-react";
 import { useUnitPreferences } from "@/hooks/use-unit-preferences";
 import type { UnitSystem } from "@/types/units";
@@ -45,9 +48,10 @@ const UNIT_OPTIONS: Array<{
   system: UnitSystem | "common";
 }> = [
   { value: "", label: "No unit", system: "common" },
+  // Volume - Common (used in both systems)
+  { value: "tsp", label: "tsp (teaspoon)", system: "common" },
+  { value: "tbsp", label: "tbsp (tablespoon)", system: "common" },
   // Volume - Imperial
-  { value: "tsp", label: "tsp (teaspoon)", system: "imperial" },
-  { value: "tbsp", label: "tbsp (tablespoon)", system: "imperial" },
   { value: "fl oz", label: "fl oz (fluid ounce)", system: "imperial" },
   { value: "cup", label: "cup", system: "imperial" },
   { value: "pint", label: "pint", system: "imperial" },
@@ -123,6 +127,50 @@ export function RecipeForm({ categories, initialData }: RecipeFormProps) {
   const [isPublic, setIsPublic] = useState(initialData?.is_public || false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [importModalOpen, setImportModalOpen] = useState(false);
+
+  // Handle import from AI extraction
+  const handleImportRecipe = (extracted: ExtractedRecipe) => {
+    setTitle(extracted.title);
+    setDescription(extracted.description || "");
+    setPrepTime(extracted.prepTimeMinutes?.toString() || "");
+    setCookTime(extracted.cookTimeMinutes?.toString() || "");
+    setServings(extracted.servings?.toString() || "");
+    setDifficulty(extracted.difficulty || "");
+
+    // Map ingredients with new IDs
+    setIngredients(
+      extracted.ingredients.map((ing) => ({
+        id: nanoid(),
+        text: ing.text,
+        amount: ing.amount || "",
+        unit: ing.unit || "",
+      }))
+    );
+
+    // Map instructions with new IDs
+    setInstructions(
+      extracted.instructions.map((inst, index) => ({
+        id: nanoid(),
+        step: index + 1,
+        text: inst.text,
+      }))
+    );
+
+    // Match category by name
+    if (extracted.suggestedCategory) {
+      const normalized = extracted.suggestedCategory.toLowerCase().trim();
+      const matched = categories.find(
+        (c) =>
+          c.name.toLowerCase() === normalized ||
+          c.name.toLowerCase().includes(normalized) ||
+          normalized.includes(c.name.toLowerCase())
+      );
+      if (matched) {
+        setCategoryId(matched.id);
+      }
+    }
+  };
 
   const addIngredient = () => {
     setIngredients([...ingredients, { id: nanoid(), text: "", amount: "", unit: "" }]);
@@ -226,6 +274,21 @@ export function RecipeForm({ categories, initialData }: RecipeFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+      {/* Import from Image Button */}
+      {!isEditing && (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setImportModalOpen(true)}
+            className="gap-2"
+          >
+            <Camera className="h-4 w-4" />
+            Import from Image
+          </Button>
+        </div>
+      )}
+
       {error && (
         <div className="flex items-center gap-3 rounded-xl bg-destructive/10 border border-destructive/20 p-4 text-destructive animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
@@ -631,6 +694,14 @@ export function RecipeForm({ categories, initialData }: RecipeFormProps) {
           </Button>
         </div>
       </div>
+
+      {/* Import Modal */}
+      <RecipeImportModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        onImport={handleImportRecipe}
+        categories={categories}
+      />
     </form>
   );
 }

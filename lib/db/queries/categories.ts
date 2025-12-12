@@ -74,3 +74,49 @@ export async function getRecipesByCategory(
     difficulty: r.difficulty as Difficulty | null,
   }));
 }
+
+export async function getPublicRecipesByCategory(
+  categorySlug: string,
+  limit = 50,
+  offset = 0
+) {
+  const { and } = await import("drizzle-orm");
+
+  const recipes = await db
+    .select({
+      id: recipe.id,
+      userId: recipe.userId,
+      title: recipe.title,
+      slug: recipe.slug,
+      description: recipe.description,
+      ingredients: recipe.ingredients,
+      instructions: recipe.instructions,
+      prepTimeMinutes: recipe.prepTimeMinutes,
+      cookTimeMinutes: recipe.cookTimeMinutes,
+      servings: recipe.servings,
+      difficulty: recipe.difficulty,
+      imageUrl: recipe.imageUrl,
+      isPublic: recipe.isPublic,
+      shareToken: recipe.shareToken,
+      categoryId: recipe.categoryId,
+      createdAt: recipe.createdAt,
+      updatedAt: recipe.updatedAt,
+      categoryName: category.name,
+      categorySlug: category.slug,
+      authorName: user.name,
+    })
+    .from(recipe)
+    .innerJoin(category, eq(recipe.categoryId, category.id))
+    .leftJoin(user, eq(recipe.userId, user.id))
+    .where(and(eq(category.slug, categorySlug), eq(recipe.isPublic, true)))
+    .orderBy(desc(recipe.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  return recipes.map((r) => ({
+    ...r,
+    ingredients: r.ingredients as Ingredient[],
+    instructions: r.instructions as Instruction[],
+    difficulty: r.difficulty as Difficulty | null,
+  }));
+}

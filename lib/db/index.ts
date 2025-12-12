@@ -17,8 +17,13 @@ function getDb(): PostgresJsDatabase<typeof schema> {
     );
   }
 
-  // Disable prefetch as it is not supported for "Transaction" pool mode
-  const client = postgres(connectionString, { prepare: false });
+  // Configure for Supabase pooler:
+  // - prepare: false - required for Transaction/Session pool mode
+  // - max: 1 - limit connections for serverless (Supabase Session mode has strict limits)
+  const client = postgres(connectionString, {
+    prepare: false,
+    max: 1,
+  });
   dbInstance = drizzle(client, { schema });
 
   return dbInstance;

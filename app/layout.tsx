@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { Toaster } from "@/components/ui";
 import { UnitPreferencesProvider } from "@/contexts/unit-preferences-context";
@@ -28,6 +29,7 @@ export default function RootLayout({
           {children}
           <Toaster />
         </UnitPreferencesProvider>
+        <SpeedInsights />
       </body>
     </html>
   );

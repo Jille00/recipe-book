@@ -5,137 +5,170 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { signOut } from "@/lib/auth-client";
-import { Button, Avatar } from "@/components/ui";
-import { cn } from "@/lib/utils/cn";
+import {
+  Button,
+  Avatar,
+  AvatarImage,
+  AvatarFallback,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  Separator,
+} from "@/components/ui";
+import { cn } from "@/lib/utils";
+import {
+  ChefHat,
+  Home,
+  UtensilsCrossed,
+  Heart,
+  FolderOpen,
+  Plus,
+  User,
+  Settings,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  X,
+  ChevronDown,
+} from "lucide-react";
 
 const navigation = [
-  { name: "Home", href: "/" },
-  { name: "My Recipes", href: "/recipes", auth: true },
-  { name: "Favorites", href: "/favorites", auth: true },
-  { name: "Categories", href: "/categories" },
+  { name: "Home", href: "/", icon: Home },
+  { name: "My Recipes", href: "/recipes", auth: true, icon: UtensilsCrossed },
+  { name: "Favorites", href: "/favorites", auth: true, icon: Heart },
+  { name: "Categories", href: "/categories", icon: FolderOpen },
 ];
 
 export function Header() {
   const pathname = usePathname();
   const { user, isAuthenticated, isLoading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
-    setUserMenuOpen(false);
   };
 
   const filteredNav = navigation.filter(
     (item) => !item.auth || isAuthenticated
   );
 
+  const getInitials = (name: string | undefined) => {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-neutral-200 bg-white/80 backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/80">
+    <header className="sticky top-0 z-50 w-full border-b border-border glass">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-2xl">📖</span>
-          <span className="text-xl font-bold text-neutral-900 dark:text-white">
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-transform group-hover:scale-105">
+            <ChefHat className="h-5 w-5" />
+          </div>
+          <span className="font-display text-xl font-semibold text-foreground">
             Recipe Book
           </span>
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex md:items-center md:gap-6">
-          {filteredNav.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={cn(
-                "text-sm font-medium transition-colors hover:text-orange-600",
-                pathname === item.href
-                  ? "text-orange-600"
-                  : "text-neutral-600 dark:text-neutral-400"
-              )}
-            >
-              {item.name}
-            </Link>
-          ))}
+        <div className="hidden md:flex md:items-center md:gap-1">
+          {filteredNav.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  isActive
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {item.name}
+                {isActive && (
+                  <span className="absolute bottom-0 left-1/2 h-0.5 w-4 -translate-x-1/2 rounded-full bg-primary" />
+                )}
+              </Link>
+            );
+          })}
         </div>
 
         {/* Desktop Auth */}
-        <div className="hidden md:flex md:items-center md:gap-4">
+        <div className="hidden md:flex md:items-center md:gap-3">
           {isLoading ? (
-            <div className="h-10 w-20 animate-pulse rounded-lg bg-neutral-200 dark:bg-neutral-800" />
+            <div className="h-9 w-24 animate-pulse rounded-lg bg-muted" />
           ) : isAuthenticated ? (
-            <div className="relative">
-              <button
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center gap-2 rounded-lg p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-              >
-                <Avatar
-                  src={user?.image}
-                  fallback={user?.name || "U"}
-                  size="sm"
-                />
-                <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                  {user?.name}
-                </span>
-                <svg
-                  className={cn(
-                    "h-4 w-4 text-neutral-500 transition-transform",
-                    userMenuOpen && "rotate-180"
-                  )}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </button>
+            <div className="flex items-center gap-3">
+              <Link href="/recipes/new">
+                <Button size="sm" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  New Recipe
+                </Button>
+              </Link>
 
-              {userMenuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => setUserMenuOpen(false)}
-                  />
-                  <div className="absolute right-0 z-20 mt-2 w-48 rounded-lg border border-neutral-200 bg-white py-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
-                    <Link
-                      href="/dashboard"
-                      className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 rounded-lg p-1.5 transition-colors hover:bg-accent">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.image || undefined} />
+                      <AvatarFallback className="bg-secondary text-secondary-foreground text-xs font-medium">
+                        {getInitials(user?.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium text-foreground max-w-[100px] truncate">
+                      {user?.name}
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard" className="flex items-center gap-2">
+                      <LayoutDashboard className="h-4 w-4" />
                       Dashboard
                     </Link>
-                    <Link
-                      href="/recipes/new"
-                      className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/recipes/new" className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
                       New Recipe
                     </Link>
-                    <Link
-                      href="/profile"
-                      className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
                       Profile
                     </Link>
-                    <hr className="my-1 border-neutral-200 dark:border-neutral-700" />
-                    <button
-                      onClick={handleSignOut}
-                      className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                    >
-                      Sign Out
-                    </button>
-                  </div>
-                </>
-              )}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings" className="flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      Settings
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleSignOut}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           ) : (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <Link href="/login">
                 <Button variant="ghost" size="sm">
                   Log In
@@ -150,85 +183,101 @@ export function Header() {
 
         {/* Mobile menu button */}
         <button
-          className="md:hidden rounded-lg p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          className="md:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-accent"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         >
-          <svg
-            className="h-6 w-6 text-neutral-600 dark:text-neutral-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            {mobileMenuOpen ? (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            ) : (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            )}
-          </svg>
+          {mobileMenuOpen ? (
+            <X className="h-5 w-5 text-foreground" />
+          ) : (
+            <Menu className="h-5 w-5 text-foreground" />
+          )}
         </button>
       </nav>
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
+        <div className="md:hidden border-t border-border bg-background">
           <div className="space-y-1 px-4 py-3">
-            {filteredNav.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  "block rounded-lg px-3 py-2 text-base font-medium",
-                  pathname === item.href
-                    ? "bg-orange-50 text-orange-600 dark:bg-orange-900/20"
-                    : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-                )}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {item.name}
-              </Link>
-            ))}
+            {filteredNav.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium transition-colors",
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  )}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Icon className="h-5 w-5" />
+                  {item.name}
+                </Link>
+              );
+            })}
           </div>
-          <div className="border-t border-neutral-200 px-4 py-3 dark:border-neutral-800">
+
+          <Separator />
+
+          <div className="px-4 py-3">
             {isAuthenticated ? (
               <div className="space-y-1">
                 <div className="flex items-center gap-3 px-3 py-2">
-                  <Avatar
-                    src={user?.image}
-                    fallback={user?.name || "U"}
-                    size="sm"
-                  />
-                  <span className="font-medium text-neutral-900 dark:text-white">
-                    {user?.name}
-                  </span>
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={user?.image || undefined} />
+                    <AvatarFallback className="bg-secondary text-secondary-foreground font-medium">
+                      {getInitials(user?.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium text-foreground">{user?.name}</p>
+                    <p className="text-sm text-muted-foreground">{user?.email}</p>
+                  </div>
                 </div>
+
                 <Link
                   href="/dashboard"
-                  className="block rounded-lg px-3 py-2 text-base font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
                   onClick={() => setMobileMenuOpen(false)}
                 >
+                  <LayoutDashboard className="h-5 w-5" />
                   Dashboard
                 </Link>
                 <Link
                   href="/recipes/new"
-                  className="block rounded-lg px-3 py-2 text-base font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
                   onClick={() => setMobileMenuOpen(false)}
                 >
+                  <Plus className="h-5 w-5" />
                   New Recipe
                 </Link>
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <User className="h-5 w-5" />
+                  Profile
+                </Link>
+                <Link
+                  href="/settings"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Settings className="h-5 w-5" />
+                  Settings
+                </Link>
+
+                <Separator className="my-2" />
+
                 <button
                   onClick={handleSignOut}
-                  className="block w-full rounded-lg px-3 py-2 text-left text-base font-medium text-red-600 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-destructive hover:bg-destructive/10"
                 >
+                  <LogOut className="h-5 w-5" />
                   Sign Out
                 </button>
               </div>

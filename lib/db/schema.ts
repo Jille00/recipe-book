@@ -101,6 +101,7 @@ export const profile = pgTable("profile", {
   bio: text("bio"),
   website: text("website"),
   location: text("location"),
+  preferences: jsonb("preferences").default({ unitSystem: "imperial" }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -272,6 +273,7 @@ export const favoriteRelations = relations(favorite, ({ one }) => ({
 
 export type User = typeof user.$inferSelect;
 export type NewUser = typeof user.$inferInsert;
+export type Profile = typeof profile.$inferSelect;
 export type Recipe = typeof recipe.$inferSelect;
 export type NewRecipe = typeof recipe.$inferInsert;
 export type Category = typeof category.$inferSelect;

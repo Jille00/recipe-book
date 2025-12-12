@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useRef } from "react";
 import Image from "next/image";
-import { Button, Spinner } from "@/components/ui";
+import { Button, Spinner, Label } from "@/components/ui";
+import { ImagePlus, Upload, X, RefreshCw } from "lucide-react";
 
 interface ImageUploadProps {
   value?: string;
@@ -85,43 +86,43 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
 
   return (
     <div className="w-full">
-      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
-        Recipe Image
-      </label>
+      <Label className="mb-2 block">Recipe Image</Label>
 
       {value ? (
-        <div className="relative aspect-video overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
+        <div className="relative aspect-video overflow-hidden rounded-xl border border-border">
           <Image
             src={value}
             alt="Recipe preview"
             fill
             className="object-cover"
           />
-          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 opacity-0 transition-opacity hover:opacity-100">
+          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 opacity-0 transition-opacity hover:opacity-100">
             <Button
               type="button"
               variant="secondary"
               size="sm"
               onClick={() => inputRef.current?.click()}
             >
+              <RefreshCw className="h-4 w-4" />
               Change
             </Button>
             <Button
               type="button"
-              variant="danger"
+              variant="destructive"
               size="sm"
               onClick={handleRemove}
             >
+              <X className="h-4 w-4" />
               Remove
             </Button>
           </div>
         </div>
       ) : (
         <div
-          className={`relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors ${
+          className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-all ${
             dragActive
-              ? "border-orange-500 bg-orange-50 dark:bg-orange-900/10"
-              : "border-neutral-300 hover:border-neutral-400 dark:border-neutral-700 dark:hover:border-neutral-600"
+              ? "border-primary bg-primary/5"
+              : "border-border hover:border-primary/50 hover:bg-muted/50"
           }`}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
@@ -129,18 +130,19 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
           onDrop={handleDrop}
         >
           {isUploading ? (
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-3">
               <Spinner size="lg" />
-              <p className="text-sm text-neutral-500">Uploading...</p>
+              <p className="text-sm text-muted-foreground">Uploading...</p>
             </div>
           ) : (
             <>
-              <div className="mb-4 text-4xl">📷</div>
-              <p className="mb-2 text-sm text-neutral-600 dark:text-neutral-400">
-                <span className="font-medium">Click to upload</span> or drag and
-                drop
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+                <ImagePlus className="h-7 w-7 text-primary" />
+              </div>
+              <p className="mb-1 text-sm text-foreground">
+                <span className="font-medium">Click to upload</span> or drag and drop
               </p>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-muted-foreground">
                 PNG, JPG, WebP or GIF (max. 5MB)
               </p>
               <Button
@@ -150,6 +152,7 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
                 className="mt-4"
                 onClick={() => inputRef.current?.click()}
               >
+                <Upload className="h-4 w-4" />
                 Select Image
               </Button>
             </>
@@ -165,7 +168,9 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
         className="hidden"
       />
 
-      {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+      {error && (
+        <p className="mt-2 text-sm text-destructive">{error}</p>
+      )}
     </div>
   );
 }

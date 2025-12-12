@@ -1,5 +1,16 @@
 import Link from "next/link";
 import { Button, Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
+import {
+  Plus,
+  BookOpen,
+  Heart,
+  FolderOpen,
+  Share2,
+  ChefHat,
+  PenLine,
+  Library,
+  ArrowRight,
+} from "lucide-react";
 
 export const metadata = {
   title: "Dashboard - Recipe Book",
@@ -7,177 +18,147 @@ export const metadata = {
 };
 
 export default function DashboardPage() {
+  const stats = [
+    {
+      label: "Total Recipes",
+      value: "0",
+      description: "recipes in your collection",
+      icon: BookOpen,
+    },
+    {
+      label: "Favorites",
+      value: "0",
+      description: "recipes saved",
+      icon: Heart,
+    },
+    {
+      label: "Categories Used",
+      value: "0",
+      description: "different categories",
+      icon: FolderOpen,
+    },
+    {
+      label: "Shared Recipes",
+      value: "0",
+      description: "public recipes",
+      icon: Share2,
+    },
+  ];
+
+  const quickActions = [
+    {
+      title: "Create New Recipe",
+      description: "Add a new recipe to your collection",
+      href: "/recipes/new",
+      icon: PenLine,
+    },
+    {
+      title: "View All Recipes",
+      description: "Browse your recipe collection",
+      href: "/recipes",
+      icon: Library,
+    },
+    {
+      title: "Favorites",
+      description: "View your saved favorites",
+      href: "/favorites",
+      icon: Heart,
+    },
+  ];
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
+          <h1 className="font-display text-3xl font-semibold text-foreground">
             Dashboard
           </h1>
-          <p className="mt-1 text-neutral-600 dark:text-neutral-400">
+          <p className="mt-1 text-muted-foreground">
             Welcome back! Here&apos;s an overview of your recipe collection.
           </p>
         </div>
         <Link href="/recipes/new">
           <Button>
-            <svg
-              className="mr-2 h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
+            <Plus className="h-4 w-4" />
             New Recipe
           </Button>
         </Link>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
-              Total Recipes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-neutral-900 dark:text-white">
-              0
-            </div>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-              recipes in your collection
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
-              Favorites
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-neutral-900 dark:text-white">
-              0
-            </div>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-              recipes saved
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
-              Categories Used
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-neutral-900 dark:text-white">
-              0
-            </div>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-              different categories
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
-              Shared Recipes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-neutral-900 dark:text-white">
-              0
-            </div>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-              public recipes
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        {stats.map((stat) => (
+          <Card key={stat.label}>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {stat.label}
+                  </p>
+                  <p className="mt-1 font-display text-3xl font-semibold text-foreground">
+                    {stat.value}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {stat.description}
+                  </p>
+                </div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                  <stat.icon className="h-6 w-6 text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions & Recent */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
+            <CardTitle className="font-display">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
-            <Link
-              href="/recipes/new"
-              className="flex items-center gap-3 rounded-lg border border-neutral-200 p-4 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100 text-lg dark:bg-orange-900/30">
-                ✏️
-              </div>
-              <div>
-                <p className="font-medium text-neutral-900 dark:text-white">
-                  Create New Recipe
-                </p>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                  Add a new recipe to your collection
-                </p>
-              </div>
-            </Link>
-            <Link
-              href="/recipes"
-              className="flex items-center gap-3 rounded-lg border border-neutral-200 p-4 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100 text-lg dark:bg-orange-900/30">
-                📚
-              </div>
-              <div>
-                <p className="font-medium text-neutral-900 dark:text-white">
-                  View All Recipes
-                </p>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                  Browse your recipe collection
-                </p>
-              </div>
-            </Link>
-            <Link
-              href="/favorites"
-              className="flex items-center gap-3 rounded-lg border border-neutral-200 p-4 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100 text-lg dark:bg-orange-900/30">
-                ❤️
-              </div>
-              <div>
-                <p className="font-medium text-neutral-900 dark:text-white">
-                  Favorites
-                </p>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                  View your saved favorites
-                </p>
-              </div>
-            </Link>
+            {quickActions.map((action) => (
+              <Link
+                key={action.href}
+                href={action.href}
+                className="group flex items-center gap-4 rounded-xl border border-border p-4 transition-all hover:border-primary/50 hover:bg-muted/50"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <action.icon className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-foreground">
+                    {action.title}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {action.description}
+                  </p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
+              </Link>
+            ))}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Recent Recipes</CardTitle>
+            <CardTitle className="font-display">Recent Recipes</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col items-center justify-center py-8 text-center">
-              <div className="text-4xl mb-4">🍳</div>
-              <p className="text-neutral-600 dark:text-neutral-400">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+                <ChefHat className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <p className="text-foreground font-medium">
                 No recipes yet
               </p>
-              <p className="text-sm text-neutral-500 dark:text-neutral-500 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 Create your first recipe to get started!
               </p>
               <Link href="/recipes/new" className="mt-4">
                 <Button variant="outline" size="sm">
+                  <Plus className="h-4 w-4" />
                   Create Recipe
                 </Button>
               </Link>

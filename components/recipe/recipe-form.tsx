@@ -1,11 +1,80 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { nanoid } from "nanoid";
-import { Button, Input, Textarea, Select, Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
+import {
+  Button,
+  Input,
+  Textarea,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui";
 import { ImageUpload } from "@/components/recipe/image-upload";
 import type { Ingredient, Instruction, Difficulty, Category } from "@/types/recipe";
+import {
+  Plus,
+  X,
+  AlertCircle,
+  BookOpen,
+  Clock,
+  Users,
+  ListChecks,
+  ChefHat,
+  Globe,
+  Flame,
+  Timer,
+  UtensilsCrossed,
+} from "lucide-react";
+import { useUnitPreferences } from "@/hooks/use-unit-preferences";
+import type { UnitSystem } from "@/types/units";
+
+// Unit options for ingredient selection with system info
+const UNIT_OPTIONS: Array<{
+  value: string;
+  label: string;
+  system: UnitSystem | "common";
+}> = [
+  { value: "", label: "No unit", system: "common" },
+  // Volume - Imperial
+  { value: "tsp", label: "tsp (teaspoon)", system: "imperial" },
+  { value: "tbsp", label: "tbsp (tablespoon)", system: "imperial" },
+  { value: "fl oz", label: "fl oz (fluid ounce)", system: "imperial" },
+  { value: "cup", label: "cup", system: "imperial" },
+  { value: "pint", label: "pint", system: "imperial" },
+  { value: "quart", label: "quart", system: "imperial" },
+  { value: "gallon", label: "gallon", system: "imperial" },
+  // Volume - Metric
+  { value: "ml", label: "ml (milliliter)", system: "metric" },
+  { value: "cl", label: "cl (centiliter)", system: "metric" },
+  { value: "dl", label: "dl (deciliter)", system: "metric" },
+  { value: "l", label: "L (liter)", system: "metric" },
+  // Weight - Imperial
+  { value: "oz", label: "oz (ounce)", system: "imperial" },
+  { value: "lb", label: "lb (pound)", system: "imperial" },
+  // Weight - Metric
+  { value: "mg", label: "mg (milligram)", system: "metric" },
+  { value: "g", label: "g (gram)", system: "metric" },
+  { value: "kg", label: "kg (kilogram)", system: "metric" },
+  // Count-based (common - shown for both systems)
+  { value: "piece", label: "piece", system: "common" },
+  { value: "slice", label: "slice", system: "common" },
+  { value: "clove", label: "clove", system: "common" },
+  { value: "sprig", label: "sprig", system: "common" },
+  { value: "bunch", label: "bunch", system: "common" },
+  { value: "pinch", label: "pinch", system: "common" },
+  { value: "dash", label: "dash", system: "common" },
+  { value: "to taste", label: "to taste", system: "common" },
+];
 
 interface RecipeFormProps {
   categories: Category[];
@@ -28,6 +97,14 @@ interface RecipeFormProps {
 export function RecipeForm({ categories, initialData }: RecipeFormProps) {
   const router = useRouter();
   const isEditing = !!initialData?.id;
+  const { globalPreference } = useUnitPreferences();
+
+  // Filter units based on user preference
+  const filteredUnitOptions = useMemo(() => {
+    return UNIT_OPTIONS.filter(
+      (unit) => unit.system === "common" || unit.system === globalPreference
+    );
+  }, [globalPreference]);
 
   const [title, setTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(initialData?.description || "");
@@ -147,236 +224,412 @@ export function RecipeForm({ categories, initialData }: RecipeFormProps) {
     }
   };
 
-  const difficultyOptions = [
-    { value: "easy", label: "Easy" },
-    { value: "medium", label: "Medium" },
-    { value: "hard", label: "Hard" },
-  ];
-
-  const categoryOptions = categories.map((c) => ({
-    value: c.id,
-    label: c.name,
-  }));
-
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {error && (
-        <div className="rounded-lg bg-red-50 p-4 text-red-600 dark:bg-red-900/20 dark:text-red-400">
-          {error}
+        <div className="flex items-center gap-3 rounded-xl bg-destructive/10 border border-destructive/20 p-4 text-destructive animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+            <AlertCircle className="h-5 w-5" />
+          </div>
+          <p className="text-sm font-medium">{error}</p>
         </div>
       )}
 
-      {/* Basic Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Basic Information</CardTitle>
+      {/* Hero Section - Title & Image */}
+      <Card className="overflow-hidden">
+        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <BookOpen className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="font-display">Recipe Details</CardTitle>
+              <CardDescription>Give your recipe a name and description</CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Input
-            label="Recipe Title"
-            placeholder="e.g., Grandma's Apple Pie"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
-          <Textarea
-            label="Description"
-            placeholder="A brief description of your recipe..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-          />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Select
-              label="Category"
-              options={categoryOptions}
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              placeholder="Select a category"
-            />
-            <Select
-              label="Difficulty"
-              options={difficultyOptions}
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value as Difficulty)}
-              placeholder="Select difficulty"
-            />
+        <CardContent className="p-6 space-y-6">
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Left: Title & Description */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="title" className="text-sm font-medium">
+                  Recipe Title <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="title"
+                  placeholder="e.g., Grandma's Apple Pie"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                  className="h-12 text-lg font-display"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description" className="text-sm font-medium">
+                  Description
+                </Label>
+                <Textarea
+                  id="description"
+                  placeholder="Share the story behind this recipe..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={4}
+                  className="resize-none"
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Category</Label>
+                  <Select value={categoryId} onValueChange={setCategoryId}>
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Difficulty</Label>
+                  <Select value={difficulty} onValueChange={(v) => setDifficulty(v as Difficulty)}>
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Select level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="easy">
+                        <span className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                          Easy
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="medium">
+                        <span className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-amber-500" />
+                          Medium
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="hard">
+                        <span className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-red-500" />
+                          Hard
+                        </span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Image Upload */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Recipe Photo</Label>
+              <ImageUpload value={imageUrl} onChange={setImageUrl} />
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Recipe Image */}
+      {/* Time & Servings - Compact Row */}
       <Card>
-        <CardHeader>
-          <CardTitle>Recipe Image</CardTitle>
+        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <Clock className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="font-display">Time & Servings</CardTitle>
+              <CardDescription>How long does it take to make?</CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          <ImageUpload value={imageUrl} onChange={setImageUrl} />
-        </CardContent>
-      </Card>
-
-      {/* Time & Servings */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Time & Servings</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           <div className="grid gap-4 sm:grid-cols-3">
-            <Input
-              label="Prep Time (minutes)"
-              type="number"
-              min="0"
-              placeholder="30"
-              value={prepTime}
-              onChange={(e) => setPrepTime(e.target.value)}
-            />
-            <Input
-              label="Cook Time (minutes)"
-              type="number"
-              min="0"
-              placeholder="45"
-              value={cookTime}
-              onChange={(e) => setCookTime(e.target.value)}
-            />
-            <Input
-              label="Servings"
-              type="number"
-              min="1"
-              placeholder="4"
-              value={servings}
-              onChange={(e) => setServings(e.target.value)}
-            />
+            <div className="relative">
+              <Label htmlFor="prepTime" className="text-sm font-medium mb-2 block">
+                Prep Time
+              </Label>
+              <div className="relative">
+                <Timer className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="prepTime"
+                  type="number"
+                  min="0"
+                  placeholder="30"
+                  value={prepTime}
+                  onChange={(e) => setPrepTime(e.target.value)}
+                  className="pl-10 h-11"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                  min
+                </span>
+              </div>
+            </div>
+            <div className="relative">
+              <Label htmlFor="cookTime" className="text-sm font-medium mb-2 block">
+                Cook Time
+              </Label>
+              <div className="relative">
+                <Flame className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="cookTime"
+                  type="number"
+                  min="0"
+                  placeholder="45"
+                  value={cookTime}
+                  onChange={(e) => setCookTime(e.target.value)}
+                  className="pl-10 h-11"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                  min
+                </span>
+              </div>
+            </div>
+            <div className="relative">
+              <Label htmlFor="servings" className="text-sm font-medium mb-2 block">
+                Servings
+              </Label>
+              <div className="relative">
+                <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="servings"
+                  type="number"
+                  min="1"
+                  placeholder="4"
+                  value={servings}
+                  onChange={(e) => setServings(e.target.value)}
+                  className="pl-10 h-11"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                  people
+                </span>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Ingredients */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Ingredients</CardTitle>
-          <Button type="button" variant="outline" size="sm" onClick={addIngredient}>
-            Add Ingredient
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {ingredients.map((ingredient, index) => (
-            <div key={ingredient.id} className="flex gap-2 items-start">
-              <span className="flex h-10 w-8 items-center justify-center text-sm text-neutral-500">
-                {index + 1}.
-              </span>
-              <div className="flex-1 grid gap-2 sm:grid-cols-4">
-                <Input
-                  placeholder="Amount"
-                  value={ingredient.amount || ""}
-                  onChange={(e) => updateIngredient(ingredient.id, "amount", e.target.value)}
-                  className="sm:col-span-1"
-                />
-                <Input
-                  placeholder="Unit (cups, tbsp...)"
-                  value={ingredient.unit || ""}
-                  onChange={(e) => updateIngredient(ingredient.id, "unit", e.target.value)}
-                  className="sm:col-span-1"
-                />
-                <Input
-                  placeholder="Ingredient name"
-                  value={ingredient.text}
-                  onChange={(e) => updateIngredient(ingredient.id, "text", e.target.value)}
-                  className="sm:col-span-2"
-                />
+        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                <ListChecks className="h-5 w-5 text-primary" />
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => removeIngredient(ingredient.id)}
-                disabled={ingredients.length === 1}
-                className="text-neutral-400 hover:text-red-500"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </Button>
+              <div>
+                <CardTitle className="font-display">Ingredients</CardTitle>
+                <CardDescription>What you'll need to make this recipe</CardDescription>
+              </div>
             </div>
-          ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addIngredient}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="space-y-3">
+            {ingredients.map((ingredient, index) => (
+              <div
+                key={ingredient.id}
+                className="group flex gap-3 items-center p-3 rounded-xl bg-muted/30 border border-transparent hover:border-border/50 hover:bg-muted/50 transition-all duration-200"
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                  {index + 1}
+                </span>
+                <div className="flex-1 grid gap-2 sm:grid-cols-12">
+                  <Input
+                    placeholder="Qty"
+                    value={ingredient.amount || ""}
+                    onChange={(e) => updateIngredient(ingredient.id, "amount", e.target.value)}
+                    className="sm:col-span-2 h-9 text-center"
+                  />
+                  <Select
+                    value={ingredient.unit || "none"}
+                    onValueChange={(value) => updateIngredient(ingredient.id, "unit", value === "none" ? "" : value)}
+                  >
+                    <SelectTrigger className="sm:col-span-3 h-9">
+                      <SelectValue placeholder="Unit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredUnitOptions.map((unit) => (
+                        <SelectItem key={unit.value || "none"} value={unit.value || "none"}>
+                          {unit.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    placeholder="Ingredient (e.g., all-purpose flour, sifted)"
+                    value={ingredient.text}
+                    onChange={(e) => updateIngredient(ingredient.id, "text", e.target.value)}
+                    className="sm:col-span-7 h-9"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => removeIngredient(ingredient.id)}
+                  disabled={ingredients.length === 1}
+                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={addIngredient}
+            className="mt-4 w-full border border-dashed border-border hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-primary"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add another ingredient
+          </Button>
         </CardContent>
       </Card>
 
       {/* Instructions */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Instructions</CardTitle>
-          <Button type="button" variant="outline" size="sm" onClick={addInstruction}>
-            Add Step
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {instructions.map((instruction, index) => (
-            <div key={instruction.id} className="flex gap-2 items-start">
-              <span className="flex h-10 w-8 items-center justify-center rounded-full bg-orange-100 text-sm font-medium text-orange-600 dark:bg-orange-900/30 dark:text-orange-400">
-                {index + 1}
-              </span>
-              <Textarea
-                placeholder={`Step ${index + 1}: Describe what to do...`}
-                value={instruction.text}
-                onChange={(e) => updateInstruction(instruction.id, e.target.value)}
-                className="flex-1"
-                rows={2}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => removeInstruction(instruction.id)}
-                disabled={instructions.length === 1}
-                className="text-neutral-400 hover:text-red-500"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </Button>
+        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                <UtensilsCrossed className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="font-display">Instructions</CardTitle>
+                <CardDescription>Step-by-step directions</CardDescription>
+              </div>
             </div>
-          ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addInstruction}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add Step
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            {instructions.map((instruction, index) => (
+              <div key={instruction.id} className="group flex gap-4 items-start">
+                <div className="flex flex-col items-center">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow-sm">
+                    {index + 1}
+                  </span>
+                  {index < instructions.length - 1 && (
+                    <div className="w-0.5 flex-1 bg-border mt-2 min-h-[20px]" />
+                  )}
+                </div>
+                <div className="flex-1 pb-4">
+                  <Textarea
+                    placeholder={`Describe step ${index + 1}...`}
+                    value={instruction.text}
+                    onChange={(e) => updateInstruction(instruction.id, e.target.value)}
+                    className="min-h-[80px] resize-none"
+                    rows={2}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => removeInstruction(instruction.id)}
+                  disabled={instructions.length === 1}
+                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity mt-1"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={addInstruction}
+            className="mt-2 w-full border border-dashed border-border hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-primary"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add another step
+          </Button>
         </CardContent>
       </Card>
 
       {/* Visibility */}
       <Card>
-        <CardHeader>
-          <CardTitle>Visibility</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isPublic}
-              onChange={(e) => setIsPublic(e.target.checked)}
-              className="h-4 w-4 rounded border-neutral-300 text-orange-600 focus:ring-orange-500"
-            />
+        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <Globe className="h-5 w-5 text-primary" />
+            </div>
             <div>
-              <p className="font-medium text-neutral-900 dark:text-white">
+              <CardTitle className="font-display">Visibility</CardTitle>
+              <CardDescription>Control who can see your recipe</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6">
+          <label className="flex items-start gap-4 cursor-pointer p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-all duration-200">
+            <div className="pt-0.5">
+              <input
+                type="checkbox"
+                checked={isPublic}
+                onChange={(e) => setIsPublic(e.target.checked)}
+                className="h-5 w-5 rounded border-border text-primary focus:ring-primary/50 focus:ring-offset-0"
+              />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-foreground">
                 Make this recipe public
               </p>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                Public recipes can be viewed by anyone with the link
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Anyone with the link can view this recipe. Perfect for sharing with friends and family.
               </p>
             </div>
           </label>
         </CardContent>
       </Card>
 
-      {/* Submit */}
-      <div className="flex justify-end gap-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.back()}
-          disabled={isSubmitting}
-        >
-          Cancel
-        </Button>
-        <Button type="submit" isLoading={isSubmitting}>
-          {isEditing ? "Update Recipe" : "Create Recipe"}
-        </Button>
+      {/* Submit Actions */}
+      <div className="flex items-center justify-between pt-4 border-t border-border">
+        <p className="text-sm text-muted-foreground">
+          <span className="text-destructive">*</span> Required fields
+        </p>
+        <div className="flex gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.back()}
+            disabled={isSubmitting}
+            className="min-w-[100px]"
+          >
+            Cancel
+          </Button>
+          <Button type="submit" isLoading={isSubmitting} className="min-w-[140px] gap-2">
+            {!isSubmitting && <ChefHat className="h-4 w-4" />}
+            {isEditing ? "Update Recipe" : "Create Recipe"}
+          </Button>
+        </div>
       </div>
     </form>
   );

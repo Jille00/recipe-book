@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
+import Link from "next/link";
 import { getRecipeByShareToken } from "@/lib/db/queries/recipes";
 import { RecipeDetail } from "@/components/recipe/recipe-detail";
+import { ChefHat } from "lucide-react";
 
 interface Props {
   params: Promise<{ shareToken: string }>;
@@ -42,16 +44,18 @@ export default async function SharedRecipePage({ params }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900">
+    <div className="min-h-screen bg-background grain">
       {/* Simple header for public view */}
-      <header className="border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
+      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <a href="/" className="flex items-center gap-2">
-            <span className="text-2xl">📖</span>
-            <span className="text-xl font-bold text-neutral-900 dark:text-white">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <ChefHat className="h-5 w-5" />
+            </div>
+            <span className="font-display text-xl font-semibold text-foreground">
               Recipe Book
             </span>
-          </a>
+          </Link>
         </div>
       </header>
 
@@ -60,13 +64,13 @@ export default async function SharedRecipePage({ params }: Props) {
       </main>
 
       {/* Simple footer */}
-      <footer className="border-t border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
+      <footer className="border-t border-border bg-card">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <p className="text-center text-sm text-neutral-500">
+          <p className="text-center text-sm text-muted-foreground">
             Shared via{" "}
-            <a href="/" className="text-orange-600 hover:text-orange-700">
+            <Link href="/" className="text-primary hover:text-primary/80 transition-colors">
               Recipe Book
-            </a>
+            </Link>
           </p>
         </div>
       </footer>

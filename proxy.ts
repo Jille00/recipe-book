@@ -1,31 +1,25 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getSessionCookie } from "better-auth/cookies";
 
-const protectedRoutes = ["/dashboard", "/recipes/new", "/recipes/edit", "/categories", "/recipes", "/favorites"];
-const authRoutes = ["/login", "/register", "/forgot-password", "/reset-password"];
+export async function proxy(request: NextRequest) {
+  const sessionCookie = getSessionCookie(request);
 
-export function proxy(request: NextRequest) {
-  const sessionToken = request.cookies.get("better-auth.session_token");
-  const { pathname } = request.nextUrl;
-
-  // Redirect authenticated users away from auth pages
-  if (authRoutes.some((route) => pathname.startsWith(route)) && sessionToken) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-
-  // Redirect unauthenticated users to login
-  if (
-    protectedRoutes.some((route) => pathname.startsWith(route)) &&
-    !sessionToken
-  ) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(loginUrl);
+  if (!sessionCookie) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|public|r/).*)"],
+  matcher: [
+    "/dashboard",
+    "/recipes/new",
+    "/recipes/:slug/edit",
+    "/favorites",
+    "/search",
+    "/profile",
+    "/settings",
+  ],
 };

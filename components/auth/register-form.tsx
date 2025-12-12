@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signUp } from "@/lib/auth-client";
-import { Button, Input, Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui";
+import { Button, Input, Label } from "@/components/ui";
 import { registerSchema } from "@/lib/utils/validation";
+import { Loader2, Mail, Lock, User } from "lucide-react";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -63,77 +64,113 @@ export function RegisterForm() {
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="text-center">
-        <div className="text-4xl mb-2">📖</div>
-        <CardTitle className="text-2xl">Create an account</CardTitle>
-        <CardDescription>
-          Start sharing your favorite recipes today
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
-          {errors.form && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
-              {errors.form}
-            </div>
-          )}
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {errors.form && (
+        <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+          {errors.form}
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label htmlFor="name">Name</Label>
+        <div className="relative">
+          <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            label="Name"
+            id="name"
             type="text"
             placeholder="Your name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            error={errors.name}
             required
             autoComplete="name"
+            className="pl-10"
           />
+        </div>
+        {errors.name && (
+          <p className="text-sm text-destructive">{errors.name}</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <div className="relative">
+          <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            label="Email"
+            id="email"
             type="email"
             placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            error={errors.email}
             required
             autoComplete="email"
+            className="pl-10"
           />
+        </div>
+        {errors.email && (
+          <p className="text-sm text-destructive">{errors.email}</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <div className="relative">
+          <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            label="Password"
+            id="password"
             type="password"
             placeholder="Create a password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            error={errors.password}
             required
             autoComplete="new-password"
+            className="pl-10"
           />
+        </div>
+        {errors.password && (
+          <p className="text-sm text-destructive">{errors.password}</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="confirmPassword">Confirm Password</Label>
+        <div className="relative">
+          <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            label="Confirm Password"
+            id="confirmPassword"
             type="password"
             placeholder="Confirm your password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            error={errors.confirmPassword}
             required
             autoComplete="new-password"
+            className="pl-10"
           />
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" isLoading={isLoading}>
-            Create Account
-          </Button>
-          <p className="text-center text-sm text-neutral-600 dark:text-neutral-400">
-            Already have an account?{" "}
-            <Link
-              href="/login"
-              className="font-medium text-orange-600 hover:text-orange-700"
-            >
-              Sign in
-            </Link>
-          </p>
-        </CardFooter>
-      </form>
-    </Card>
+        </div>
+        {errors.confirmPassword && (
+          <p className="text-sm text-destructive">{errors.confirmPassword}</p>
+        )}
+      </div>
+
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Creating account...
+          </>
+        ) : (
+          "Create Account"
+        )}
+      </Button>
+
+      <p className="text-center text-sm text-muted-foreground">
+        Already have an account?{" "}
+        <Link
+          href="/login"
+          className="font-medium text-primary hover:text-primary/80 transition-colors"
+        >
+          Sign in
+        </Link>
+      </p>
+    </form>
   );
 }

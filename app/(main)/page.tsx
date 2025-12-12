@@ -1,25 +1,81 @@
 import Link from "next/link";
-import { Button } from "@/components/ui";
+import { Button, Card, CardContent } from "@/components/ui";
+import {
+  ChefHat,
+  BookOpen,
+  Share2,
+  Heart,
+  Search,
+  Smartphone,
+  ArrowRight,
+} from "lucide-react";
 
 export default function HomePage() {
+  const features = [
+    {
+      icon: ChefHat,
+      title: "Create Recipes",
+      description:
+        "Add your recipes with detailed ingredients, step-by-step instructions, and beautiful photos.",
+    },
+    {
+      icon: BookOpen,
+      title: "Stay Organized",
+      description:
+        "Organize recipes by categories and tags. Quickly find what you're looking for with powerful search.",
+    },
+    {
+      icon: Share2,
+      title: "Share Easily",
+      description:
+        "Generate shareable links for your recipes. Share with friends, family, or on social media.",
+    },
+    {
+      icon: Heart,
+      title: "Save Favorites",
+      description:
+        "Bookmark your favorite recipes for quick access. Build your personal collection of go-to dishes.",
+    },
+    {
+      icon: Search,
+      title: "Quick Search",
+      description:
+        "Find recipes instantly with full-text search. Filter by category, tags, or difficulty level.",
+    },
+    {
+      icon: Smartphone,
+      title: "Access Anywhere",
+      description:
+        "Use on any device. Your recipes are always with you, whether in the kitchen or at the store.",
+    },
+  ];
+
   return (
     <div className="relative">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-orange-50 to-white dark:from-neutral-900 dark:to-neutral-950">
-        <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-secondary/10 to-background" />
+        <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
           <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-neutral-900 dark:text-white sm:text-6xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm text-muted-foreground mb-6">
+              <ChefHat className="h-4 w-4 text-primary" />
+              Your culinary journey starts here
+            </div>
+            <h1 className="font-display text-4xl font-semibold tracking-tight text-foreground sm:text-6xl">
               Your Personal
-              <span className="block text-orange-600">Recipe Collection</span>
+              <span className="block text-primary">Recipe Collection</span>
             </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-neutral-600 dark:text-neutral-400">
+            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
               Create, organize, and share your favorite recipes. Keep all your
               culinary creations in one place and easily share them with friends
               and family.
             </p>
             <div className="mt-10 flex items-center justify-center gap-4">
               <Link href="/register">
-                <Button size="lg">Get Started Free</Button>
+                <Button size="lg">
+                  Get Started Free
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
               </Link>
               <Link href="/categories">
                 <Button variant="outline" size="lg">
@@ -29,128 +85,54 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-
-        {/* Decorative background */}
-        <div className="absolute inset-x-0 top-0 -z-10 transform-gpu overflow-hidden blur-3xl">
-          <div
-            className="relative left-1/2 aspect-[1155/678] w-[72rem] -translate-x-1/2 bg-gradient-to-r from-orange-200 to-orange-400 opacity-20"
-            style={{
-              clipPath:
-                "polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)",
-            }}
-          />
-        </div>
       </section>
 
       {/* Features Section */}
       <section className="py-24 sm:py-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white sm:text-4xl">
+            <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               Everything you need to manage your recipes
             </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-lg text-neutral-600 dark:text-neutral-400">
+            <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
               Simple, powerful tools to keep your recipes organized and
               accessible.
             </p>
           </div>
 
-          <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Feature 1 */}
-            <div className="rounded-2xl border border-neutral-200 bg-white p-8 dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100 text-2xl dark:bg-orange-900/30">
-                📝
-              </div>
-              <h3 className="mt-6 text-lg font-semibold text-neutral-900 dark:text-white">
-                Create Recipes
-              </h3>
-              <p className="mt-2 text-neutral-600 dark:text-neutral-400">
-                Add your recipes with detailed ingredients, step-by-step
-                instructions, and beautiful photos.
-              </p>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="rounded-2xl border border-neutral-200 bg-white p-8 dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100 text-2xl dark:bg-orange-900/30">
-                📂
-              </div>
-              <h3 className="mt-6 text-lg font-semibold text-neutral-900 dark:text-white">
-                Stay Organized
-              </h3>
-              <p className="mt-2 text-neutral-600 dark:text-neutral-400">
-                Organize recipes by categories and tags. Quickly find what
-                you&apos;re looking for with powerful search.
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="rounded-2xl border border-neutral-200 bg-white p-8 dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100 text-2xl dark:bg-orange-900/30">
-                🔗
-              </div>
-              <h3 className="mt-6 text-lg font-semibold text-neutral-900 dark:text-white">
-                Share Easily
-              </h3>
-              <p className="mt-2 text-neutral-600 dark:text-neutral-400">
-                Generate shareable links for your recipes. Share with friends,
-                family, or on social media.
-              </p>
-            </div>
-
-            {/* Feature 4 */}
-            <div className="rounded-2xl border border-neutral-200 bg-white p-8 dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100 text-2xl dark:bg-orange-900/30">
-                ❤️
-              </div>
-              <h3 className="mt-6 text-lg font-semibold text-neutral-900 dark:text-white">
-                Save Favorites
-              </h3>
-              <p className="mt-2 text-neutral-600 dark:text-neutral-400">
-                Bookmark your favorite recipes for quick access. Build your
-                personal collection of go-to dishes.
-              </p>
-            </div>
-
-            {/* Feature 5 */}
-            <div className="rounded-2xl border border-neutral-200 bg-white p-8 dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100 text-2xl dark:bg-orange-900/30">
-                🔍
-              </div>
-              <h3 className="mt-6 text-lg font-semibold text-neutral-900 dark:text-white">
-                Quick Search
-              </h3>
-              <p className="mt-2 text-neutral-600 dark:text-neutral-400">
-                Find recipes instantly with full-text search. Filter by
-                category, tags, or difficulty level.
-              </p>
-            </div>
-
-            {/* Feature 6 */}
-            <div className="rounded-2xl border border-neutral-200 bg-white p-8 dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100 text-2xl dark:bg-orange-900/30">
-                📱
-              </div>
-              <h3 className="mt-6 text-lg font-semibold text-neutral-900 dark:text-white">
-                Access Anywhere
-              </h3>
-              <p className="mt-2 text-neutral-600 dark:text-neutral-400">
-                Use on any device. Your recipes are always with you, whether in
-                the kitchen or at the store.
-              </p>
-            </div>
+          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {features.map((feature, index) => (
+              <Card
+                key={feature.title}
+                className="group hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <CardContent className="p-6">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                    <feature.icon className="h-6 w-6" />
+                  </div>
+                  <h3 className="mt-6 font-display text-lg font-semibold text-foreground">
+                    {feature.title}
+                  </h3>
+                  <p className="mt-2 text-muted-foreground">
+                    {feature.description}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="bg-orange-600 py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden bg-primary py-16">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            <h2 className="font-display text-3xl font-semibold tracking-tight text-primary-foreground sm:text-4xl">
               Start your recipe collection today
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-lg text-orange-100">
+            <p className="mx-auto mt-4 max-w-xl text-lg text-primary-foreground/80">
               Join thousands of home cooks who use Recipe Book to organize and
               share their culinary creations.
             </p>
@@ -158,9 +140,11 @@ export default function HomePage() {
               <Link href="/register">
                 <Button
                   size="lg"
-                  className="bg-white text-orange-600 hover:bg-orange-50"
+                  variant="secondary"
+                  className="bg-background text-foreground hover:bg-background/90"
                 >
                   Create Free Account
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
             </div>

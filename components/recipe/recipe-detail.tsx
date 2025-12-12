@@ -1,11 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Badge, Button } from "@/components/ui";
+import { Badge, Button, Card, CardContent, Input } from "@/components/ui";
+import { UnitToggle } from "./unit-toggle";
 import type { RecipeWithDetails } from "@/types/recipe";
+import {
+  ArrowLeft,
+  Clock,
+  Timer,
+  Users,
+  ChefHat,
+  Pencil,
+  Trash2,
+  Share2,
+  Copy,
+  Check,
+  Utensils,
+} from "lucide-react";
+import { useRecipeUnitSystem } from "@/hooks/use-unit-preferences";
+import {
+  convertUnit,
+  convertTemperatureInText,
+  isRecognizedUnit,
+} from "@/lib/utils/unit-conversion";
 
 interface RecipeDetailProps {
   recipe: RecipeWithDetails;
@@ -22,7 +42,43 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
   const [isSharing, setIsSharing] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const { unitSystem } = useRecipeUnitSystem(recipe.id);
+
   const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
+
+  // Convert ingredients based on unit preference
+  const convertedIngredients = useMemo(() => {
+    return recipe.ingredients.map((ingredient) => {
+      if (!ingredient.amount || !ingredient.unit) {
+        return {
+          ...ingredient,
+          converted: null,
+        };
+      }
+
+      // Check if unit is recognized
+      if (!isRecognizedUnit(ingredient.unit)) {
+        return {
+          ...ingredient,
+          converted: null,
+        };
+      }
+
+      const result = convertUnit(ingredient.amount, ingredient.unit, unitSystem);
+      return {
+        ...ingredient,
+        converted: result.wasConverted ? result : null,
+      };
+    });
+  }, [recipe.ingredients, unitSystem]);
+
+  // Convert temperatures in instructions
+  const convertedInstructions = useMemo(() => {
+    return recipe.instructions.map((instruction) => ({
+      ...instruction,
+      convertedText: convertTemperatureInText(instruction.text, unitSystem),
+    }));
+  }, [recipe.instructions, unitSystem]);
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this recipe?")) return;
@@ -64,75 +120,91 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
     }
   };
 
+  const getDifficultyVariant = (difficulty: string | null) => {
+    switch (difficulty) {
+      case "easy":
+        return "success";
+      case "medium":
+        return "warning";
+      case "hard":
+        return "danger";
+      default:
+        return "outline";
+    }
+  };
+
   return (
     <article className="mx-auto max-w-4xl">
       {/* Header */}
       <header className="mb-8">
         {!isPublicView && (
-          <div className="mb-4">
+          <div className="mb-6">
             <Link
               href="/recipes"
-              className="text-sm text-neutral-500 hover:text-orange-600 dark:text-neutral-400"
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
             >
-              ← Back to recipes
+              <ArrowLeft className="h-4 w-4" />
+              Back to recipes
             </Link>
           </div>
         )}
 
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-neutral-900 dark:text-white sm:text-4xl">
+          <div className="space-y-4">
+            <h1 className="font-display text-3xl font-semibold text-foreground sm:text-4xl tracking-tight">
               {recipe.title}
             </h1>
             {recipe.description && (
-              <p className="mt-2 text-lg text-neutral-600 dark:text-neutral-400">
+              <p className="text-lg text-muted-foreground max-w-2xl">
                 {recipe.description}
               </p>
             )}
-            <div className="mt-4 flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               {recipe.categoryName && (
                 <Badge variant="default">{recipe.categoryName}</Badge>
               )}
               {recipe.difficulty && (
-                <Badge
-                  variant={
-                    recipe.difficulty === "easy"
-                      ? "success"
-                      : recipe.difficulty === "medium"
-                      ? "warning"
-                      : "danger"
-                  }
-                >
+                <Badge variant={getDifficultyVariant(recipe.difficulty)} className="capitalize">
                   {recipe.difficulty}
                 </Badge>
               )}
-              {recipe.isPublic && <Badge variant="secondary">Public</Badge>}
+              {recipe.isPublic && (
+                <Badge variant="secondary">
+                  <Share2 className="h-3 w-3 mr-1" />
+                  Public
+                </Badge>
+              )}
             </div>
           </div>
 
-          {isOwner && (
-            <div className="flex gap-2">
-              <Link href={`/recipes/${recipe.slug}/edit`}>
-                <Button variant="outline" size="sm">
-                  Edit
+          <div className="flex gap-2">
+            <UnitToggle recipeId={recipe.id} />
+            {isOwner && (
+              <>
+                <Link href={`/recipes/${recipe.slug}/edit`}>
+                  <Button variant="outline" size="sm">
+                    <Pencil className="h-4 w-4" />
+                    Edit
+                  </Button>
+                </Link>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDelete}
+                  isLoading={isDeleting}
+                >
+                  {!isDeleting && <Trash2 className="h-4 w-4" />}
+                  Delete
                 </Button>
-              </Link>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={handleDelete}
-                isLoading={isDeleting}
-              >
-                Delete
-              </Button>
-            </div>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </header>
 
       {/* Image */}
-      {recipe.imageUrl && (
-        <div className="relative mb-8 aspect-video overflow-hidden rounded-xl">
+      {recipe.imageUrl ? (
+        <div className="relative mb-8 aspect-video overflow-hidden rounded-2xl border border-border">
           <Image
             src={recipe.imageUrl}
             alt={recipe.title}
@@ -141,76 +213,123 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
             priority
           />
         </div>
+      ) : (
+        <div className="relative mb-8 aspect-video overflow-hidden rounded-2xl bg-muted flex items-center justify-center">
+          <ChefHat className="h-16 w-16 text-muted-foreground/30" />
+        </div>
       )}
 
-      {/* Meta */}
-      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {/* Meta Cards */}
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {recipe.prepTimeMinutes && (
-          <div className="rounded-lg border border-neutral-200 p-4 text-center dark:border-neutral-800">
-            <p className="text-2xl font-bold text-orange-600">{recipe.prepTimeMinutes}</p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">Prep (min)</p>
-          </div>
+          <Card className="text-center">
+            <CardContent className="py-4">
+              <div className="flex justify-center mb-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                  <Clock className="h-5 w-5 text-primary" />
+                </div>
+              </div>
+              <p className="text-2xl font-display font-semibold text-foreground">{recipe.prepTimeMinutes}</p>
+              <p className="text-xs text-muted-foreground">Prep (min)</p>
+            </CardContent>
+          </Card>
         )}
         {recipe.cookTimeMinutes && (
-          <div className="rounded-lg border border-neutral-200 p-4 text-center dark:border-neutral-800">
-            <p className="text-2xl font-bold text-orange-600">{recipe.cookTimeMinutes}</p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">Cook (min)</p>
-          </div>
+          <Card className="text-center">
+            <CardContent className="py-4">
+              <div className="flex justify-center mb-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                  <Timer className="h-5 w-5 text-primary" />
+                </div>
+              </div>
+              <p className="text-2xl font-display font-semibold text-foreground">{recipe.cookTimeMinutes}</p>
+              <p className="text-xs text-muted-foreground">Cook (min)</p>
+            </CardContent>
+          </Card>
         )}
         {totalTime > 0 && (
-          <div className="rounded-lg border border-neutral-200 p-4 text-center dark:border-neutral-800">
-            <p className="text-2xl font-bold text-orange-600">{totalTime}</p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">Total (min)</p>
-          </div>
+          <Card className="text-center">
+            <CardContent className="py-4">
+              <div className="flex justify-center mb-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                  <Utensils className="h-5 w-5 text-primary" />
+                </div>
+              </div>
+              <p className="text-2xl font-display font-semibold text-foreground">{totalTime}</p>
+              <p className="text-xs text-muted-foreground">Total (min)</p>
+            </CardContent>
+          </Card>
         )}
         {recipe.servings && (
-          <div className="rounded-lg border border-neutral-200 p-4 text-center dark:border-neutral-800">
-            <p className="text-2xl font-bold text-orange-600">{recipe.servings}</p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">Servings</p>
-          </div>
+          <Card className="text-center">
+            <CardContent className="py-4">
+              <div className="flex justify-center mb-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                  <Users className="h-5 w-5 text-primary" />
+                </div>
+              </div>
+              <p className="text-2xl font-display font-semibold text-foreground">{recipe.servings}</p>
+              <p className="text-xs text-muted-foreground">Servings</p>
+            </CardContent>
+          </Card>
         )}
       </div>
 
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Ingredients */}
         <div className="lg:col-span-1">
-          <div className="sticky top-24 rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
-            <h2 className="mb-4 text-xl font-semibold text-neutral-900 dark:text-white">
-              Ingredients
-            </h2>
-            <ul className="space-y-2">
-              {recipe.ingredients.map((ingredient, index) => (
-                <li key={index} className="flex items-start gap-2">
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-4 w-4 rounded border-neutral-300 text-orange-600 focus:ring-orange-500"
-                  />
-                  <span className="text-neutral-700 dark:text-neutral-300">
-                    {ingredient.amount && (
-                      <span className="font-medium">{ingredient.amount} </span>
-                    )}
-                    {ingredient.unit && <span>{ingredient.unit} </span>}
-                    {ingredient.text}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <Card className="sticky top-24">
+            <CardContent className="p-6">
+              <h2 className="font-display text-xl font-semibold text-foreground mb-4">
+                Ingredients
+              </h2>
+              <ul className="space-y-3">
+                {convertedIngredients.map((ingredient, index) => (
+                  <li key={index} className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary/50 focus:ring-offset-0"
+                    />
+                    <span className="text-muted-foreground">
+                      {ingredient.converted ? (
+                        <>
+                          <span className="font-medium text-foreground">
+                            {ingredient.converted.displayAmount} {ingredient.converted.unit}
+                          </span>{" "}
+                          <span className="text-xs text-muted-foreground/70">
+                            ({ingredient.amount} {ingredient.unit})
+                          </span>{" "}
+                        </>
+                      ) : (
+                        <>
+                          {ingredient.amount && (
+                            <span className="font-medium text-foreground">{ingredient.amount} </span>
+                          )}
+                          {ingredient.unit && <span>{ingredient.unit} </span>}
+                        </>
+                      )}
+                      {ingredient.text}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Instructions */}
         <div className="lg:col-span-2">
-          <h2 className="mb-4 text-xl font-semibold text-neutral-900 dark:text-white">
+          <h2 className="font-display text-xl font-semibold text-foreground mb-6">
             Instructions
           </h2>
           <ol className="space-y-6">
-            {recipe.instructions.map((instruction, index) => (
+            {convertedInstructions.map((instruction, index) => (
               <li key={index} className="flex gap-4">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-100 text-sm font-semibold text-orange-600 dark:bg-orange-900/30 dark:text-orange-400">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
                   {index + 1}
                 </span>
-                <p className="pt-1 text-neutral-700 dark:text-neutral-300">
-                  {instruction.text}
+                <p className="pt-1 text-muted-foreground leading-relaxed">
+                  {instruction.convertedText}
                 </p>
               </li>
             ))}
@@ -220,35 +339,48 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
 
       {/* Share Section */}
       {isOwner && (
-        <div className="mt-8 rounded-xl border border-neutral-200 bg-neutral-50 p-6 dark:border-neutral-800 dark:bg-neutral-900">
-          <h2 className="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">
-            Share this recipe
-          </h2>
-          {shareUrl ? (
-            <div className="flex gap-2">
-              <input
-                type="text"
-                readOnly
-                value={shareUrl}
-                className="flex-1 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800"
-              />
-              <Button onClick={handleCopyLink} variant="outline">
-                {copied ? "Copied!" : "Copy"}
+        <Card className="mt-8 bg-secondary/30">
+          <CardContent className="p-6">
+            <h2 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Share2 className="h-5 w-5 text-primary" />
+              Share this recipe
+            </h2>
+            {shareUrl ? (
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={shareUrl}
+                  className="flex-1 bg-background"
+                />
+                <Button onClick={handleCopyLink} variant="outline">
+                  {copied ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <Button onClick={handleShare} isLoading={isSharing}>
+                {!isSharing && <Share2 className="h-4 w-4" />}
+                Generate Share Link
               </Button>
-            </div>
-          ) : (
-            <Button onClick={handleShare} isLoading={isSharing}>
-              Generate Share Link
-            </Button>
-          )}
-        </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Author (public view) */}
       {isPublicView && recipe.authorName && (
-        <div className="mt-8 border-t border-neutral-200 pt-6 dark:border-neutral-800">
-          <p className="text-neutral-600 dark:text-neutral-400">
-            Recipe by <span className="font-medium">{recipe.authorName}</span>
+        <div className="mt-8 border-t border-border pt-6">
+          <p className="text-muted-foreground">
+            Recipe by <span className="font-medium text-foreground">{recipe.authorName}</span>
           </p>
         </div>
       )}

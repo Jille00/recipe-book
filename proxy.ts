@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 const protectedRoutes = ["/dashboard", "/recipes/new", "/favorites", "/profile"];
 const authRoutes = ["/login", "/register", "/forgot-password", "/reset-password"];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const sessionToken = request.cookies.get("better-auth.session_token");
   const { pathname } = request.nextUrl;
 

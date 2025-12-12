@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { getStorageClient } from "@/lib/supabase/storage";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -36,12 +36,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get storage client (lazy initialization)
+    const supabase = getStorageClient();
+
     // Generate unique filename
     const ext = file.name.split(".").pop() || "jpg";
     const fileName = `${session.user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
 
     // Upload to Supabase Storage
-    const { data, error } = await supabaseAdmin.storage
+    const { data, error } = await supabase.storage
       .from("recipe-images")
       .upload(fileName, file, {
         contentType: file.type,
@@ -57,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get public URL
-    const { data: urlData } = supabaseAdmin.storage
+    const { data: urlData } = supabase.storage
       .from("recipe-images")
       .getPublicUrl(data.path);
 

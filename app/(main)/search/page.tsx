@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { searchRecipes, type SearchFilters } from "@/lib/db/queries/search";
 import { getAllTags } from "@/lib/db/queries/tags";
@@ -31,6 +32,10 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
 
+  if (!session?.user) {
+    redirect("/login");
+  }
+
   // Parse search params into filters
   const filters: SearchFilters = {
     query: params.q || undefined,
@@ -49,7 +54,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   // Fetch tags and recipes in parallel
   const [tags, recipes] = await Promise.all([
     getAllTags(),
-    searchRecipes(filters, session?.user?.id),
+    searchRecipes(filters, session.user.id),
   ]);
 
   const hasFilters = Object.values(filters).some(
@@ -64,9 +69,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           Search Recipes
         </h1>
         <p className="mt-1 text-muted-foreground">
-          {session?.user
-            ? "Search your recipes and public community recipes"
-            : "Discover delicious recipes from our community"}
+          Search your recipes and public community recipes
         </p>
       </div>
 

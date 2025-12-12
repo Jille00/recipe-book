@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { RecipeForm } from "@/components/recipe/recipe-form";
 import { getAllTags } from "@/lib/db/queries/tags";
 import { ArrowLeft } from "lucide-react";
@@ -9,6 +12,13 @@ export const metadata = {
 };
 
 export default async function NewRecipePage() {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+
+  if (!session?.user) {
+    redirect("/login");
+  }
+
   const tags = await getAllTags();
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">

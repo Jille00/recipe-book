@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
@@ -38,7 +38,7 @@ export default async function EditRecipePage({ params }: Props) {
   const session = await auth.api.getSession({ headers: headersList });
 
   if (!session?.user) {
-    notFound();
+    redirect("/login");
   }
 
   const recipe = await getRecipeBySlug(session.user.id, slug);

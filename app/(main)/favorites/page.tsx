@@ -1,15 +1,26 @@
 import Link from "next/link";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { Button, Card, CardContent } from "@/components/ui";
 import { Heart, BookOpen } from "lucide-react";
+import { auth } from "@/lib/auth";
+import { getUserFavorites } from "@/lib/db/queries/favorites";
+import { RecipeCard } from "@/components/recipe/recipe-card";
 
 export const metadata = {
-  title: "Favorites - Recipe Book",
+  title: "Favorites - Kookboek",
   description: "View your favorite recipes",
 };
 
-export default function FavoritesPage() {
-  // This will be replaced with actual data fetching
-  const favorites: unknown[] = [];
+export default async function FavoritesPage() {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+
+  if (!session?.user) {
+    redirect("/sign-in");
+  }
+
+  const favorites = await getUserFavorites(session.user.id);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -45,7 +56,14 @@ export default function FavoritesPage() {
         </Card>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Favorite recipe cards will go here */}
+          {favorites.map((recipe) => (
+            <RecipeCard
+              key={recipe.id}
+              recipe={recipe}
+              showAuthor={recipe.userId !== session.user.id}
+              initialFavorited={true}
+            />
+          ))}
         </div>
       )}
     </div>

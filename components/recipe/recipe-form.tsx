@@ -123,21 +123,37 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
   }, [globalPreference]);
 
   const [title, setTitle] = useState(initialData?.title || "");
-  const [description, setDescription] = useState(initialData?.description || "");
+  const [description, setDescription] = useState(
+    initialData?.description || ""
+  );
   const [ingredients, setIngredients] = useState<Ingredient[]>(
-    initialData?.ingredients || [{ id: nanoid(), text: "", amount: "", unit: "" }]
+    initialData?.ingredients || [
+      { id: nanoid(), text: "", amount: "", unit: "" },
+    ]
   );
   const [instructions, setInstructions] = useState<Instruction[]>(
     initialData?.instructions || [{ id: nanoid(), step: 1, text: "" }]
   );
-  const [prepTime, setPrepTime] = useState(initialData?.prep_time_minutes?.toString() || "");
-  const [cookTime, setCookTime] = useState(initialData?.cook_time_minutes?.toString() || "");
-  const [servings, setServings] = useState(initialData?.servings?.toString() || "");
-  const [difficulty, setDifficulty] = useState<Difficulty | "">(initialData?.difficulty || "");
+  const [prepTime, setPrepTime] = useState(
+    initialData?.prep_time_minutes?.toString() || ""
+  );
+  const [cookTime, setCookTime] = useState(
+    initialData?.cook_time_minutes?.toString() || ""
+  );
+  const [servings, setServings] = useState(
+    initialData?.servings?.toString() || ""
+  );
+  const [difficulty, setDifficulty] = useState<Difficulty | "">(
+    initialData?.difficulty || ""
+  );
   const [imageUrl, setImageUrl] = useState(initialData?.image_url || "");
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(initialData?.tag_ids || []);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
+    initialData?.tag_ids || []
+  );
   const [isPublic, setIsPublic] = useState(initialData?.is_public || false);
-  const [nutrition, setNutrition] = useState<NutritionInfo | null>(initialData?.nutrition || null);
+  const [nutrition, setNutrition] = useState<NutritionInfo | null>(
+    initialData?.nutrition || null
+  );
   const [isCalculatingNutrition, setIsCalculatingNutrition] = useState(false);
   const [isEditingNutrition, setIsEditingNutrition] = useState(false);
 
@@ -229,7 +245,9 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       const data = await response.json();
       setNutrition(data.nutrition);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to calculate nutrition");
+      setError(
+        err instanceof Error ? err.message : "Failed to calculate nutrition"
+      );
     } finally {
       setIsCalculatingNutrition(false);
     }
@@ -241,7 +259,10 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
   };
 
   const addIngredient = () => {
-    setIngredients([...ingredients, { id: nanoid(), text: "", amount: "", unit: "" }]);
+    setIngredients([
+      ...ingredients,
+      { id: nanoid(), text: "", amount: "", unit: "" },
+    ]);
   };
 
   const removeIngredient = (id: string) => {
@@ -250,7 +271,11 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
     }
   };
 
-  const updateIngredient = (id: string, field: keyof Ingredient, value: string) => {
+  const updateIngredient = (
+    id: string,
+    field: keyof Ingredient,
+    value: string
+  ) => {
     setIngredients(
       ingredients.map((i) => (i.id === id ? { ...i, [field]: value } : i))
     );
@@ -368,15 +393,17 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       )}
 
       {/* Hero Section - Title & Image */}
-      <Card className="overflow-hidden">
-        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
+      <Card className="overflow-hidden p-0">
+        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pt-8">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
               <BookOpen className="h-5 w-5 text-primary" />
             </div>
             <div>
               <CardTitle className="font-display">Recipe Details</CardTitle>
-              <CardDescription>Give your recipe a name and description</CardDescription>
+              <CardDescription>
+                Give your recipe a name and description
+              </CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -411,34 +438,37 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                  <Label className="text-sm font-medium">Tags</Label>
-                  <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-border min-h-[44px]">
-                    {tags.map((tag) => (
-                      <button
-                        key={tag.id}
-                        type="button"
-                        onClick={() => toggleTag(tag.id)}
-                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm transition-colors ${
-                          selectedTagIds.includes(tag.id)
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground hover:bg-muted/80"
-                        }`}
-                      >
-                        {tag.name}
-                        {selectedTagIds.includes(tag.id) && (
-                          <X className="h-3 w-3" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Click to select multiple tags
-                  </p>
+                <Label className="text-sm font-medium">Tags</Label>
+                <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-border min-h-[44px]">
+                  {tags.map((tag) => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => toggleTag(tag.id)}
+                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm transition-colors ${
+                        selectedTagIds.includes(tag.id)
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                    >
+                      {tag.name}
+                      {selectedTagIds.includes(tag.id) && (
+                        <X className="h-3 w-3" />
+                      )}
+                    </button>
+                  ))}
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Click to select multiple tags
+                </p>
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Difficulty</Label>
-                  <Select value={difficulty} onValueChange={(v) => setDifficulty(v as Difficulty)}>
+                  <Select
+                    value={difficulty}
+                    onValueChange={(v) => setDifficulty(v as Difficulty)}
+                  >
                     <SelectTrigger className="h-11">
                       <SelectValue placeholder="Select level" />
                     </SelectTrigger>
@@ -477,8 +507,8 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       </Card>
 
       {/* Time & Servings - Compact Row */}
-      <Card>
-        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
+      <Card className="p-0">
+        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pt-8">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
               <Clock className="h-5 w-5 text-primary" />
@@ -492,7 +522,10 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
         <CardContent className="p-6">
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="relative">
-              <Label htmlFor="prepTime" className="text-sm font-medium mb-2 block">
+              <Label
+                htmlFor="prepTime"
+                className="text-sm font-medium mb-2 block"
+              >
                 Prep Time
               </Label>
               <div className="relative">
@@ -512,7 +545,10 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
               </div>
             </div>
             <div className="relative">
-              <Label htmlFor="cookTime" className="text-sm font-medium mb-2 block">
+              <Label
+                htmlFor="cookTime"
+                className="text-sm font-medium mb-2 block"
+              >
                 Cook Time
               </Label>
               <div className="relative">
@@ -532,7 +568,10 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
               </div>
             </div>
             <div className="relative">
-              <Label htmlFor="servings" className="text-sm font-medium mb-2 block">
+              <Label
+                htmlFor="servings"
+                className="text-sm font-medium mb-2 block"
+              >
                 Servings
               </Label>
               <div className="relative">
@@ -556,8 +595,8 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       </Card>
 
       {/* Ingredients */}
-      <Card>
-        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
+      <Card className="p-0">
+        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pt-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
@@ -565,7 +604,9 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
               </div>
               <div>
                 <CardTitle className="font-display">Ingredients</CardTitle>
-                <CardDescription>What you'll need to make this recipe</CardDescription>
+                <CardDescription>
+                  What you&apos;ll need to make this recipe
+                </CardDescription>
               </div>
             </div>
             <Button
@@ -594,19 +635,30 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                   <Input
                     placeholder="Qty"
                     value={ingredient.amount || ""}
-                    onChange={(e) => updateIngredient(ingredient.id, "amount", e.target.value)}
+                    onChange={(e) =>
+                      updateIngredient(ingredient.id, "amount", e.target.value)
+                    }
                     className="sm:col-span-2 h-9 text-center"
                   />
                   <Select
                     value={ingredient.unit || "none"}
-                    onValueChange={(value) => updateIngredient(ingredient.id, "unit", value === "none" ? "" : value)}
+                    onValueChange={(value) =>
+                      updateIngredient(
+                        ingredient.id,
+                        "unit",
+                        value === "none" ? "" : value
+                      )
+                    }
                   >
                     <SelectTrigger className="sm:col-span-3 h-9">
                       <SelectValue placeholder="Unit" />
                     </SelectTrigger>
                     <SelectContent>
                       {filteredUnitOptions.map((unit) => (
-                        <SelectItem key={unit.value || "none"} value={unit.value || "none"}>
+                        <SelectItem
+                          key={unit.value || "none"}
+                          value={unit.value || "none"}
+                        >
                           {unit.label}
                         </SelectItem>
                       ))}
@@ -615,7 +667,9 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                   <Input
                     placeholder="Ingredient (e.g., all-purpose flour, sifted)"
                     value={ingredient.text}
-                    onChange={(e) => updateIngredient(ingredient.id, "text", e.target.value)}
+                    onChange={(e) =>
+                      updateIngredient(ingredient.id, "text", e.target.value)
+                    }
                     className="sm:col-span-7 h-9"
                   />
                 </div>
@@ -646,8 +700,8 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       </Card>
 
       {/* Nutrition */}
-      <Card>
-        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
+      <Card className="p-0">
+        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pt-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
@@ -655,7 +709,9 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
               </div>
               <div>
                 <CardTitle className="font-display">Nutrition</CardTitle>
-                <CardDescription>Estimated nutritional values per serving</CardDescription>
+                <CardDescription>
+                  Estimated nutritional values per serving
+                </CardDescription>
               </div>
             </div>
             <Button
@@ -688,14 +744,16 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                   ? "Add ingredients to calculate nutrition"
                   : !servings
                   ? "Add servings to calculate nutrition"
-                  : "Click \"Calculate\" to estimate nutritional values"}
+                  : 'Click "Calculate" to estimate nutritional values'}
               </p>
             </div>
           )}
           {isCalculatingNutrition && (
             <div className="text-center py-8">
               <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Calculating nutrition...</p>
+              <p className="text-sm text-muted-foreground">
+                Calculating nutrition...
+              </p>
             </div>
           )}
           {nutrition && !isCalculatingNutrition && (
@@ -713,8 +771,8 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       </Card>
 
       {/* Instructions */}
-      <Card>
-        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
+      <Card className="p-0">
+        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pt-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
@@ -740,7 +798,10 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
         <CardContent className="p-6">
           <div className="space-y-4">
             {instructions.map((instruction, index) => (
-              <div key={instruction.id} className="group flex gap-4 items-start">
+              <div
+                key={instruction.id}
+                className="group flex gap-4 items-start"
+              >
                 <div className="flex flex-col items-center">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow-sm">
                     {index + 1}
@@ -753,7 +814,9 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                   <Textarea
                     placeholder={`Describe step ${index + 1}...`}
                     value={instruction.text}
-                    onChange={(e) => updateInstruction(instruction.id, e.target.value)}
+                    onChange={(e) =>
+                      updateInstruction(instruction.id, e.target.value)
+                    }
                     className="min-h-[80px] resize-none"
                     rows={2}
                   />
@@ -785,8 +848,8 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       </Card>
 
       {/* Visibility */}
-      <Card>
-        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
+      <Card className="p-0">
+        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pt-8">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
               <Globe className="h-5 w-5 text-primary" />
@@ -812,7 +875,8 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                 Make this recipe public
               </p>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Anyone with the link can view this recipe. Perfect for sharing with friends and family.
+                Anyone with the link can view this recipe. Perfect for sharing
+                with friends and family.
               </p>
             </div>
           </label>
@@ -834,7 +898,11 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
           >
             Cancel
           </Button>
-          <Button type="submit" isLoading={isSubmitting} className="min-w-[140px] gap-2">
+          <Button
+            type="submit"
+            isLoading={isSubmitting}
+            className="min-w-[140px] gap-2"
+          >
             {!isSubmitting && <ChefHat className="h-4 w-4" />}
             {isEditing ? "Update Recipe" : "Create Recipe"}
           </Button>

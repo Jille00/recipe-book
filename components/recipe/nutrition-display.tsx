@@ -161,7 +161,7 @@ export function NutritionDisplay({
           <span
             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getConfidenceBadgeStyles(nutrition.confidence)}`}
           >
-            {nutrition.confidence} confidence
+            {nutrition.confidence.charAt(0).toUpperCase() + nutrition.confidence.slice(1)} confidence
           </span>
           {servings && (
             <span className="text-xs text-muted-foreground">

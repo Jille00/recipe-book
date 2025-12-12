@@ -1,31 +1,26 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Badge } from "@/components/ui";
 import type { RecipeWithDetails } from "@/types/recipe";
 import { Clock, Users, ChefHat } from "lucide-react";
+import { FavoriteButton } from "./favorite-button";
 
 interface RecipeCardProps {
   recipe: RecipeWithDetails;
   href?: string;
   showAuthor?: boolean;
+  showFavorite?: boolean;
+  initialFavorited?: boolean;
 }
 
-export function RecipeCard({ recipe, href, showAuthor = false }: RecipeCardProps) {
+export function RecipeCard({
+  recipe,
+  href,
+  showAuthor = false,
+  showFavorite = true,
+  initialFavorited = false,
+}: RecipeCardProps) {
   const link = href || `/recipes/${recipe.slug}`;
   const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
-
-  const getDifficultyVariant = (difficulty: string | null) => {
-    switch (difficulty) {
-      case "easy":
-        return "secondary";
-      case "medium":
-        return "outline";
-      case "hard":
-        return "destructive";
-      default:
-        return "outline";
-    }
-  };
 
   return (
     <Link href={link} className="group block">
@@ -54,14 +49,22 @@ export function RecipeCard({ recipe, href, showAuthor = false }: RecipeCardProps
             </div>
           )}
 
-          {/* Difficulty Badge */}
+          {/* Difficulty Badge - Glass Effect for readability */}
           {recipe.difficulty && (
-            <Badge
-              variant={getDifficultyVariant(recipe.difficulty)}
-              className="absolute top-3 right-3 capitalize"
-            >
-              {recipe.difficulty}
-            </Badge>
+            <div className="absolute top-3 right-3 rounded-full glass px-2.5 py-1 text-xs font-medium">
+              {recipe.difficulty.charAt(0).toUpperCase() + recipe.difficulty.slice(1)}
+            </div>
+          )}
+
+          {/* Favorite Button */}
+          {showFavorite && (
+            <FavoriteButton
+              recipeId={recipe.id}
+              initialFavorited={initialFavorited || recipe.isFavorited}
+              variant="glass"
+              size="sm"
+              className="absolute bottom-3 right-3"
+            />
           )}
         </div>
 

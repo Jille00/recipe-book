@@ -1,12 +1,12 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { LoginForm } from "@/components/auth/login-form";
 import { Skeleton } from "@/components/ui";
-import { ChefHat } from "lucide-react";
 
 export const metadata = {
-  title: "Log In - Recipe Book",
-  description: "Sign in to your Recipe Book account",
+  title: "Log In - Kookboek",
+  description: "Sign in to your Kookboek account",
 };
 
 export default function LoginPage() {
@@ -16,11 +16,14 @@ export default function LoginPage() {
       <div className="flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
         <div className="mx-auto w-full max-w-sm lg:w-96">
           <div className="mb-8">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <ChefHat className="h-6 w-6" />
-              </div>
-              <span className="font-display text-xl font-semibold">Recipe Book</span>
+            <Link href="/" className="inline-block">
+              <Image
+                src="/logo.svg"
+                alt="Kookboek"
+                width={120}
+                height={48}
+                className="h-12 w-auto"
+              />
             </Link>
             <h1 className="mt-8 font-display text-2xl font-semibold tracking-tight">
               Welcome back

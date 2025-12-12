@@ -4,7 +4,7 @@ import { ArrowRight, Tag } from "lucide-react";
 import { getTagsWithRecipeCount } from "@/lib/db/queries/tags";
 
 export const metadata = {
-  title: "Browse by Tag - Recipe Book",
+  title: "Browse by Tag - Kookboek",
   description: "Browse recipes by tag",
 };
 

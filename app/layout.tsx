@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui";
 import { UnitPreferencesProvider } from "@/contexts/unit-preferences-context";
 
 export const metadata: Metadata = {
-  title: "Recipe Book - Your Personal Cookbook",
+  title: "Kookboek - Your Personal Cookbook",
   description: "Create, organize, and share your favorite recipes with friends and family.",
 };
 

@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { getRecipeByShareToken } from "@/lib/db/queries/recipes";
 import { RecipeDetail } from "@/components/recipe/recipe-detail";
-import { ChefHat } from "lucide-react";
 
 interface Props {
   params: Promise<{ shareToken: string }>;
@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   return {
-    title: `${recipe.title} - Recipe Book`,
+    title: `${recipe.title} - Kookboek`,
     description: recipe.description || `A delicious ${recipe.title} recipe`,
     openGraph: {
       title: recipe.title,
@@ -48,13 +48,14 @@ export default async function SharedRecipePage({ params }: Props) {
       {/* Simple header for public view */}
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <ChefHat className="h-5 w-5" />
-            </div>
-            <span className="font-display text-xl font-semibold text-foreground">
-              Recipe Book
-            </span>
+          <Link href="/" className="inline-block">
+            <Image
+              src="/logo.svg"
+              alt="Kookboek"
+              width={120}
+              height={48}
+              className="h-12 w-auto"
+            />
           </Link>
         </div>
       </header>
@@ -69,7 +70,7 @@ export default async function SharedRecipePage({ params }: Props) {
           <p className="text-center text-sm text-muted-foreground">
             Shared via{" "}
             <Link href="/" className="text-primary hover:text-primary/80 transition-colors">
-              Recipe Book
+              Kookboek
             </Link>
           </p>
         </div>

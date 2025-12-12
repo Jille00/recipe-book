@@ -14,11 +14,11 @@ export async function generateMetadata({ params }: Props) {
   const tag = await getTagBySlug(slug);
 
   if (!tag) {
-    return { title: "Tag Not Found - Recipe Book" };
+    return { title: "Tag Not Found - Kookboek" };
   }
 
   return {
-    title: `${tag.name} Recipes - Recipe Book`,
+    title: `${tag.name} Recipes - Kookboek`,
     description: `Browse recipes tagged with ${tag.name}`,
   };
 }

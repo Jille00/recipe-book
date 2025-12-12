@@ -1,5 +1,5 @@
 import { eq, and, desc, sql } from "drizzle-orm";
-import { db, recipe, user, recipeTag, tag } from "@/lib/db";
+import { db, recipe, user, recipeTag, tag, favorite } from "@/lib/db";
 import { generateUniqueSlug } from "@/lib/utils/slug";
 import { generateShareToken } from "@/lib/utils/share-token";
 import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
@@ -46,8 +46,10 @@ export async function getRecipesByUserId(userId: string): Promise<RecipeWithDeta
       shareToken: recipe.shareToken,
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
+      favoriteId: favorite.id,
     })
     .from(recipe)
+    .leftJoin(favorite, and(eq(favorite.recipeId, recipe.id), eq(favorite.userId, userId)))
     .where(eq(recipe.userId, userId))
     .orderBy(desc(recipe.createdAt));
 
@@ -57,6 +59,7 @@ export async function getRecipesByUserId(userId: string): Promise<RecipeWithDeta
     instructions: r.instructions as Instruction[],
     difficulty: r.difficulty as Difficulty | null,
     nutrition: r.nutrition as NutritionInfo | null,
+    isFavorited: r.favoriteId !== null,
   }));
 }
 

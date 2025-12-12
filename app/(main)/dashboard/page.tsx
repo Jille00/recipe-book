@@ -1,4 +1,11 @@
 import Link from "next/link";
+import Image from "next/image";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { getRecipesByUserId, getUserRecipeStats } from "@/lib/db/queries/recipes";
+import { getFavoriteCount } from "@/lib/db/queries/favorites";
+import { getUserTagCount } from "@/lib/db/queries/tags";
 import { Button, Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
 import {
   Plus,
@@ -13,33 +20,52 @@ import {
 } from "lucide-react";
 
 export const metadata = {
-  title: "Dashboard - Recipe Book",
+  title: "Dashboard - Kookboek",
   description: "Manage your recipes and view your cooking statistics",
 };
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  const userId = session.user.id;
+
+  // Fetch all data in parallel
+  const [recipes, recipeStats, favoriteCount, tagCount] = await Promise.all([
+    getRecipesByUserId(userId),
+    getUserRecipeStats(userId),
+    getFavoriteCount(userId),
+    getUserTagCount(userId),
+  ]);
+
+  const recentRecipes = recipes.slice(0, 5);
+
   const stats = [
     {
       label: "Total Recipes",
-      value: "0",
+      value: recipeStats?.totalRecipes || 0,
       description: "recipes in your collection",
       icon: BookOpen,
     },
     {
       label: "Favorites",
-      value: "0",
+      value: favoriteCount,
       description: "recipes saved",
       icon: Heart,
     },
     {
-      label: "Categories Used",
-      value: "0",
-      description: "different categories",
+      label: "Tags Used",
+      value: tagCount,
+      description: "different tags",
       icon: FolderOpen,
     },
     {
       label: "Shared Recipes",
-      value: "0",
+      value: recipeStats?.publicRecipes || 0,
       description: "public recipes",
       icon: Share2,
     },
@@ -74,7 +100,7 @@ export default function DashboardPage() {
             Dashboard
           </h1>
           <p className="mt-1 text-muted-foreground">
-            Welcome back! Here&apos;s an overview of your recipe collection.
+            Welcome back{session.user.name ? `, ${session.user.name}` : ""}! Here&apos;s an overview of your recipe collection.
           </p>
         </div>
         <Link href="/recipes/new">
@@ -142,27 +168,71 @@ export default function DashboardPage() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="font-display">Recent Recipes</CardTitle>
+            {recipes.length > 0 && (
+              <Link href="/recipes" className="text-sm text-primary hover:underline">
+                View all
+              </Link>
+            )}
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
-                <ChefHat className="h-8 w-8 text-muted-foreground" />
+            {recentRecipes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+                  <ChefHat className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <p className="text-foreground font-medium">
+                  No recipes yet
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Create your first recipe to get started!
+                </p>
+                <Link href="/recipes/new" className="mt-4">
+                  <Button variant="outline" size="sm">
+                    <Plus className="h-4 w-4" />
+                    Create Recipe
+                  </Button>
+                </Link>
               </div>
-              <p className="text-foreground font-medium">
-                No recipes yet
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Create your first recipe to get started!
-              </p>
-              <Link href="/recipes/new" className="mt-4">
-                <Button variant="outline" size="sm">
-                  <Plus className="h-4 w-4" />
-                  Create Recipe
-                </Button>
-              </Link>
-            </div>
+            ) : (
+              <div className="space-y-3">
+                {recentRecipes.map((recipe) => (
+                  <Link
+                    key={recipe.id}
+                    href={`/recipes/${recipe.slug}`}
+                    className="group flex items-center gap-4 rounded-lg border border-border p-3 transition-all hover:border-primary/50 hover:bg-muted/50"
+                  >
+                    <div className="relative h-12 w-12 flex-shrink-0 rounded-lg bg-muted overflow-hidden">
+                      {recipe.imageUrl ? (
+                        <Image
+                          src={recipe.imageUrl}
+                          alt={recipe.title}
+                          fill
+                          className="object-cover"
+                          sizes="48px"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <ChefHat className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                        {recipe.title}
+                      </p>
+                      {recipe.description && (
+                        <p className="text-sm text-muted-foreground truncate">
+                          {recipe.description}
+                        </p>
+                      )}
+                    </div>
+                    <ArrowRight className="h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                  </Link>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

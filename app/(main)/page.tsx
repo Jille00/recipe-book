@@ -133,7 +133,7 @@ export default function HomePage() {
               Start your recipe collection today
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-primary-foreground/80">
-              Join thousands of home cooks who use Recipe Book to organize and
+              Join thousands of home cooks who use Kookboek to organize and
               share their culinary creations.
             </p>
             <div className="mt-8">

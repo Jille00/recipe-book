@@ -4,7 +4,7 @@ import { getAllTags } from "@/lib/db/queries/tags";
 import { ArrowLeft } from "lucide-react";
 
 export const metadata = {
-  title: "Create Recipe - Recipe Book",
+  title: "Create Recipe - Kookboek",
   description: "Add a new recipe to your collection",
 };
 

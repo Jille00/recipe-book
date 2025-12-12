@@ -104,3 +104,14 @@ export async function getTagsForRecipe(recipeId: string) {
 
   return tags;
 }
+
+export async function getUserTagCount(userId: string): Promise<number> {
+  const result = await db
+    .select({ count: sql<number>`count(distinct ${tag.id})::int` })
+    .from(tag)
+    .innerJoin(recipeTag, eq(tag.id, recipeTag.tagId))
+    .innerJoin(recipe, eq(recipeTag.recipeId, recipe.id))
+    .where(eq(recipe.userId, userId));
+
+  return result[0]?.count || 0;
+}

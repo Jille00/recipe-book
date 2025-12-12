@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -19,23 +20,23 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import {
-  ChefHat,
   Home,
   UtensilsCrossed,
   Heart,
   FolderOpen,
   Plus,
   User,
-  Settings,
   LayoutDashboard,
   LogOut,
   Menu,
   X,
   ChevronDown,
+  Search,
 } from "lucide-react";
 
 const navigation = [
   { name: "Home", href: "/", icon: Home },
+  { name: "Search", href: "/search", icon: Search },
   { name: "My Recipes", href: "/recipes", auth: true, icon: UtensilsCrossed },
   { name: "Favorites", href: "/favorites", auth: true, icon: Heart },
   { name: "Categories", href: "/categories", icon: FolderOpen },
@@ -68,13 +69,15 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border glass">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-transform group-hover:scale-105">
-            <ChefHat className="h-5 w-5" />
-          </div>
-          <span className="font-display text-xl font-semibold text-foreground">
-            Recipe Book
-          </span>
+        <Link href="/" className="flex items-center group">
+          <Image
+            src="/logo.svg"
+            alt="Kookboek"
+            width={120}
+            height={48}
+            className="h-12 w-auto transition-transform group-hover:scale-105"
+            priority
+          />
         </Link>
 
         {/* Desktop Navigation */}
@@ -148,12 +151,6 @@ export function Header() {
                     <Link href="/profile" className="flex items-center gap-2">
                       <User className="h-4 w-4" />
                       Profile
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/settings" className="flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      Settings
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -261,14 +258,6 @@ export function Header() {
                 >
                   <User className="h-5 w-5" />
                   Profile
-                </Link>
-                <Link
-                  href="/settings"
-                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <Settings className="h-5 w-5" />
-                  Settings
                 </Link>
 
                 <Separator className="my-2" />

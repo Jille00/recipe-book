@@ -4,9 +4,19 @@ import { useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, CardDescription, Input } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  Input,
+} from "@/components/ui";
 import { UnitToggle } from "./unit-toggle";
 import { NutritionDisplay } from "./nutrition-display";
+import { FavoriteButton } from "./favorite-button";
 import type { RecipeWithDetails } from "@/types/recipe";
 import {
   ArrowLeft,
@@ -33,20 +43,29 @@ interface RecipeDetailProps {
   recipe: RecipeWithDetails;
   isOwner?: boolean;
   isPublicView?: boolean;
+  initialFavorited?: boolean;
 }
 
-export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: RecipeDetailProps) {
+export function RecipeDetail({
+  recipe,
+  isOwner = false,
+  isPublicView = false,
+  initialFavorited = false,
+}: RecipeDetailProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(
-    recipe.shareToken ? `${process.env.NEXT_PUBLIC_APP_URL}/r/${recipe.shareToken}` : null
+    recipe.shareToken
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/r/${recipe.shareToken}`
+      : null
   );
   const [isSharing, setIsSharing] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const { unitSystem } = useRecipeUnitSystem(recipe.id);
 
-  const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
+  const totalTime =
+    (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
 
   // Convert ingredients based on unit preference
   const convertedIngredients = useMemo(() => {
@@ -66,7 +85,11 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
         };
       }
 
-      const result = convertUnit(ingredient.amount, ingredient.unit, unitSystem);
+      const result = convertUnit(
+        ingredient.amount,
+        ingredient.unit,
+        unitSystem
+      );
       return {
         ...ingredient,
         converted: result.wasConverted ? result : null,
@@ -87,7 +110,9 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
 
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/recipes/${recipe.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/recipes/${recipe.id}`, {
+        method: "DELETE",
+      });
       if (res.ok) {
         router.push("/recipes");
         router.refresh();
@@ -102,7 +127,9 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
   const handleShare = async () => {
     setIsSharing(true);
     try {
-      const res = await fetch(`/api/recipes/${recipe.id}/share`, { method: "POST" });
+      const res = await fetch(`/api/recipes/${recipe.id}/share`, {
+        method: "POST",
+      });
       const data = await res.json();
       if (data.shareUrl) {
         setShareUrl(data.shareUrl);
@@ -163,7 +190,10 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
             )}
             <div className="flex flex-wrap items-center gap-2">
               {recipe.difficulty && (
-                <Badge variant={getDifficultyVariant(recipe.difficulty)} className="capitalize">
+                <Badge
+                  variant={getDifficultyVariant(recipe.difficulty)}
+                  className="capitalize"
+                >
                   {recipe.difficulty}
                 </Badge>
               )}
@@ -177,6 +207,13 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
           </div>
 
           <div className="flex gap-2">
+            {!isPublicView && (
+              <FavoriteButton
+                recipeId={recipe.id}
+                initialFavorited={initialFavorited || recipe.isFavorited}
+                variant="button"
+              />
+            )}
             <UnitToggle recipeId={recipe.id} />
             {isOwner && (
               <>
@@ -228,7 +265,9 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
                   <Clock className="h-5 w-5 text-primary" />
                 </div>
               </div>
-              <p className="text-2xl font-display font-semibold text-foreground">{recipe.prepTimeMinutes}</p>
+              <p className="text-2xl font-display font-semibold text-foreground">
+                {recipe.prepTimeMinutes}
+              </p>
               <p className="text-xs text-muted-foreground">Prep (min)</p>
             </CardContent>
           </Card>
@@ -241,7 +280,9 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
                   <Timer className="h-5 w-5 text-primary" />
                 </div>
               </div>
-              <p className="text-2xl font-display font-semibold text-foreground">{recipe.cookTimeMinutes}</p>
+              <p className="text-2xl font-display font-semibold text-foreground">
+                {recipe.cookTimeMinutes}
+              </p>
               <p className="text-xs text-muted-foreground">Cook (min)</p>
             </CardContent>
           </Card>
@@ -254,7 +295,9 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
                   <Utensils className="h-5 w-5 text-primary" />
                 </div>
               </div>
-              <p className="text-2xl font-display font-semibold text-foreground">{totalTime}</p>
+              <p className="text-2xl font-display font-semibold text-foreground">
+                {totalTime}
+              </p>
               <p className="text-xs text-muted-foreground">Total (min)</p>
             </CardContent>
           </Card>
@@ -267,7 +310,9 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
                   <Users className="h-5 w-5 text-primary" />
                 </div>
               </div>
-              <p className="text-2xl font-display font-semibold text-foreground">{recipe.servings}</p>
+              <p className="text-2xl font-display font-semibold text-foreground">
+                {recipe.servings}
+              </p>
               <p className="text-xs text-muted-foreground">Servings</p>
             </CardContent>
           </Card>
@@ -276,8 +321,8 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
 
       {/* Nutrition */}
       {recipe.nutrition && (
-        <Card className="mb-8">
-          <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
+        <Card className="mb-8 p-0">
+          <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pt-8">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
                 <Apple className="h-5 w-5 text-primary" />
@@ -317,7 +362,8 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
                       {ingredient.converted ? (
                         <>
                           <span className="font-medium text-foreground">
-                            {ingredient.converted.displayAmount} {ingredient.converted.unit}
+                            {ingredient.converted.displayAmount}{" "}
+                            {ingredient.converted.unit}
                           </span>{" "}
                           <span className="text-xs text-muted-foreground/70">
                             ({ingredient.amount} {ingredient.unit})
@@ -326,7 +372,9 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
                       ) : (
                         <>
                           {ingredient.amount && (
-                            <span className="font-medium text-foreground">{ingredient.amount} </span>
+                            <span className="font-medium text-foreground">
+                              {ingredient.amount}{" "}
+                            </span>
                           )}
                           {ingredient.unit && <span>{ingredient.unit} </span>}
                         </>
@@ -403,7 +451,10 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
       {isPublicView && recipe.authorName && (
         <div className="mt-8 border-t border-border pt-6">
           <p className="text-muted-foreground">
-            Recipe by <span className="font-medium text-foreground">{recipe.authorName}</span>
+            Recipe by{" "}
+            <span className="font-medium text-foreground">
+              {recipe.authorName}
+            </span>
           </p>
         </div>
       )}

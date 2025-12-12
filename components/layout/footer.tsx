@@ -1,6 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Separator } from "@/components/ui";
-import { ChefHat, Github, Twitter } from "lucide-react";
+import { Github, Twitter } from "lucide-react";
 
 export function Footer() {
   return (
@@ -9,13 +10,14 @@ export function Footer() {
         <div className="grid gap-8 md:grid-cols-4">
           {/* Brand */}
           <div className="md:col-span-2">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <ChefHat className="h-5 w-5" />
-              </div>
-              <span className="font-display text-xl font-semibold text-foreground">
-                Recipe Book
-              </span>
+            <Link href="/" className="inline-block">
+              <Image
+                src="/logo.svg"
+                alt="Kookboek"
+                width={120}
+                height={48}
+                className="h-12 w-auto"
+              />
             </Link>
             <p className="mt-4 max-w-md text-sm text-muted-foreground">
               Your personal cookbook in the cloud. Create, organize, and share your
@@ -78,7 +80,7 @@ export function Footer() {
 
         <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
           <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} Recipe Book. Made with love for home cooks.
+            &copy; {new Date().getFullYear()} Kookboek. Made with love for home cooks.
           </p>
 
           <div className="flex items-center gap-4">

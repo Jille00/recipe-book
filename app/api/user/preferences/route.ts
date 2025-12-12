@@ -8,6 +8,19 @@ interface UserPreferences {
   unitSystem: UnitSystem;
 }
 
+// Safely parse and validate preferences from database
+function parsePreferences(rawPreferences: unknown): Partial<UserPreferences> {
+  if (!rawPreferences || typeof rawPreferences !== "object") {
+    return {};
+  }
+  const prefs = rawPreferences as Record<string, unknown>;
+  const result: Partial<UserPreferences> = {};
+  if (prefs.unitSystem === "metric" || prefs.unitSystem === "imperial") {
+    result.unitSystem = prefs.unitSystem;
+  }
+  return result;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
@@ -20,9 +33,9 @@ export async function GET(request: NextRequest) {
       where: eq(profile.userId, session.user.id),
     });
 
+    const storedPreferences = parsePreferences(userProfile?.preferences);
     const preferences: UserPreferences = {
-      unitSystem: "imperial",
-      ...((userProfile?.preferences as Partial<UserPreferences>) || {}),
+      unitSystem: storedPreferences.unitSystem || "imperial",
     };
 
     return NextResponse.json(preferences);
@@ -43,7 +56,16 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON body" },
+        { status: 400 }
+      );
+    }
+
     const { unitSystem } = body;
 
     // Validate unitSystem
@@ -54,33 +76,30 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Get or create profile
-    let userProfile = await db.query.profile.findFirst({
+    // Get current profile to merge preferences
+    const userProfile = await db.query.profile.findFirst({
       where: eq(profile.userId, session.user.id),
     });
 
-    const currentPreferences =
-      (userProfile?.preferences as Partial<UserPreferences>) || {};
+    const currentPreferences = parsePreferences(userProfile?.preferences);
     const newPreferences: UserPreferences = {
       unitSystem: unitSystem || currentPreferences.unitSystem || "imperial",
     };
 
-    if (userProfile) {
-      // Update existing profile
-      await db
-        .update(profile)
-        .set({
-          preferences: newPreferences,
-          updatedAt: new Date(),
-        })
-        .where(eq(profile.userId, session.user.id));
-    } else {
-      // Create new profile
-      await db.insert(profile).values({
+    // Use upsert to avoid race condition
+    await db
+      .insert(profile)
+      .values({
         userId: session.user.id,
         preferences: newPreferences,
+      })
+      .onConflictDoUpdate({
+        target: profile.userId,
+        set: {
+          preferences: newPreferences,
+          updatedAt: new Date(),
+        },
       });
-    }
 
     return NextResponse.json(newPreferences);
   } catch (error) {

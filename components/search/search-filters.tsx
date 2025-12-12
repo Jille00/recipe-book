@@ -68,7 +68,7 @@ export function SearchFiltersForm({
     if (selectedTagIds.length > 0) {
       selectedTagIds.forEach((id) => params.append("tags", id));
     }
-    if (difficulty) params.set("difficulty", difficulty);
+    if (difficulty && difficulty !== "any") params.set("difficulty", difficulty);
     if (maxPrepTime) params.set("prepTime", maxPrepTime);
     if (maxCookTime) params.set("cookTime", maxCookTime);
     if (minServings) params.set("minServings", minServings);

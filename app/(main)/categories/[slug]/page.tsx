@@ -73,7 +73,13 @@ export default async function CategoryPage({ params }: Props) {
           </p>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {recipes.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} showAuthor />
+              <RecipeCard
+                key={recipe.id}
+                recipe={recipe}
+                showAuthor
+                href={recipe.shareToken ? `/r/${recipe.shareToken}` : undefined}
+                showFavorite={false}
+              />
             ))}
           </div>
         </>

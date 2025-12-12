@@ -60,7 +60,7 @@ export function RecipeCard({
           {showFavorite && (
             <FavoriteButton
               recipeId={recipe.id}
-              initialFavorited={initialFavorited || recipe.isFavorited}
+              initialFavorited={initialFavorited ?? recipe.isFavorited ?? false}
               variant="glass"
               size="sm"
               className="absolute bottom-3 right-3"

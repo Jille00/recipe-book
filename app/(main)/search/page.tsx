@@ -111,7 +111,9 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 href={
                   recipe.isOwn
                     ? `/recipes/${recipe.slug}`
-                    : `/r/${recipe.shareToken}`
+                    : recipe.shareToken
+                      ? `/r/${recipe.shareToken}`
+                      : `/recipes/${recipe.slug}`
                 }
               />
             ))}

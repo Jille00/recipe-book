@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getRecipeById, updateRecipe, deleteRecipe } from "@/lib/db/queries/recipes";
+import { recipeSchema } from "@/lib/utils/validation";
 
 export async function GET(
   request: NextRequest,
@@ -48,7 +49,17 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const recipe = await updateRecipe(id, session.user.id, body);
+
+    // Validate input against schema
+    const validationResult = recipeSchema.safeParse(body);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: validationResult.error.issues[0].message },
+        { status: 400 }
+      );
+    }
+
+    const recipe = await updateRecipe(id, session.user.id, validationResult.data);
 
     if (!recipe) {
       return NextResponse.json(

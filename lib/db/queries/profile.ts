@@ -20,28 +20,22 @@ export async function upsertProfile(
     location?: string | null;
   }
 ) {
-  const existing = await getProfileByUserId(userId);
-
-  if (existing) {
-    const [updated] = await db
-      .update(profile)
-      .set({
+  // Use upsert to avoid race condition
+  const [result] = await db
+    .insert(profile)
+    .values({
+      userId,
+      ...data,
+    })
+    .onConflictDoUpdate({
+      target: profile.userId,
+      set: {
         ...data,
         updatedAt: new Date(),
-      })
-      .where(eq(profile.userId, userId))
-      .returning();
-    return updated;
-  } else {
-    const [created] = await db
-      .insert(profile)
-      .values({
-        userId,
-        ...data,
-      })
-      .returning();
-    return created;
-  }
+      },
+    })
+    .returning();
+  return result;
 }
 
 export async function updateUserName(userId: string, name: string) {

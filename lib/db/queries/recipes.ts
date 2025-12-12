@@ -24,6 +24,7 @@ export interface RecipeWithDetails {
   createdAt: Date | null;
   updatedAt: Date | null;
   authorName?: string | null;
+  isFavorited?: boolean;
 }
 
 export async function getRecipesByUserId(userId: string): Promise<RecipeWithDetails[]> {
@@ -87,9 +88,11 @@ export async function getRecipeBySlug(
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
       authorName: user.name,
+      favoriteId: favorite.id,
     })
     .from(recipe)
     .leftJoin(user, eq(recipe.userId, user.id))
+    .leftJoin(favorite, and(eq(favorite.recipeId, recipe.id), eq(favorite.userId, userId)))
     .where(and(eq(recipe.userId, userId), eq(recipe.slug, slug)))
     .limit(1);
 
@@ -102,14 +105,15 @@ export async function getRecipeBySlug(
     instructions: r.instructions as Instruction[],
     difficulty: r.difficulty as Difficulty | null,
     nutrition: r.nutrition as NutritionInfo | null,
+    isFavorited: r.favoriteId !== null,
   };
 }
 
-export async function getRecipeById(id: string): Promise<RecipeWithDetails | null> {
+export async function getRecipeById(id: string, userId?: string): Promise<RecipeWithDetails | null> {
   const results = await db
     .select({
       id: recipe.id,
-      userId: recipe.userId,
+      recipeUserId: recipe.userId,
       title: recipe.title,
       slug: recipe.slug,
       description: recipe.description,
@@ -126,9 +130,11 @@ export async function getRecipeById(id: string): Promise<RecipeWithDetails | nul
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
       authorName: user.name,
+      favoriteId: favorite.id,
     })
     .from(recipe)
     .leftJoin(user, eq(recipe.userId, user.id))
+    .leftJoin(favorite, userId ? and(eq(favorite.recipeId, recipe.id), eq(favorite.userId, userId)) : sql`false`)
     .where(eq(recipe.id, id))
     .limit(1);
 
@@ -137,20 +143,23 @@ export async function getRecipeById(id: string): Promise<RecipeWithDetails | nul
   const r = results[0];
   return {
     ...r,
+    userId: r.recipeUserId,
     ingredients: r.ingredients as Ingredient[],
     instructions: r.instructions as Instruction[],
     difficulty: r.difficulty as Difficulty | null,
     nutrition: r.nutrition as NutritionInfo | null,
+    isFavorited: r.favoriteId !== null,
   };
 }
 
 export async function getRecipeByShareToken(
-  shareToken: string
+  shareToken: string,
+  userId?: string
 ): Promise<RecipeWithDetails | null> {
   const results = await db
     .select({
       id: recipe.id,
-      userId: recipe.userId,
+      recipeUserId: recipe.userId,
       title: recipe.title,
       slug: recipe.slug,
       description: recipe.description,
@@ -167,9 +176,11 @@ export async function getRecipeByShareToken(
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
       authorName: user.name,
+      favoriteId: favorite.id,
     })
     .from(recipe)
     .leftJoin(user, eq(recipe.userId, user.id))
+    .leftJoin(favorite, userId ? and(eq(favorite.recipeId, recipe.id), eq(favorite.userId, userId)) : sql`false`)
     .where(eq(recipe.shareToken, shareToken))
     .limit(1);
 
@@ -178,10 +189,12 @@ export async function getRecipeByShareToken(
   const r = results[0];
   return {
     ...r,
+    userId: r.recipeUserId,
     ingredients: r.ingredients as Ingredient[],
     instructions: r.instructions as Instruction[],
     difficulty: r.difficulty as Difficulty | null,
     nutrition: r.nutrition as NutritionInfo | null,
+    isFavorited: r.favoriteId !== null,
   };
 }
 

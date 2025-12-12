@@ -1,4 +1,4 @@
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { db, tag, recipeTag, recipe, user } from "@/lib/db";
 import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
 import type { NutritionInfo } from "@/types/nutrition";
@@ -76,7 +76,7 @@ export async function getPublicRecipesByTag(
     .innerJoin(recipeTag, eq(recipe.id, recipeTag.recipeId))
     .innerJoin(tag, eq(recipeTag.tagId, tag.id))
     .leftJoin(user, eq(recipe.userId, user.id))
-    .where(eq(tag.slug, tagSlug))
+    .where(and(eq(tag.slug, tagSlug), eq(recipe.isPublic, true)))
     .orderBy(desc(recipe.createdAt))
     .limit(limit)
     .offset(offset);

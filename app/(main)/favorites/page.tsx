@@ -17,7 +17,7 @@ export default async function FavoritesPage() {
   const session = await auth.api.getSession({ headers: headersList });
 
   if (!session?.user) {
-    redirect("/sign-in");
+    redirect("/login");
   }
 
   const favorites = await getUserFavorites(session.user.id);

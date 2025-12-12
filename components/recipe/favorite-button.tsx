@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Heart } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -38,9 +39,11 @@ export function FavoriteButton({
 
         if (!res.ok) {
           setIsFavorited(!newState);
+          toast.error("Failed to update favorite");
         }
       } catch {
         setIsFavorited(!newState);
+        toast.error("Failed to update favorite");
       }
     });
   };

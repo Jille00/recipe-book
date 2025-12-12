@@ -1,4 +1,4 @@
-import { eq, and, or, sql, desc, ilike, lte, gte } from "drizzle-orm";
+import { eq, and, or, sql, desc, ilike, lte, gte, inArray } from "drizzle-orm";
 import { db, recipe, user, recipeTag } from "@/lib/db";
 import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
 import type { NutritionInfo } from "@/types/nutrition";
@@ -88,14 +88,13 @@ export async function searchRecipes(
     conditions.push(lte(recipe.servings, filters.maxServings));
   }
 
-  // Tag filtering via EXISTS subquery
+  // Tag filtering via EXISTS subquery (using parameterized query to prevent SQL injection)
   if (filters.tagIds && filters.tagIds.length > 0) {
-    const tagIdList = filters.tagIds.map((id) => `'${id}'`).join(", ");
     conditions.push(
       sql`EXISTS (
         SELECT 1 FROM ${recipeTag}
         WHERE ${recipeTag.recipeId} = ${recipe.id}
-        AND ${recipeTag.tagId} IN (${sql.raw(tagIdList)})
+        AND ${inArray(recipeTag.tagId, filters.tagIds)}
       )`
     );
   }

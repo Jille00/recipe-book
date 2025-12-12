@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardHeader,
@@ -65,6 +65,11 @@ export function NutritionDisplay({
   onCancelEdit,
 }: NutritionDisplayProps) {
   const [editValues, setEditValues] = useState<NutritionInfo | null>(nutrition);
+
+  // Sync editValues when nutrition prop changes
+  useEffect(() => {
+    setEditValues(nutrition);
+  }, [nutrition]);
 
   const handleSave = () => {
     if (editValues && onEdit) {

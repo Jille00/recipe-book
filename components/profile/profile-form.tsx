@@ -24,7 +24,7 @@ import type { UnitSystem } from "@/types/units";
 interface ProfileFormProps {
   user: {
     id: string;
-    name: string;
+    name: string | null;
     email: string;
     image?: string | null;
   };
@@ -41,7 +41,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
-    name: user.name,
+    name: user.name || "",
     bio: profile?.bio || "",
     website: profile?.website || "",
     location: profile?.location || "",
@@ -82,7 +82,8 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
     }
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | null) => {
+    if (!name) return "?";
     return name
       .split(" ")
       .map((n) => n[0])
@@ -92,7 +93,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
   };
 
   const hasChanges =
-    formData.name !== user.name ||
+    formData.name !== (user.name || "") ||
     formData.bio !== (profile?.bio || "") ||
     formData.website !== (profile?.website || "") ||
     formData.location !== (profile?.location || "");
@@ -120,7 +121,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
               </AvatarFallback>
             </Avatar>
             <div>
-              <p className="font-medium text-foreground">{user.name}</p>
+              <p className="font-medium text-foreground">{user.name || "Unnamed User"}</p>
               <p className="text-sm text-muted-foreground">{user.email}</p>
             </div>
           </div>

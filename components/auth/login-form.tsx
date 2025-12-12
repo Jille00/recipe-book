@@ -7,10 +7,20 @@ import { signIn } from "@/lib/auth-client";
 import { Button, Input, Label } from "@/components/ui";
 import { Loader2, Mail, Lock } from "lucide-react";
 
+// Validate callback URL to prevent open redirect attacks
+function getSafeCallbackUrl(url: string | null): string {
+  if (!url) return "/dashboard";
+  // Only allow relative URLs starting with /
+  if (url.startsWith("/") && !url.startsWith("//")) {
+    return url;
+  }
+  return "/dashboard";
+}
+
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  const callbackUrl = getSafeCallbackUrl(searchParams.get("callbackUrl"));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

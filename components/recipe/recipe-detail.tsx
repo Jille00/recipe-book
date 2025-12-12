@@ -18,6 +18,7 @@ import { UnitToggle } from "./unit-toggle";
 import { NutritionDisplay } from "./nutrition-display";
 import { FavoriteButton } from "./favorite-button";
 import type { RecipeWithDetails } from "@/types/recipe";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Clock,
@@ -55,7 +56,7 @@ export function RecipeDetail({
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(
-    recipe.shareToken
+    recipe.shareToken && process.env.NEXT_PUBLIC_APP_URL
       ? `${process.env.NEXT_PUBLIC_APP_URL}/r/${recipe.shareToken}`
       : null
   );
@@ -136,6 +137,7 @@ export function RecipeDetail({
       }
     } catch (error) {
       console.error("Error generating share link:", error);
+      toast.error("Failed to generate share link");
     } finally {
       setIsSharing(false);
     }
@@ -210,7 +212,7 @@ export function RecipeDetail({
             {!isPublicView && (
               <FavoriteButton
                 recipeId={recipe.id}
-                initialFavorited={initialFavorited || recipe.isFavorited}
+                initialFavorited={initialFavorited ?? recipe.isFavorited ?? false}
                 variant="button"
               />
             )}

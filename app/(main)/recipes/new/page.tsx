@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { RecipeForm } from "@/components/recipe/recipe-form";
-import { getAllCategories } from "@/lib/db/queries/categories";
+import { getAllTags } from "@/lib/db/queries/tags";
 import { ArrowLeft } from "lucide-react";
 
 export const metadata = {
@@ -9,7 +9,7 @@ export const metadata = {
 };
 
 export default async function NewRecipePage() {
-  const categories = await getAllCategories();
+  const tags = await getAllTags();
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8">
@@ -28,7 +28,7 @@ export default async function NewRecipePage() {
         </p>
       </div>
 
-      <RecipeForm categories={categories} />
+      <RecipeForm tags={tags} />
     </div>
   );
 }

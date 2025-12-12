@@ -106,14 +106,6 @@ export const profile = pgTable("profile", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const category = pgTable("category", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name").notNull().unique(),
-  slug: text("slug").notNull().unique(),
-  description: text("description"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
 export const tag = pgTable("tag", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull().unique(),
@@ -138,17 +130,14 @@ export const recipe = pgTable(
     servings: integer("servings"),
     difficulty: text("difficulty"),
     imageUrl: text("image_url"),
+    nutrition: jsonb("nutrition"),
     isPublic: boolean("is_public").default(false),
     shareToken: text("share_token").unique(),
-    categoryId: uuid("category_id").references(() => category.id, {
-      onDelete: "set null",
-    }),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
   (table) => [
     index("idx_recipe_user_id").on(table.userId),
-    index("idx_recipe_category_id").on(table.categoryId),
     index("idx_recipe_is_public").on(table.isPublic),
     index("idx_recipe_share_token").on(table.shareToken),
     index("idx_recipe_created_at").on(table.createdAt),
@@ -224,10 +213,6 @@ export const profileRelations = relations(profile, ({ one }) => ({
   }),
 }));
 
-export const categoryRelations = relations(category, ({ many }) => ({
-  recipes: many(recipe),
-}));
-
 export const tagRelations = relations(tag, ({ many }) => ({
   recipeTags: many(recipeTag),
 }));
@@ -236,10 +221,6 @@ export const recipeRelations = relations(recipe, ({ one, many }) => ({
   user: one(user, {
     fields: [recipe.userId],
     references: [user.id],
-  }),
-  category: one(category, {
-    fields: [recipe.categoryId],
-    references: [category.id],
   }),
   recipeTags: many(recipeTag),
   favorites: many(favorite),
@@ -276,6 +257,5 @@ export type NewUser = typeof user.$inferInsert;
 export type Profile = typeof profile.$inferSelect;
 export type Recipe = typeof recipe.$inferSelect;
 export type NewRecipe = typeof recipe.$inferInsert;
-export type Category = typeof category.$inferSelect;
 export type Tag = typeof tag.$inferSelect;
 export type Favorite = typeof favorite.$inferSelect;

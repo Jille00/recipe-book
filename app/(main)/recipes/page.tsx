@@ -1,5 +1,10 @@
 import Link from "next/link";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { getRecipesByUserId } from "@/lib/db/queries/recipes";
 import { Button, Card, CardContent } from "@/components/ui";
+import { RecipeCard } from "@/components/recipe/recipe-card";
 import { Plus, ChefHat } from "lucide-react";
 
 export const metadata = {
@@ -7,9 +12,15 @@ export const metadata = {
   description: "View and manage your recipe collection",
 };
 
-export default function RecipesPage() {
-  // This will be replaced with actual data fetching
-  const recipes: unknown[] = [];
+export default async function RecipesPage() {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  const recipes = await getRecipesByUserId(session.user.id);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -52,9 +63,16 @@ export default function RecipesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Recipe cards will go here */}
-        </div>
+        <>
+          <p className="text-sm text-muted-foreground mb-6">
+            {recipes.length} recipe{recipes.length !== 1 ? "s" : ""}
+          </p>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {recipes.map((recipe) => (
+              <RecipeCard key={recipe.id} recipe={recipe} />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

@@ -21,7 +21,15 @@ import {
 } from "@/components/ui";
 import { ImageUpload } from "@/components/recipe/image-upload";
 import { RecipeImportModal } from "@/components/recipe/recipe-import-modal";
-import type { Ingredient, Instruction, Difficulty, Category } from "@/types/recipe";
+import { NutritionDisplay } from "@/components/recipe/nutrition-display";
+import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
+import type { NutritionInfo } from "@/types/nutrition";
+
+interface Tag {
+  id: string;
+  name: string;
+  slug: string;
+}
 import type { ExtractedRecipe } from "@/types/extraction";
 import {
   Plus,
@@ -37,6 +45,9 @@ import {
   Timer,
   UtensilsCrossed,
   Camera,
+  Apple,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import { useUnitPreferences } from "@/hooks/use-unit-preferences";
 import type { UnitSystem } from "@/types/units";
@@ -81,7 +92,7 @@ const UNIT_OPTIONS: Array<{
 ];
 
 interface RecipeFormProps {
-  categories: Category[];
+  tags: Tag[];
   initialData?: {
     id?: string;
     title: string;
@@ -93,12 +104,13 @@ interface RecipeFormProps {
     servings: number | null;
     difficulty: Difficulty | null;
     image_url: string | null;
-    category_id: string | null;
+    nutrition: NutritionInfo | null;
+    tag_ids: string[];
     is_public: boolean;
   };
 }
 
-export function RecipeForm({ categories, initialData }: RecipeFormProps) {
+export function RecipeForm({ tags, initialData }: RecipeFormProps) {
   const router = useRouter();
   const isEditing = !!initialData?.id;
   const { globalPreference } = useUnitPreferences();
@@ -123,8 +135,19 @@ export function RecipeForm({ categories, initialData }: RecipeFormProps) {
   const [servings, setServings] = useState(initialData?.servings?.toString() || "");
   const [difficulty, setDifficulty] = useState<Difficulty | "">(initialData?.difficulty || "");
   const [imageUrl, setImageUrl] = useState(initialData?.image_url || "");
-  const [categoryId, setCategoryId] = useState(initialData?.category_id || "");
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(initialData?.tag_ids || []);
   const [isPublic, setIsPublic] = useState(initialData?.is_public || false);
+  const [nutrition, setNutrition] = useState<NutritionInfo | null>(initialData?.nutrition || null);
+  const [isCalculatingNutrition, setIsCalculatingNutrition] = useState(false);
+  const [isEditingNutrition, setIsEditingNutrition] = useState(false);
+
+  const toggleTag = (tagId: string) => {
+    setSelectedTagIds((prev) =>
+      prev.includes(tagId)
+        ? prev.filter((id) => id !== tagId)
+        : [...prev, tagId]
+    );
+  };
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -157,19 +180,64 @@ export function RecipeForm({ categories, initialData }: RecipeFormProps) {
       }))
     );
 
-    // Match category by name
+    // Match suggested category to tags
     if (extracted.suggestedCategory) {
       const normalized = extracted.suggestedCategory.toLowerCase().trim();
-      const matched = categories.find(
-        (c) =>
-          c.name.toLowerCase() === normalized ||
-          c.name.toLowerCase().includes(normalized) ||
-          normalized.includes(c.name.toLowerCase())
+      const matched = tags.find(
+        (t) =>
+          t.name.toLowerCase() === normalized ||
+          t.name.toLowerCase().includes(normalized) ||
+          normalized.includes(t.name.toLowerCase())
       );
       if (matched) {
-        setCategoryId(matched.id);
+        setSelectedTagIds([matched.id]);
       }
     }
+  };
+
+  // Calculate nutrition from ingredients
+  const calculateNutrition = async () => {
+    const filteredIngredients = ingredients.filter((i) => i.text.trim());
+    const servingsNum = servings ? parseInt(servings) : null;
+
+    if (filteredIngredients.length === 0 || !servingsNum) {
+      return;
+    }
+
+    setIsCalculatingNutrition(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/calculate-nutrition", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ingredients: filteredIngredients.map((ing) => ({
+            text: ing.text,
+            amount: ing.amount,
+            unit: ing.unit,
+          })),
+          servings: servingsNum,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to calculate nutrition");
+      }
+
+      const data = await response.json();
+      setNutrition(data.nutrition);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to calculate nutrition");
+    } finally {
+      setIsCalculatingNutrition(false);
+    }
+  };
+
+  const handleNutritionEdit = (updatedNutrition: NutritionInfo) => {
+    setNutrition(updatedNutrition);
+    setIsEditingNutrition(false);
   };
 
   const addIngredient = () => {
@@ -243,7 +311,8 @@ export function RecipeForm({ categories, initialData }: RecipeFormProps) {
       servings: servings ? parseInt(servings) : null,
       difficulty: difficulty || null,
       image_url: imageUrl || null,
-      category_id: categoryId || null,
+      nutrition: nutrition,
+      tag_ids: selectedTagIds,
       is_public: isPublic,
     };
 
@@ -341,22 +410,32 @@ export function RecipeForm({ categories, initialData }: RecipeFormProps) {
                   className="resize-none"
                 />
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Category</Label>
-                  <Select value={categoryId} onValueChange={setCategoryId}>
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-2">
+                  <Label className="text-sm font-medium">Tags</Label>
+                  <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-border min-h-[44px]">
+                    {tags.map((tag) => (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => toggleTag(tag.id)}
+                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm transition-colors ${
+                          selectedTagIds.includes(tag.id)
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                        }`}
+                      >
+                        {tag.name}
+                        {selectedTagIds.includes(tag.id) && (
+                          <X className="h-3 w-3" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Click to select multiple tags
+                  </p>
                 </div>
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Difficulty</Label>
                   <Select value={difficulty} onValueChange={(v) => setDifficulty(v as Difficulty)}>
@@ -566,6 +645,73 @@ export function RecipeForm({ categories, initialData }: RecipeFormProps) {
         </CardContent>
       </Card>
 
+      {/* Nutrition */}
+      <Card>
+        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                <Apple className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="font-display">Nutrition</CardTitle>
+                <CardDescription>Estimated nutritional values per serving</CardDescription>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={calculateNutrition}
+              disabled={
+                isCalculatingNutrition ||
+                ingredients.filter((i) => i.text.trim()).length === 0 ||
+                !servings
+              }
+              className="gap-2"
+            >
+              {isCalculatingNutrition ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              {nutrition ? "Recalculate" : "Calculate"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6">
+          {!nutrition && !isCalculatingNutrition && (
+            <div className="text-center py-8 text-muted-foreground">
+              <Apple className="h-10 w-10 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">
+                {ingredients.filter((i) => i.text.trim()).length === 0
+                  ? "Add ingredients to calculate nutrition"
+                  : !servings
+                  ? "Add servings to calculate nutrition"
+                  : "Click \"Calculate\" to estimate nutritional values"}
+              </p>
+            </div>
+          )}
+          {isCalculatingNutrition && (
+            <div className="text-center py-8">
+              <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Calculating nutrition...</p>
+            </div>
+          )}
+          {nutrition && !isCalculatingNutrition && (
+            <NutritionDisplay
+              nutrition={nutrition}
+              servings={servings ? parseInt(servings) : null}
+              isEditable={true}
+              isEditing={isEditingNutrition}
+              onEdit={handleNutritionEdit}
+              onStartEdit={() => setIsEditingNutrition(true)}
+              onCancelEdit={() => setIsEditingNutrition(false)}
+            />
+          )}
+        </CardContent>
+      </Card>
+
       {/* Instructions */}
       <Card>
         <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
@@ -700,7 +846,7 @@ export function RecipeForm({ categories, initialData }: RecipeFormProps) {
         open={importModalOpen}
         onOpenChange={setImportModalOpen}
         onImport={handleImportRecipe}
-        categories={categories}
+        tags={tags}
       />
     </form>
   );

@@ -1,8 +1,9 @@
 import { eq, and, desc, sql } from "drizzle-orm";
-import { db, recipe, category, user, recipeTag, tag } from "@/lib/db";
-import { generateSlug, generateUniqueSlug } from "@/lib/utils/slug";
+import { db, recipe, user, recipeTag, tag } from "@/lib/db";
+import { generateUniqueSlug } from "@/lib/utils/slug";
 import { generateShareToken } from "@/lib/utils/share-token";
 import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
+import type { NutritionInfo } from "@/types/nutrition";
 
 export interface RecipeWithDetails {
   id: string;
@@ -17,15 +18,12 @@ export interface RecipeWithDetails {
   servings: number | null;
   difficulty: Difficulty | null;
   imageUrl: string | null;
+  nutrition: NutritionInfo | null;
   isPublic: boolean | null;
   shareToken: string | null;
-  categoryId: string | null;
   createdAt: Date | null;
   updatedAt: Date | null;
-  categoryName?: string | null;
-  categorySlug?: string | null;
   authorName?: string | null;
-  tags?: string[];
 }
 
 export async function getRecipesByUserId(userId: string): Promise<RecipeWithDetails[]> {
@@ -43,16 +41,13 @@ export async function getRecipesByUserId(userId: string): Promise<RecipeWithDeta
       servings: recipe.servings,
       difficulty: recipe.difficulty,
       imageUrl: recipe.imageUrl,
+      nutrition: recipe.nutrition,
       isPublic: recipe.isPublic,
       shareToken: recipe.shareToken,
-      categoryId: recipe.categoryId,
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
-      categoryName: category.name,
-      categorySlug: category.slug,
     })
     .from(recipe)
-    .leftJoin(category, eq(recipe.categoryId, category.id))
     .where(eq(recipe.userId, userId))
     .orderBy(desc(recipe.createdAt));
 
@@ -61,6 +56,7 @@ export async function getRecipesByUserId(userId: string): Promise<RecipeWithDeta
     ingredients: r.ingredients as Ingredient[],
     instructions: r.instructions as Instruction[],
     difficulty: r.difficulty as Difficulty | null,
+    nutrition: r.nutrition as NutritionInfo | null,
   }));
 }
 
@@ -82,17 +78,14 @@ export async function getRecipeBySlug(
       servings: recipe.servings,
       difficulty: recipe.difficulty,
       imageUrl: recipe.imageUrl,
+      nutrition: recipe.nutrition,
       isPublic: recipe.isPublic,
       shareToken: recipe.shareToken,
-      categoryId: recipe.categoryId,
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
-      categoryName: category.name,
-      categorySlug: category.slug,
       authorName: user.name,
     })
     .from(recipe)
-    .leftJoin(category, eq(recipe.categoryId, category.id))
     .leftJoin(user, eq(recipe.userId, user.id))
     .where(and(eq(recipe.userId, userId), eq(recipe.slug, slug)))
     .limit(1);
@@ -105,6 +98,7 @@ export async function getRecipeBySlug(
     ingredients: r.ingredients as Ingredient[],
     instructions: r.instructions as Instruction[],
     difficulty: r.difficulty as Difficulty | null,
+    nutrition: r.nutrition as NutritionInfo | null,
   };
 }
 
@@ -123,17 +117,14 @@ export async function getRecipeById(id: string): Promise<RecipeWithDetails | nul
       servings: recipe.servings,
       difficulty: recipe.difficulty,
       imageUrl: recipe.imageUrl,
+      nutrition: recipe.nutrition,
       isPublic: recipe.isPublic,
       shareToken: recipe.shareToken,
-      categoryId: recipe.categoryId,
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
-      categoryName: category.name,
-      categorySlug: category.slug,
       authorName: user.name,
     })
     .from(recipe)
-    .leftJoin(category, eq(recipe.categoryId, category.id))
     .leftJoin(user, eq(recipe.userId, user.id))
     .where(eq(recipe.id, id))
     .limit(1);
@@ -146,6 +137,7 @@ export async function getRecipeById(id: string): Promise<RecipeWithDetails | nul
     ingredients: r.ingredients as Ingredient[],
     instructions: r.instructions as Instruction[],
     difficulty: r.difficulty as Difficulty | null,
+    nutrition: r.nutrition as NutritionInfo | null,
   };
 }
 
@@ -166,17 +158,14 @@ export async function getRecipeByShareToken(
       servings: recipe.servings,
       difficulty: recipe.difficulty,
       imageUrl: recipe.imageUrl,
+      nutrition: recipe.nutrition,
       isPublic: recipe.isPublic,
       shareToken: recipe.shareToken,
-      categoryId: recipe.categoryId,
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
-      categoryName: category.name,
-      categorySlug: category.slug,
       authorName: user.name,
     })
     .from(recipe)
-    .leftJoin(category, eq(recipe.categoryId, category.id))
     .leftJoin(user, eq(recipe.userId, user.id))
     .where(eq(recipe.shareToken, shareToken))
     .limit(1);
@@ -189,6 +178,7 @@ export async function getRecipeByShareToken(
     ingredients: r.ingredients as Ingredient[],
     instructions: r.instructions as Instruction[],
     difficulty: r.difficulty as Difficulty | null,
+    nutrition: r.nutrition as NutritionInfo | null,
   };
 }
 
@@ -202,8 +192,8 @@ interface CreateRecipeInput {
   servings?: number | null;
   difficulty?: Difficulty | null;
   image_url?: string | null;
+  nutrition?: NutritionInfo | null;
   is_public?: boolean;
-  category_id?: string | null;
   tag_ids?: string[];
 }
 
@@ -231,8 +221,8 @@ export async function createRecipe(userId: string, data: CreateRecipeInput) {
       servings: data.servings || null,
       difficulty: data.difficulty || null,
       imageUrl: data.image_url || null,
+      nutrition: data.nutrition || null,
       isPublic: data.is_public || false,
-      categoryId: data.category_id || null,
     })
     .returning();
 
@@ -289,8 +279,8 @@ export async function updateRecipe(
   if (data.servings !== undefined) updateData.servings = data.servings;
   if (data.difficulty !== undefined) updateData.difficulty = data.difficulty;
   if (data.image_url !== undefined) updateData.imageUrl = data.image_url;
+  if (data.nutrition !== undefined) updateData.nutrition = data.nutrition;
   if (data.is_public !== undefined) updateData.isPublic = data.is_public;
-  if (data.category_id !== undefined) updateData.categoryId = data.category_id;
 
   const [updated] = await db
     .update(recipe)
@@ -356,7 +346,6 @@ export async function getUserRecipeStats(userId: string) {
     .select({
       totalRecipes: sql<number>`count(*)::int`,
       publicRecipes: sql<number>`count(*) filter (where ${recipe.isPublic} = true)::int`,
-      categoriesUsed: sql<number>`count(distinct ${recipe.categoryId})::int`,
     })
     .from(recipe)
     .where(eq(recipe.userId, userId));

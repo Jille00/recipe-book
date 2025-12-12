@@ -23,13 +23,18 @@ import {
   Plus,
 } from "lucide-react";
 import type { ExtractedRecipe, ExtractionResponse } from "@/types/extraction";
-import type { Category } from "@/types/recipe";
+
+interface Tag {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 interface RecipeImportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImport: (data: ExtractedRecipe) => void;
-  categories: Category[];
+  tags: Tag[];
 }
 
 type ModalState = "idle" | "extracting" | "preview" | "error";
@@ -43,7 +48,7 @@ export function RecipeImportModal({
   open,
   onOpenChange,
   onImport,
-  categories,
+  tags,
 }: RecipeImportModalProps) {
   const [state, setState] = useState<ModalState>("idle");
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
@@ -172,15 +177,15 @@ export function RecipeImportModal({
     }
   };
 
-  const matchCategory = (suggestedCategory: string | undefined): string => {
+  const matchTag = (suggestedCategory: string | undefined): string => {
     if (!suggestedCategory) return "";
     const normalized = suggestedCategory.toLowerCase().trim();
-    const exact = categories.find((c) => c.name.toLowerCase() === normalized);
+    const exact = tags.find((t) => t.name.toLowerCase() === normalized);
     if (exact) return exact.name;
-    const partial = categories.find(
-      (c) =>
-        c.name.toLowerCase().includes(normalized) ||
-        normalized.includes(c.name.toLowerCase())
+    const partial = tags.find(
+      (t) =>
+        t.name.toLowerCase().includes(normalized) ||
+        normalized.includes(t.name.toLowerCase())
     );
     if (partial) return partial.name;
     return suggestedCategory;
@@ -394,7 +399,7 @@ export function RecipeImportModal({
                 )}
                 {extractedData.suggestedCategory && (
                   <span className="text-muted-foreground">
-                    {matchCategory(extractedData.suggestedCategory)}
+                    {matchTag(extractedData.suggestedCategory)}
                   </span>
                 )}
               </div>

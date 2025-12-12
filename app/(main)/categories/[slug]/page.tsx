@@ -3,10 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, ChefHat } from "lucide-react";
 import { Card, CardContent } from "@/components/ui";
 import { RecipeCard } from "@/components/recipe/recipe-card";
-import {
-  getCategoryBySlug,
-  getPublicRecipesByCategory,
-} from "@/lib/db/queries/categories";
+import { getTagBySlug, getPublicRecipesByTag } from "@/lib/db/queries/tags";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -14,27 +11,27 @@ interface Props {
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
-  const category = await getCategoryBySlug(slug);
+  const tag = await getTagBySlug(slug);
 
-  if (!category) {
-    return { title: "Category Not Found - Recipe Book" };
+  if (!tag) {
+    return { title: "Tag Not Found - Recipe Book" };
   }
 
   return {
-    title: `${category.name} Recipes - Recipe Book`,
-    description: category.description || `Browse ${category.name} recipes`,
+    title: `${tag.name} Recipes - Recipe Book`,
+    description: `Browse recipes tagged with ${tag.name}`,
   };
 }
 
 export default async function CategoryPage({ params }: Props) {
   const { slug } = await params;
-  const category = await getCategoryBySlug(slug);
+  const tag = await getTagBySlug(slug);
 
-  if (!category) {
+  if (!tag) {
     notFound();
   }
 
-  const recipes = await getPublicRecipesByCategory(slug);
+  const recipes = await getPublicRecipesByTag(slug);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -44,14 +41,14 @@ export default async function CategoryPage({ params }: Props) {
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-4"
         >
           <ArrowLeft className="h-4 w-4" />
-          All Categories
+          All Tags
         </Link>
         <h1 className="font-display text-3xl font-semibold text-foreground">
-          {category.name}
+          {tag.name}
         </h1>
-        {category.description && (
-          <p className="mt-1 text-muted-foreground">{category.description}</p>
-        )}
+        <p className="mt-1 text-muted-foreground">
+          Recipes tagged with {tag.name}
+        </p>
       </div>
 
       {recipes.length === 0 ? (
@@ -64,7 +61,7 @@ export default async function CategoryPage({ params }: Props) {
               No recipes yet
             </h2>
             <p className="text-muted-foreground max-w-md">
-              There are no public recipes in this category yet. Be the first to
+              There are no public recipes with this tag yet. Be the first to
               share one!
             </p>
           </CardContent>

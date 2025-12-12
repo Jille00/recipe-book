@@ -1,6 +1,7 @@
 import { eq, and, desc, sql } from "drizzle-orm";
-import { db, favorite, recipe, category, user } from "@/lib/db";
-import type { Ingredient, Instruction } from "@/types/recipe";
+import { db, favorite, recipe, user } from "@/lib/db";
+import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
+import type { NutritionInfo } from "@/types/nutrition";
 
 export async function getUserFavorites(userId: string) {
   const favorites = await db
@@ -17,19 +18,16 @@ export async function getUserFavorites(userId: string) {
       servings: recipe.servings,
       difficulty: recipe.difficulty,
       imageUrl: recipe.imageUrl,
+      nutrition: recipe.nutrition,
       isPublic: recipe.isPublic,
       shareToken: recipe.shareToken,
-      categoryId: recipe.categoryId,
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
-      categoryName: category.name,
-      categorySlug: category.slug,
       authorName: user.name,
       favoritedAt: favorite.createdAt,
     })
     .from(favorite)
     .innerJoin(recipe, eq(favorite.recipeId, recipe.id))
-    .leftJoin(category, eq(recipe.categoryId, category.id))
     .leftJoin(user, eq(recipe.userId, user.id))
     .where(eq(favorite.userId, userId))
     .orderBy(desc(favorite.createdAt));
@@ -38,6 +36,8 @@ export async function getUserFavorites(userId: string) {
     ...r,
     ingredients: r.ingredients as Ingredient[],
     instructions: r.instructions as Instruction[],
+    difficulty: r.difficulty as Difficulty | null,
+    nutrition: r.nutrition as NutritionInfo | null,
     isFavorited: true,
   }));
 }

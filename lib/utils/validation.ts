@@ -33,6 +33,17 @@ export const instructionSchema = z.object({
   text: z.string().min(1, "Instruction text is required"),
 });
 
+export const nutritionSchema = z.object({
+  calories: z.number().nonnegative().nullable(),
+  protein: z.number().nonnegative().nullable(),
+  carbs: z.number().nonnegative().nullable(),
+  fat: z.number().nonnegative().nullable(),
+  fiber: z.number().nonnegative().nullable(),
+  sugar: z.number().nonnegative().nullable(),
+  confidence: z.enum(["high", "medium", "low"]),
+  warnings: z.array(z.string()).optional(),
+});
+
 export const recipeSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title is too long"),
   description: z.string().max(1000, "Description is too long").optional(),
@@ -43,8 +54,8 @@ export const recipeSchema = z.object({
   servings: z.number().int().positive().optional(),
   difficulty: z.enum(["easy", "medium", "hard"]).optional(),
   image_url: z.string().url().optional(),
+  nutrition: nutritionSchema.optional().nullable(),
   is_public: z.boolean().default(false),
-  category_id: z.string().uuid().optional(),
   tag_ids: z.array(z.string().uuid()).optional(),
 });
 

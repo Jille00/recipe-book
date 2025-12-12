@@ -87,19 +87,14 @@ export function RecipeCard({ recipe, href, showAuthor = false }: RecipeCardProps
             )}
           </div>
 
-          {/* Category & Author */}
-          <div className="mt-3 flex items-center justify-between">
-            {recipe.categoryName && (
-              <Badge variant="secondary" className="text-xs">
-                {recipe.categoryName}
-              </Badge>
-            )}
-            {showAuthor && recipe.authorName && (
+          {/* Author */}
+          {showAuthor && recipe.authorName && (
+            <div className="mt-3">
               <span className="text-xs text-muted-foreground">
                 by {recipe.authorName}
               </span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </article>
     </Link>

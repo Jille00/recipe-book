@@ -1,3 +1,5 @@
+import type { NutritionInfo } from "./nutrition";
+
 export interface Ingredient {
   id: string;
   text: string;
@@ -26,27 +28,17 @@ export interface Recipe {
   servings: number | null;
   difficulty: Difficulty | null;
   imageUrl: string | null;
+  nutrition: NutritionInfo | null;
   isPublic: boolean | null;
   shareToken: string | null;
-  categoryId: string | null;
   createdAt: Date | null;
   updatedAt: Date | null;
 }
 
 export interface RecipeWithDetails extends Recipe {
-  categoryName?: string | null;
-  categorySlug?: string | null;
   authorName?: string | null;
   tags?: string[];
   isFavorited?: boolean;
-}
-
-export interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  createdAt: Date | null;
 }
 
 export interface Tag {
@@ -73,8 +65,8 @@ export interface CreateRecipeInput {
   servings?: number;
   difficulty?: Difficulty;
   imageUrl?: string;
+  nutrition?: NutritionInfo | null;
   isPublic?: boolean;
-  categoryId?: string;
   tagIds?: string[];
 }
 

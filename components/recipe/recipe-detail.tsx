@@ -4,8 +4,9 @@ import { useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Badge, Button, Card, CardContent, Input } from "@/components/ui";
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, CardDescription, Input } from "@/components/ui";
 import { UnitToggle } from "./unit-toggle";
+import { NutritionDisplay } from "./nutrition-display";
 import type { RecipeWithDetails } from "@/types/recipe";
 import {
   ArrowLeft,
@@ -19,6 +20,7 @@ import {
   Copy,
   Check,
   Utensils,
+  Apple,
 } from "lucide-react";
 import { useRecipeUnitSystem } from "@/hooks/use-unit-preferences";
 import {
@@ -160,9 +162,6 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
               </p>
             )}
             <div className="flex flex-wrap items-center gap-2">
-              {recipe.categoryName && (
-                <Badge variant="default">{recipe.categoryName}</Badge>
-              )}
               {recipe.difficulty && (
                 <Badge variant={getDifficultyVariant(recipe.difficulty)} className="capitalize">
                   {recipe.difficulty}
@@ -274,6 +273,30 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
           </Card>
         )}
       </div>
+
+      {/* Nutrition */}
+      {recipe.nutrition && (
+        <Card className="mb-8">
+          <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                <Apple className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="font-display">Nutrition</CardTitle>
+                <CardDescription>Estimated values per serving</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            <NutritionDisplay
+              nutrition={recipe.nutrition}
+              servings={recipe.servings}
+              isEditable={false}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Ingredients */}

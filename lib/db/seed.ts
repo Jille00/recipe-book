@@ -1,35 +1,31 @@
 import { config } from "dotenv";
 config({ path: ".env.local" });
 import { db } from "./index";
-import { category } from "./schema";
+import { tag } from "./schema";
 
-const categories = [
-  { name: "Breakfast", slug: "breakfast", description: "Morning meals and brunch recipes" },
-  { name: "Lunch", slug: "lunch", description: "Midday meals and light dishes" },
-  { name: "Dinner", slug: "dinner", description: "Evening meals and main courses" },
-  { name: "Appetizers", slug: "appetizers", description: "Starters and small bites" },
-  { name: "Soups & Stews", slug: "soups-stews", description: "Warm and comforting bowls" },
-  { name: "Salads", slug: "salads", description: "Fresh and healthy salads" },
-  { name: "Pasta", slug: "pasta", description: "Pasta and noodle dishes" },
-  { name: "Meat", slug: "meat", description: "Beef, pork, and lamb dishes" },
-  { name: "Poultry", slug: "poultry", description: "Chicken and turkey recipes" },
-  { name: "Seafood", slug: "seafood", description: "Fish and shellfish dishes" },
-  { name: "Vegetarian", slug: "vegetarian", description: "Meat-free recipes" },
-  { name: "Vegan", slug: "vegan", description: "Plant-based recipes" },
-  { name: "Desserts", slug: "desserts", description: "Sweet treats and baked goods" },
-  { name: "Baking", slug: "baking", description: "Breads, pastries, and baked goods" },
-  { name: "Drinks", slug: "drinks", description: "Beverages and cocktails" },
-  { name: "Snacks", slug: "snacks", description: "Quick bites and finger foods" },
+const tags = [
+  { name: "Breakfast", slug: "breakfast" },
+  { name: "Lunch", slug: "lunch" },
+  { name: "Dinner", slug: "dinner" },
+  { name: "Appetizers", slug: "appetizers" },
+  { name: "Soups & Stews", slug: "soups-stews" },
+  { name: "Salads", slug: "salads" },
+  { name: "Pasta", slug: "pasta" },
+  { name: "Meat", slug: "meat" },
+  { name: "Poultry", slug: "poultry" },
+  { name: "Seafood", slug: "seafood" },
+  { name: "Vegetarian", slug: "vegetarian" },
+  { name: "Vegan", slug: "vegan" },
+  { name: "Desserts", slug: "desserts" },
+  { name: "Baking", slug: "baking" },
+  { name: "Drinks", slug: "drinks" },
+  { name: "Snacks", slug: "snacks" },
 ];
 
 async function seed() {
-  console.log("Seeding categories...");
-
-  for (const cat of categories) {
-    await db
-      .insert(category)
-      .values(cat)
-      .onConflictDoNothing();
+  console.log("Seeding tags...");
+  for (const t of tags) {
+    await db.insert(tag).values(t).onConflictDoNothing();
   }
 
   console.log("Seeding complete!");

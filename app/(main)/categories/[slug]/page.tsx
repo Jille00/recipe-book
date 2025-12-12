@@ -77,7 +77,6 @@ export default async function CategoryPage({ params }: Props) {
                 key={recipe.id}
                 recipe={recipe}
                 showAuthor
-                href={recipe.shareToken ? `/r/${recipe.shareToken}` : undefined}
                 showFavorite={false}
               />
             ))}

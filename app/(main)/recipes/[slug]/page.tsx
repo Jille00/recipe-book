@@ -3,6 +3,8 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { getRecipeBySlug } from "@/lib/db/queries/recipes";
 import { isFavorited } from "@/lib/db/queries/favorites";
+import { getRecipeRatingStats, getUserRating } from "@/lib/db/queries/ratings";
+import { getRecipeComments } from "@/lib/db/queries/comments";
 import { RecipeDetail } from "@/components/recipe/recipe-detail";
 
 interface Props {
@@ -46,11 +48,28 @@ export default async function RecipePage({ params }: Props) {
   }
 
   const isOwner = recipe.userId === session.user.id;
-  const favorited = await isFavorited(session.user.id, recipe.id);
+
+  // Fetch all data in parallel
+  const [favorited, ratingStats, userRating, commentsData] = await Promise.all([
+    isFavorited(session.user.id, recipe.id),
+    getRecipeRatingStats(recipe.id),
+    getUserRating(session.user.id, recipe.id),
+    getRecipeComments(recipe.id, { limit: 10, offset: 0 }),
+  ]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <RecipeDetail recipe={recipe} isOwner={isOwner} initialFavorited={favorited} />
+      <RecipeDetail
+        recipe={recipe}
+        isOwner={isOwner}
+        initialFavorited={favorited}
+        currentUserId={session.user.id}
+        isAuthenticated={true}
+        initialRatingStats={ratingStats}
+        initialUserRating={userRating}
+        initialComments={commentsData.comments}
+        initialCommentTotal={commentsData.total}
+      />
     </div>
   );
 }

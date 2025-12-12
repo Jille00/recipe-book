@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { RecipeWithDetails } from "@/types/recipe";
-import { Clock, Users, ChefHat } from "lucide-react";
+import { Clock, Users, ChefHat, Star } from "lucide-react";
 import { FavoriteButton } from "./favorite-button";
 
 interface RecipeCardProps {
@@ -82,6 +82,15 @@ export function RecipeCard({
 
           {/* Meta */}
           <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+            {recipe.ratingStats && recipe.ratingStats.totalRatings > 0 && (
+              <span className="flex items-center gap-1">
+                <Star className="h-3.5 w-3.5 text-amber fill-amber" />
+                <span className="font-medium text-foreground">
+                  {recipe.ratingStats.averageRating.toFixed(1)}
+                </span>
+                <span>({recipe.ratingStats.totalRatings})</span>
+              </span>
+            )}
             {recipe.servings && (
               <span className="flex items-center gap-1">
                 <Users className="h-3.5 w-3.5" />

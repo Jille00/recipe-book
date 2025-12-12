@@ -1,8 +1,12 @@
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import Image from "next/image";
+import { auth } from "@/lib/auth";
 import { getRecipeByShareToken } from "@/lib/db/queries/recipes";
+import { getRecipeRatingStats, getUserRating } from "@/lib/db/queries/ratings";
+import { getRecipeComments } from "@/lib/db/queries/comments";
 import { RecipeDetail } from "@/components/recipe/recipe-detail";
 
 interface Props {
@@ -37,11 +41,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SharedRecipePage({ params }: Props) {
   const { shareToken } = await params;
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+
   const recipe = await getRecipeByShareToken(shareToken);
 
   if (!recipe) {
     notFound();
   }
+
+  // Fetch ratings and comments data in parallel
+  const [ratingStats, userRating, commentsData] = await Promise.all([
+    getRecipeRatingStats(recipe.id),
+    session?.user ? getUserRating(session.user.id, recipe.id) : Promise.resolve(null),
+    getRecipeComments(recipe.id, { limit: 10, offset: 0 }),
+  ]);
 
   return (
     <div className="min-h-screen bg-background grain">
@@ -61,7 +75,16 @@ export default async function SharedRecipePage({ params }: Props) {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <RecipeDetail recipe={recipe} isPublicView />
+        <RecipeDetail
+          recipe={recipe}
+          isPublicView
+          currentUserId={session?.user?.id}
+          isAuthenticated={!!session?.user}
+          initialRatingStats={ratingStats}
+          initialUserRating={userRating}
+          initialComments={commentsData.comments}
+          initialCommentTotal={commentsData.total}
+        />
       </main>
 
       {/* Simple footer */}

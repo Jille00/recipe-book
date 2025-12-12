@@ -180,6 +180,48 @@ export const favorite = pgTable(
   ]
 );
 
+export const rating = pgTable(
+  "rating",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    recipeId: uuid("recipe_id")
+      .notNull()
+      .references(() => recipe.id, { onDelete: "cascade" }),
+    value: integer("value").notNull(), // 1-5 stars
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_rating_recipe_id").on(table.recipeId),
+    index("idx_rating_user_id").on(table.userId),
+    unique("rating_user_recipe_unique").on(table.userId, table.recipeId),
+  ]
+);
+
+export const comment = pgTable(
+  "comment",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    recipeId: uuid("recipe_id")
+      .notNull()
+      .references(() => recipe.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_comment_recipe_id").on(table.recipeId),
+    index("idx_comment_user_id").on(table.userId),
+    index("idx_comment_created_at").on(table.createdAt),
+  ]
+);
+
 // =====================
 // Relations
 // =====================
@@ -190,6 +232,8 @@ export const userRelations = relations(user, ({ many, one }) => ({
   profile: one(profile),
   recipes: many(recipe),
   favorites: many(favorite),
+  ratings: many(rating),
+  comments: many(comment),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -224,6 +268,8 @@ export const recipeRelations = relations(recipe, ({ one, many }) => ({
   }),
   recipeTags: many(recipeTag),
   favorites: many(favorite),
+  ratings: many(rating),
+  comments: many(comment),
 }));
 
 export const recipeTagRelations = relations(recipeTag, ({ one }) => ({
@@ -248,6 +294,28 @@ export const favoriteRelations = relations(favorite, ({ one }) => ({
   }),
 }));
 
+export const ratingRelations = relations(rating, ({ one }) => ({
+  user: one(user, {
+    fields: [rating.userId],
+    references: [user.id],
+  }),
+  recipe: one(recipe, {
+    fields: [rating.recipeId],
+    references: [recipe.id],
+  }),
+}));
+
+export const commentRelations = relations(comment, ({ one }) => ({
+  user: one(user, {
+    fields: [comment.userId],
+    references: [user.id],
+  }),
+  recipe: one(recipe, {
+    fields: [comment.recipeId],
+    references: [recipe.id],
+  }),
+}));
+
 // =====================
 // Types
 // =====================
@@ -259,3 +327,7 @@ export type Recipe = typeof recipe.$inferSelect;
 export type NewRecipe = typeof recipe.$inferInsert;
 export type Tag = typeof tag.$inferSelect;
 export type Favorite = typeof favorite.$inferSelect;
+export type Rating = typeof rating.$inferSelect;
+export type NewRating = typeof rating.$inferInsert;
+export type Comment = typeof comment.$inferSelect;
+export type NewComment = typeof comment.$inferInsert;

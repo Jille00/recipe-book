@@ -35,10 +35,16 @@ export interface Recipe {
   updatedAt: Date | null;
 }
 
+export interface RatingStats {
+  averageRating: number;
+  totalRatings: number;
+}
+
 export interface RecipeWithDetails extends Recipe {
   authorName?: string | null;
   tags?: string[];
   isFavorited?: boolean;
+  ratingStats?: RatingStats;
 }
 
 export interface Tag {

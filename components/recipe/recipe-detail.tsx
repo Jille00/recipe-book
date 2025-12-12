@@ -17,13 +17,15 @@ import {
 import { UnitToggle } from "./unit-toggle";
 import { NutritionDisplay } from "./nutrition-display";
 import { FavoriteButton } from "./favorite-button";
-import type { RecipeWithDetails } from "@/types/recipe";
+import { ServingsSelector } from "./servings-selector";
+import { RatingsCommentsSection } from "./ratings-comments-section";
+import type { RecipeWithDetails, RatingStats } from "@/types/recipe";
+import type { CommentWithUser } from "@/lib/db/queries/comments";
 import { toast } from "sonner";
 import {
   ArrowLeft,
   Clock,
   Timer,
-  Users,
   ChefHat,
   Pencil,
   Trash2,
@@ -34,17 +36,28 @@ import {
   Apple,
 } from "lucide-react";
 import { useRecipeUnitSystem } from "@/hooks/use-unit-preferences";
+import { useRecipeScaling } from "@/hooks/use-recipe-scaling";
 import {
   convertUnit,
   convertTemperatureInText,
   isRecognizedUnit,
 } from "@/lib/utils/unit-conversion";
+import {
+  scaleIngredients,
+  scaleNutrition,
+} from "@/lib/utils/recipe-scaling";
 
 interface RecipeDetailProps {
   recipe: RecipeWithDetails;
   isOwner?: boolean;
   isPublicView?: boolean;
   initialFavorited?: boolean;
+  currentUserId?: string;
+  isAuthenticated?: boolean;
+  initialRatingStats?: RatingStats;
+  initialUserRating?: number | null;
+  initialComments?: CommentWithUser[];
+  initialCommentTotal?: number;
 }
 
 export function RecipeDetail({
@@ -52,6 +65,12 @@ export function RecipeDetail({
   isOwner = false,
   isPublicView = false,
   initialFavorited = false,
+  currentUserId,
+  isAuthenticated = false,
+  initialRatingStats,
+  initialUserRating,
+  initialComments = [],
+  initialCommentTotal = 0,
 }: RecipeDetailProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -65,20 +84,38 @@ export function RecipeDetail({
 
   const { unitSystem } = useRecipeUnitSystem(recipe.id);
 
+  // Scaling state
+  const {
+    scaledServings,
+    originalServings,
+    scaleFactor,
+    increment,
+    decrement,
+    resetToOriginal,
+    isScaled,
+  } = useRecipeScaling(recipe.servings || 1);
+
   const totalTime =
     (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
 
-  // Convert ingredients based on unit preference
+  // Scale and convert ingredients based on servings and unit preference
   const convertedIngredients = useMemo(() => {
-    return recipe.ingredients.map((ingredient) => {
-      if (!ingredient.amount || !ingredient.unit) {
+    // First, scale the ingredients
+    const scaled = scaleIngredients(recipe.ingredients, scaleFactor);
+
+    // Then apply unit conversion
+    return scaled.map((ingredient) => {
+      // Use scaled amount if available, otherwise original
+      const amountToConvert = ingredient.scaledAmount || ingredient.amount;
+
+      if (!amountToConvert || !ingredient.unit) {
         return {
           ...ingredient,
           converted: null,
         };
       }
 
-      // Check if unit is recognized
+      // Check if unit is recognized for conversion
       if (!isRecognizedUnit(ingredient.unit)) {
         return {
           ...ingredient,
@@ -87,7 +124,7 @@ export function RecipeDetail({
       }
 
       const result = convertUnit(
-        ingredient.amount,
+        amountToConvert,
         ingredient.unit,
         unitSystem
       );
@@ -96,7 +133,12 @@ export function RecipeDetail({
         converted: result.wasConverted ? result : null,
       };
     });
-  }, [recipe.ingredients, unitSystem]);
+  }, [recipe.ingredients, scaleFactor, unitSystem]);
+
+  // Scale nutrition values
+  const scaledNutrition = useMemo(() => {
+    return scaleNutrition(recipe.nutrition, scaleFactor);
+  }, [recipe.nutrition, scaleFactor]);
 
   // Convert temperatures in instructions
   const convertedInstructions = useMemo(() => {
@@ -305,24 +347,18 @@ export function RecipeDetail({
           </Card>
         )}
         {recipe.servings && (
-          <Card className="text-center">
-            <CardContent className="py-4">
-              <div className="flex justify-center mb-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Users className="h-5 w-5 text-primary" />
-                </div>
-              </div>
-              <p className="text-2xl font-display font-semibold text-foreground">
-                {recipe.servings}
-              </p>
-              <p className="text-xs text-muted-foreground">Servings</p>
-            </CardContent>
-          </Card>
+          <ServingsSelector
+            scaledServings={scaledServings}
+            originalServings={originalServings}
+            onIncrement={increment}
+            onDecrement={decrement}
+            onReset={resetToOriginal}
+          />
         )}
       </div>
 
       {/* Nutrition */}
-      {recipe.nutrition && (
+      {scaledNutrition && (
         <Card className="mb-8 p-0">
           <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pt-8">
             <div className="flex items-center gap-3">
@@ -331,14 +367,21 @@ export function RecipeDetail({
               </div>
               <div>
                 <CardTitle className="font-display">Nutrition</CardTitle>
-                <CardDescription>Estimated values per serving</CardDescription>
+                <CardDescription>
+                  Estimated values for {scaledServings} serving{scaledServings !== 1 ? "s" : ""}
+                  {isScaled && (
+                    <span className="text-primary ml-1">
+                      (scaled from {originalServings})
+                    </span>
+                  )}
+                </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-6">
             <NutritionDisplay
-              nutrition={recipe.nutrition}
-              servings={recipe.servings}
+              nutrition={scaledNutrition}
+              servings={scaledServings}
               isEditable={false}
             />
           </CardContent>
@@ -362,16 +405,29 @@ export function RecipeDetail({
                     />
                     <span className="text-muted-foreground">
                       {ingredient.converted ? (
+                        // Unit conversion applied (and possibly scaling)
                         <>
                           <span className="font-medium text-foreground">
                             {ingredient.converted.displayAmount}{" "}
                             {ingredient.converted.unit}
                           </span>{" "}
                           <span className="text-xs text-muted-foreground/70">
-                            ({ingredient.amount} {ingredient.unit})
+                            ({ingredient.originalAmount || ingredient.amount} {ingredient.unit})
+                          </span>{" "}
+                        </>
+                      ) : ingredient.wasScaled && ingredient.scaledAmount ? (
+                        // Scaling applied but no unit conversion
+                        <>
+                          <span className="font-medium text-foreground">
+                            {ingredient.scaledAmount}{" "}
+                          </span>
+                          {ingredient.unit && <span>{ingredient.unit} </span>}
+                          <span className="text-xs text-muted-foreground/70">
+                            (was {ingredient.originalAmount})
                           </span>{" "}
                         </>
                       ) : (
+                        // No conversion or scaling
                         <>
                           {ingredient.amount && (
                             <span className="font-medium text-foreground">
@@ -447,6 +503,23 @@ export function RecipeDetail({
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Ratings & Comments Section */}
+      {(recipe.isPublic || isOwner) && initialRatingStats && (
+        <div className="mt-8">
+          <RatingsCommentsSection
+            recipeId={recipe.id}
+            recipeOwnerId={recipe.userId}
+            initialRatingStats={initialRatingStats}
+            initialUserRating={initialUserRating}
+            initialComments={initialComments}
+            initialCommentTotal={initialCommentTotal}
+            currentUserId={currentUserId}
+            isAuthenticated={isAuthenticated}
+            isPublicView={isPublicView}
+          />
+        </div>
       )}
 
       {/* Author (public view) */}

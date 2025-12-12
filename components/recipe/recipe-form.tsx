@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { nanoid } from "nanoid";
 import { Button, Input, Textarea, Select, Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
+import { ImageUpload } from "@/components/recipe/image-upload";
 import type { Ingredient, Instruction, Difficulty, Category } from "@/types/recipe";
 
 interface RecipeFormProps {
@@ -18,6 +19,7 @@ interface RecipeFormProps {
     cook_time_minutes: number | null;
     servings: number | null;
     difficulty: Difficulty | null;
+    image_url: string | null;
     category_id: string | null;
     is_public: boolean;
   };
@@ -39,6 +41,7 @@ export function RecipeForm({ categories, initialData }: RecipeFormProps) {
   const [cookTime, setCookTime] = useState(initialData?.cook_time_minutes?.toString() || "");
   const [servings, setServings] = useState(initialData?.servings?.toString() || "");
   const [difficulty, setDifficulty] = useState<Difficulty | "">(initialData?.difficulty || "");
+  const [imageUrl, setImageUrl] = useState(initialData?.image_url || "");
   const [categoryId, setCategoryId] = useState(initialData?.category_id || "");
   const [isPublic, setIsPublic] = useState(initialData?.is_public || false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -114,6 +117,7 @@ export function RecipeForm({ categories, initialData }: RecipeFormProps) {
       cook_time_minutes: cookTime ? parseInt(cookTime) : null,
       servings: servings ? parseInt(servings) : null,
       difficulty: difficulty || null,
+      image_url: imageUrl || null,
       category_id: categoryId || null,
       is_public: isPublic,
     };
@@ -198,6 +202,16 @@ export function RecipeForm({ categories, initialData }: RecipeFormProps) {
               placeholder="Select difficulty"
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Recipe Image */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recipe Image</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ImageUpload value={imageUrl} onChange={setImageUrl} />
         </CardContent>
       </Card>
 

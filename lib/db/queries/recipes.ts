@@ -1,286 +1,365 @@
-import { Pool } from "pg";
+import { eq, and, desc, sql } from "drizzle-orm";
+import { db, recipe, category, user, recipeTag, tag } from "@/lib/db";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils/slug";
 import { generateShareToken } from "@/lib/utils/share-token";
-import type { Recipe, RecipeWithDetails, CreateRecipeInput, UpdateRecipeInput } from "@/types/recipe";
+import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-export async function getRecipesByUserId(userId: string): Promise<RecipeWithDetails[]> {
-  const result = await pool.query(
-    `SELECT
-      r.*,
-      c.name as category_name,
-      c.slug as category_slug,
-      array_agg(DISTINCT t.name) FILTER (WHERE t.name IS NOT NULL) as tags
-    FROM recipe r
-    LEFT JOIN category c ON r.category_id = c.id
-    LEFT JOIN recipe_tag rt ON r.id = rt.recipe_id
-    LEFT JOIN tag t ON rt.tag_id = t.id
-    WHERE r.user_id = $1
-    GROUP BY r.id, c.id
-    ORDER BY r.created_at DESC`,
-    [userId]
-  );
-  return result.rows;
+export interface RecipeWithDetails {
+  id: string;
+  userId: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  ingredients: Ingredient[];
+  instructions: Instruction[];
+  prepTimeMinutes: number | null;
+  cookTimeMinutes: number | null;
+  servings: number | null;
+  difficulty: Difficulty | null;
+  imageUrl: string | null;
+  isPublic: boolean | null;
+  shareToken: string | null;
+  categoryId: string | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+  categoryName?: string | null;
+  categorySlug?: string | null;
+  authorName?: string | null;
+  tags?: string[];
 }
 
-export async function getRecipeBySlug(userId: string, slug: string): Promise<RecipeWithDetails | null> {
-  const result = await pool.query(
-    `SELECT
-      r.*,
-      c.name as category_name,
-      c.slug as category_slug,
-      u.name as author_name,
-      array_agg(DISTINCT t.name) FILTER (WHERE t.name IS NOT NULL) as tags
-    FROM recipe r
-    LEFT JOIN category c ON r.category_id = c.id
-    LEFT JOIN "user" u ON r.user_id = u.id
-    LEFT JOIN recipe_tag rt ON r.id = rt.recipe_id
-    LEFT JOIN tag t ON rt.tag_id = t.id
-    WHERE r.user_id = $1 AND r.slug = $2
-    GROUP BY r.id, c.id, u.id`,
-    [userId, slug]
-  );
-  return result.rows[0] || null;
+export async function getRecipesByUserId(userId: string): Promise<RecipeWithDetails[]> {
+  const recipes = await db
+    .select({
+      id: recipe.id,
+      userId: recipe.userId,
+      title: recipe.title,
+      slug: recipe.slug,
+      description: recipe.description,
+      ingredients: recipe.ingredients,
+      instructions: recipe.instructions,
+      prepTimeMinutes: recipe.prepTimeMinutes,
+      cookTimeMinutes: recipe.cookTimeMinutes,
+      servings: recipe.servings,
+      difficulty: recipe.difficulty,
+      imageUrl: recipe.imageUrl,
+      isPublic: recipe.isPublic,
+      shareToken: recipe.shareToken,
+      categoryId: recipe.categoryId,
+      createdAt: recipe.createdAt,
+      updatedAt: recipe.updatedAt,
+      categoryName: category.name,
+      categorySlug: category.slug,
+    })
+    .from(recipe)
+    .leftJoin(category, eq(recipe.categoryId, category.id))
+    .where(eq(recipe.userId, userId))
+    .orderBy(desc(recipe.createdAt));
+
+  return recipes.map((r) => ({
+    ...r,
+    ingredients: r.ingredients as Ingredient[],
+    instructions: r.instructions as Instruction[],
+    difficulty: r.difficulty as Difficulty | null,
+  }));
+}
+
+export async function getRecipeBySlug(
+  userId: string,
+  slug: string
+): Promise<RecipeWithDetails | null> {
+  const results = await db
+    .select({
+      id: recipe.id,
+      userId: recipe.userId,
+      title: recipe.title,
+      slug: recipe.slug,
+      description: recipe.description,
+      ingredients: recipe.ingredients,
+      instructions: recipe.instructions,
+      prepTimeMinutes: recipe.prepTimeMinutes,
+      cookTimeMinutes: recipe.cookTimeMinutes,
+      servings: recipe.servings,
+      difficulty: recipe.difficulty,
+      imageUrl: recipe.imageUrl,
+      isPublic: recipe.isPublic,
+      shareToken: recipe.shareToken,
+      categoryId: recipe.categoryId,
+      createdAt: recipe.createdAt,
+      updatedAt: recipe.updatedAt,
+      categoryName: category.name,
+      categorySlug: category.slug,
+      authorName: user.name,
+    })
+    .from(recipe)
+    .leftJoin(category, eq(recipe.categoryId, category.id))
+    .leftJoin(user, eq(recipe.userId, user.id))
+    .where(and(eq(recipe.userId, userId), eq(recipe.slug, slug)))
+    .limit(1);
+
+  if (results.length === 0) return null;
+
+  const r = results[0];
+  return {
+    ...r,
+    ingredients: r.ingredients as Ingredient[],
+    instructions: r.instructions as Instruction[],
+    difficulty: r.difficulty as Difficulty | null,
+  };
 }
 
 export async function getRecipeById(id: string): Promise<RecipeWithDetails | null> {
-  const result = await pool.query(
-    `SELECT
-      r.*,
-      c.name as category_name,
-      c.slug as category_slug,
-      u.name as author_name,
-      array_agg(DISTINCT t.name) FILTER (WHERE t.name IS NOT NULL) as tags
-    FROM recipe r
-    LEFT JOIN category c ON r.category_id = c.id
-    LEFT JOIN "user" u ON r.user_id = u.id
-    LEFT JOIN recipe_tag rt ON r.id = rt.recipe_id
-    LEFT JOIN tag t ON rt.tag_id = t.id
-    WHERE r.id = $1
-    GROUP BY r.id, c.id, u.id`,
-    [id]
-  );
-  return result.rows[0] || null;
+  const results = await db
+    .select({
+      id: recipe.id,
+      userId: recipe.userId,
+      title: recipe.title,
+      slug: recipe.slug,
+      description: recipe.description,
+      ingredients: recipe.ingredients,
+      instructions: recipe.instructions,
+      prepTimeMinutes: recipe.prepTimeMinutes,
+      cookTimeMinutes: recipe.cookTimeMinutes,
+      servings: recipe.servings,
+      difficulty: recipe.difficulty,
+      imageUrl: recipe.imageUrl,
+      isPublic: recipe.isPublic,
+      shareToken: recipe.shareToken,
+      categoryId: recipe.categoryId,
+      createdAt: recipe.createdAt,
+      updatedAt: recipe.updatedAt,
+      categoryName: category.name,
+      categorySlug: category.slug,
+      authorName: user.name,
+    })
+    .from(recipe)
+    .leftJoin(category, eq(recipe.categoryId, category.id))
+    .leftJoin(user, eq(recipe.userId, user.id))
+    .where(eq(recipe.id, id))
+    .limit(1);
+
+  if (results.length === 0) return null;
+
+  const r = results[0];
+  return {
+    ...r,
+    ingredients: r.ingredients as Ingredient[],
+    instructions: r.instructions as Instruction[],
+    difficulty: r.difficulty as Difficulty | null,
+  };
 }
 
-export async function getRecipeByShareToken(shareToken: string): Promise<RecipeWithDetails | null> {
-  const result = await pool.query(
-    `SELECT
-      r.*,
-      c.name as category_name,
-      c.slug as category_slug,
-      u.name as author_name,
-      array_agg(DISTINCT t.name) FILTER (WHERE t.name IS NOT NULL) as tags
-    FROM recipe r
-    LEFT JOIN category c ON r.category_id = c.id
-    LEFT JOIN "user" u ON r.user_id = u.id
-    LEFT JOIN recipe_tag rt ON r.id = rt.recipe_id
-    LEFT JOIN tag t ON rt.tag_id = t.id
-    WHERE r.share_token = $1
-    GROUP BY r.id, c.id, u.id`,
-    [shareToken]
-  );
-  return result.rows[0] || null;
+export async function getRecipeByShareToken(
+  shareToken: string
+): Promise<RecipeWithDetails | null> {
+  const results = await db
+    .select({
+      id: recipe.id,
+      userId: recipe.userId,
+      title: recipe.title,
+      slug: recipe.slug,
+      description: recipe.description,
+      ingredients: recipe.ingredients,
+      instructions: recipe.instructions,
+      prepTimeMinutes: recipe.prepTimeMinutes,
+      cookTimeMinutes: recipe.cookTimeMinutes,
+      servings: recipe.servings,
+      difficulty: recipe.difficulty,
+      imageUrl: recipe.imageUrl,
+      isPublic: recipe.isPublic,
+      shareToken: recipe.shareToken,
+      categoryId: recipe.categoryId,
+      createdAt: recipe.createdAt,
+      updatedAt: recipe.updatedAt,
+      categoryName: category.name,
+      categorySlug: category.slug,
+      authorName: user.name,
+    })
+    .from(recipe)
+    .leftJoin(category, eq(recipe.categoryId, category.id))
+    .leftJoin(user, eq(recipe.userId, user.id))
+    .where(eq(recipe.shareToken, shareToken))
+    .limit(1);
+
+  if (results.length === 0) return null;
+
+  const r = results[0];
+  return {
+    ...r,
+    ingredients: r.ingredients as Ingredient[],
+    instructions: r.instructions as Instruction[],
+    difficulty: r.difficulty as Difficulty | null,
+  };
 }
 
-export async function createRecipe(userId: string, data: CreateRecipeInput): Promise<Recipe> {
+interface CreateRecipeInput {
+  title: string;
+  description?: string;
+  ingredients: Ingredient[];
+  instructions: Instruction[];
+  prep_time_minutes?: number | null;
+  cook_time_minutes?: number | null;
+  servings?: number | null;
+  difficulty?: Difficulty | null;
+  image_url?: string | null;
+  is_public?: boolean;
+  category_id?: string | null;
+  tag_ids?: string[];
+}
+
+export async function createRecipe(userId: string, data: CreateRecipeInput) {
   // Get existing slugs for this user
-  const existingSlugs = await pool.query(
-    `SELECT slug FROM recipe WHERE user_id = $1`,
-    [userId]
-  );
-  const slugs = existingSlugs.rows.map((r) => r.slug);
+  const existingSlugs = await db
+    .select({ slug: recipe.slug })
+    .from(recipe)
+    .where(eq(recipe.userId, userId));
+
+  const slugs = existingSlugs.map((r) => r.slug);
   const slug = generateUniqueSlug(data.title, slugs);
 
-  const result = await pool.query(
-    `INSERT INTO recipe (
-      user_id, title, slug, description, ingredients, instructions,
-      prep_time_minutes, cook_time_minutes, servings, difficulty,
-      image_url, is_public, category_id
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-    RETURNING *`,
-    [
+  const [newRecipe] = await db
+    .insert(recipe)
+    .values({
       userId,
-      data.title,
+      title: data.title,
       slug,
-      data.description || null,
-      JSON.stringify(data.ingredients),
-      JSON.stringify(data.instructions),
-      data.prep_time_minutes || null,
-      data.cook_time_minutes || null,
-      data.servings || null,
-      data.difficulty || null,
-      data.image_url || null,
-      data.is_public || false,
-      data.category_id || null,
-    ]
-  );
-
-  const recipe = result.rows[0];
+      description: data.description || null,
+      ingredients: data.ingredients,
+      instructions: data.instructions,
+      prepTimeMinutes: data.prep_time_minutes || null,
+      cookTimeMinutes: data.cook_time_minutes || null,
+      servings: data.servings || null,
+      difficulty: data.difficulty || null,
+      imageUrl: data.image_url || null,
+      isPublic: data.is_public || false,
+      categoryId: data.category_id || null,
+    })
+    .returning();
 
   // Add tags if provided
   if (data.tag_ids && data.tag_ids.length > 0) {
-    const tagValues = data.tag_ids.map((tagId, i) => `($1, $${i + 2})`).join(", ");
-    await pool.query(
-      `INSERT INTO recipe_tag (recipe_id, tag_id) VALUES ${tagValues}`,
-      [recipe.id, ...data.tag_ids]
+    await db.insert(recipeTag).values(
+      data.tag_ids.map((tagId) => ({
+        recipeId: newRecipe.id,
+        tagId,
+      }))
     );
   }
 
-  return recipe;
+  return newRecipe;
 }
 
 export async function updateRecipe(
   id: string,
   userId: string,
   data: Partial<CreateRecipeInput>
-): Promise<Recipe | null> {
+) {
   // First verify ownership
-  const existing = await pool.query(
-    `SELECT * FROM recipe WHERE id = $1 AND user_id = $2`,
-    [id, userId]
-  );
+  const existing = await db
+    .select()
+    .from(recipe)
+    .where(and(eq(recipe.id, id), eq(recipe.userId, userId)))
+    .limit(1);
 
-  if (existing.rows.length === 0) {
+  if (existing.length === 0) {
     return null;
   }
 
-  const updates: string[] = [];
-  const values: unknown[] = [];
-  let paramIndex = 1;
+  const updateData: Record<string, unknown> = {
+    updatedAt: new Date(),
+  };
 
   if (data.title !== undefined) {
     // Generate new slug if title changed
-    const existingSlugs = await pool.query(
-      `SELECT slug FROM recipe WHERE user_id = $1 AND id != $2`,
-      [userId, id]
-    );
-    const slugs = existingSlugs.rows.map((r) => r.slug);
-    const slug = generateUniqueSlug(data.title, slugs);
-    updates.push(`title = $${paramIndex}`, `slug = $${paramIndex + 1}`);
-    values.push(data.title, slug);
-    paramIndex += 2;
+    const existingSlugs = await db
+      .select({ slug: recipe.slug })
+      .from(recipe)
+      .where(and(eq(recipe.userId, userId), sql`${recipe.id} != ${id}`));
+
+    const slugs = existingSlugs.map((r) => r.slug);
+    updateData.title = data.title;
+    updateData.slug = generateUniqueSlug(data.title, slugs);
   }
 
-  if (data.description !== undefined) {
-    updates.push(`description = $${paramIndex}`);
-    values.push(data.description);
-    paramIndex++;
-  }
+  if (data.description !== undefined) updateData.description = data.description;
+  if (data.ingredients !== undefined) updateData.ingredients = data.ingredients;
+  if (data.instructions !== undefined) updateData.instructions = data.instructions;
+  if (data.prep_time_minutes !== undefined) updateData.prepTimeMinutes = data.prep_time_minutes;
+  if (data.cook_time_minutes !== undefined) updateData.cookTimeMinutes = data.cook_time_minutes;
+  if (data.servings !== undefined) updateData.servings = data.servings;
+  if (data.difficulty !== undefined) updateData.difficulty = data.difficulty;
+  if (data.image_url !== undefined) updateData.imageUrl = data.image_url;
+  if (data.is_public !== undefined) updateData.isPublic = data.is_public;
+  if (data.category_id !== undefined) updateData.categoryId = data.category_id;
 
-  if (data.ingredients !== undefined) {
-    updates.push(`ingredients = $${paramIndex}`);
-    values.push(JSON.stringify(data.ingredients));
-    paramIndex++;
-  }
-
-  if (data.instructions !== undefined) {
-    updates.push(`instructions = $${paramIndex}`);
-    values.push(JSON.stringify(data.instructions));
-    paramIndex++;
-  }
-
-  if (data.prep_time_minutes !== undefined) {
-    updates.push(`prep_time_minutes = $${paramIndex}`);
-    values.push(data.prep_time_minutes);
-    paramIndex++;
-  }
-
-  if (data.cook_time_minutes !== undefined) {
-    updates.push(`cook_time_minutes = $${paramIndex}`);
-    values.push(data.cook_time_minutes);
-    paramIndex++;
-  }
-
-  if (data.servings !== undefined) {
-    updates.push(`servings = $${paramIndex}`);
-    values.push(data.servings);
-    paramIndex++;
-  }
-
-  if (data.difficulty !== undefined) {
-    updates.push(`difficulty = $${paramIndex}`);
-    values.push(data.difficulty);
-    paramIndex++;
-  }
-
-  if (data.image_url !== undefined) {
-    updates.push(`image_url = $${paramIndex}`);
-    values.push(data.image_url);
-    paramIndex++;
-  }
-
-  if (data.is_public !== undefined) {
-    updates.push(`is_public = $${paramIndex}`);
-    values.push(data.is_public);
-    paramIndex++;
-  }
-
-  if (data.category_id !== undefined) {
-    updates.push(`category_id = $${paramIndex}`);
-    values.push(data.category_id);
-    paramIndex++;
-  }
-
-  updates.push(`updated_at = NOW()`);
-
-  const result = await pool.query(
-    `UPDATE recipe SET ${updates.join(", ")} WHERE id = $${paramIndex} RETURNING *`,
-    [...values, id]
-  );
+  const [updated] = await db
+    .update(recipe)
+    .set(updateData)
+    .where(eq(recipe.id, id))
+    .returning();
 
   // Update tags if provided
   if (data.tag_ids !== undefined) {
-    await pool.query(`DELETE FROM recipe_tag WHERE recipe_id = $1`, [id]);
+    await db.delete(recipeTag).where(eq(recipeTag.recipeId, id));
     if (data.tag_ids.length > 0) {
-      const tagValues = data.tag_ids.map((_, i) => `($1, $${i + 2})`).join(", ");
-      await pool.query(
-        `INSERT INTO recipe_tag (recipe_id, tag_id) VALUES ${tagValues}`,
-        [id, ...data.tag_ids]
+      await db.insert(recipeTag).values(
+        data.tag_ids.map((tagId) => ({
+          recipeId: id,
+          tagId,
+        }))
       );
     }
   }
 
-  return result.rows[0];
+  return updated;
 }
 
 export async function deleteRecipe(id: string, userId: string): Promise<boolean> {
-  const result = await pool.query(
-    `DELETE FROM recipe WHERE id = $1 AND user_id = $2 RETURNING id`,
-    [id, userId]
-  );
-  return result.rowCount !== null && result.rowCount > 0;
+  const result = await db
+    .delete(recipe)
+    .where(and(eq(recipe.id, id), eq(recipe.userId, userId)))
+    .returning({ id: recipe.id });
+
+  return result.length > 0;
 }
 
-export async function generateRecipeShareToken(id: string, userId: string): Promise<string | null> {
+export async function generateRecipeShareToken(
+  id: string,
+  userId: string
+): Promise<string | null> {
   const token = generateShareToken();
-  const result = await pool.query(
-    `UPDATE recipe SET share_token = $1 WHERE id = $2 AND user_id = $3 RETURNING share_token`,
-    [token, id, userId]
-  );
-  return result.rows[0]?.share_token || null;
+
+  const result = await db
+    .update(recipe)
+    .set({ shareToken: token })
+    .where(and(eq(recipe.id, id), eq(recipe.userId, userId)))
+    .returning({ shareToken: recipe.shareToken });
+
+  return result[0]?.shareToken || null;
 }
 
-export async function revokeRecipeShareToken(id: string, userId: string): Promise<boolean> {
-  const result = await pool.query(
-    `UPDATE recipe SET share_token = NULL WHERE id = $1 AND user_id = $2 RETURNING id`,
-    [id, userId]
-  );
-  return result.rowCount !== null && result.rowCount > 0;
+export async function revokeRecipeShareToken(
+  id: string,
+  userId: string
+): Promise<boolean> {
+  const result = await db
+    .update(recipe)
+    .set({ shareToken: null })
+    .where(and(eq(recipe.id, id), eq(recipe.userId, userId)))
+    .returning({ id: recipe.id });
+
+  return result.length > 0;
 }
 
 export async function getUserRecipeStats(userId: string) {
-  const result = await pool.query(
-    `SELECT
-      COUNT(*) as total_recipes,
-      COUNT(*) FILTER (WHERE is_public = true) as public_recipes,
-      COUNT(DISTINCT category_id) as categories_used
-    FROM recipe
-    WHERE user_id = $1`,
-    [userId]
-  );
-  return result.rows[0];
+  const result = await db
+    .select({
+      totalRecipes: sql<number>`count(*)::int`,
+      publicRecipes: sql<number>`count(*) filter (where ${recipe.isPublic} = true)::int`,
+      categoriesUsed: sql<number>`count(distinct ${recipe.categoryId})::int`,
+    })
+    .from(recipe)
+    .where(eq(recipe.userId, userId));
+
+  return result[0];
 }

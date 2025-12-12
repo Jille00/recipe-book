@@ -21,7 +21,7 @@ export async function GET(
     }
 
     // Check if user owns the recipe or if it's public
-    if (recipe.user_id !== session.user.id && !recipe.is_public) {
+    if (recipe.userId !== session.user.id && !recipe.isPublic) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

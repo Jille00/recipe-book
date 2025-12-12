@@ -22,13 +22,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: recipe.title,
       description: recipe.description || `A delicious ${recipe.title} recipe`,
       type: "article",
-      images: recipe.image_url ? [{ url: recipe.image_url }] : [],
+      images: recipe.imageUrl ? [{ url: recipe.imageUrl }] : [],
     },
     twitter: {
       card: "summary_large_image",
       title: recipe.title,
       description: recipe.description || `A delicious ${recipe.title} recipe`,
-      images: recipe.image_url ? [recipe.image_url] : [],
+      images: recipe.imageUrl ? [recipe.imageUrl] : [],
     },
   };
 }

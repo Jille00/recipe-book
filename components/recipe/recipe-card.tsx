@@ -11,16 +11,16 @@ interface RecipeCardProps {
 
 export function RecipeCard({ recipe, href, showAuthor = false }: RecipeCardProps) {
   const link = href || `/recipes/${recipe.slug}`;
-  const totalTime = (recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0);
+  const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
 
   return (
     <Link href={link} className="group">
       <article className="overflow-hidden rounded-xl border border-neutral-200 bg-white transition-all hover:shadow-lg hover:border-orange-300 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-orange-700">
         {/* Image */}
         <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-          {recipe.image_url ? (
+          {recipe.imageUrl ? (
             <Image
-              src={recipe.image_url}
+              src={recipe.imageUrl}
               alt={recipe.title}
               fill
               className="object-cover transition-transform group-hover:scale-105"
@@ -81,12 +81,12 @@ export function RecipeCard({ recipe, href, showAuthor = false }: RecipeCardProps
 
           {/* Category & Author */}
           <div className="mt-3 flex items-center justify-between">
-            {recipe.category_name && (
-              <Badge variant="secondary">{recipe.category_name}</Badge>
+            {recipe.categoryName && (
+              <Badge variant="secondary">{recipe.categoryName}</Badge>
             )}
-            {showAuthor && recipe.author_name && (
+            {showAuthor && recipe.authorName && (
               <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                by {recipe.author_name}
+                by {recipe.authorName}
               </span>
             )}
           </div>

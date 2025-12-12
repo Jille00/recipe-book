@@ -15,30 +15,30 @@ export type Difficulty = "easy" | "medium" | "hard";
 
 export interface Recipe {
   id: string;
-  user_id: string;
+  userId: string;
   title: string;
   slug: string;
   description: string | null;
   ingredients: Ingredient[];
   instructions: Instruction[];
-  prep_time_minutes: number | null;
-  cook_time_minutes: number | null;
+  prepTimeMinutes: number | null;
+  cookTimeMinutes: number | null;
   servings: number | null;
   difficulty: Difficulty | null;
-  image_url: string | null;
-  is_public: boolean;
-  share_token: string | null;
-  category_id: string | null;
-  created_at: string;
-  updated_at: string;
+  imageUrl: string | null;
+  isPublic: boolean | null;
+  shareToken: string | null;
+  categoryId: string | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
 }
 
 export interface RecipeWithDetails extends Recipe {
-  category_name?: string;
-  category_slug?: string;
-  author_name?: string;
+  categoryName?: string | null;
+  categorySlug?: string | null;
+  authorName?: string | null;
   tags?: string[];
-  is_favorited?: boolean;
+  isFavorited?: boolean;
 }
 
 export interface Category {
@@ -46,21 +46,21 @@ export interface Category {
   name: string;
   slug: string;
   description: string | null;
-  created_at: string;
+  createdAt: Date | null;
 }
 
 export interface Tag {
   id: string;
   name: string;
   slug: string;
-  created_at: string;
+  createdAt: Date | null;
 }
 
 export interface Favorite {
   id: string;
-  user_id: string;
-  recipe_id: string;
-  created_at: string;
+  userId: string;
+  recipeId: string;
+  createdAt: Date | null;
 }
 
 export interface CreateRecipeInput {
@@ -68,14 +68,14 @@ export interface CreateRecipeInput {
   description?: string;
   ingredients: Ingredient[];
   instructions: Instruction[];
-  prep_time_minutes?: number;
-  cook_time_minutes?: number;
+  prepTimeMinutes?: number;
+  cookTimeMinutes?: number;
   servings?: number;
   difficulty?: Difficulty;
-  image_url?: string;
-  is_public?: boolean;
-  category_id?: string;
-  tag_ids?: string[];
+  imageUrl?: string;
+  isPublic?: boolean;
+  categoryId?: string;
+  tagIds?: string[];
 }
 
 export interface UpdateRecipeInput extends Partial<CreateRecipeInput> {

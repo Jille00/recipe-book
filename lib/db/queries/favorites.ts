@@ -1,65 +1,92 @@
-import { Pool } from "pg";
-import type { RecipeWithDetails } from "@/types/recipe";
+import { eq, and, desc, sql } from "drizzle-orm";
+import { db, favorite, recipe, category, user } from "@/lib/db";
+import type { Ingredient, Instruction } from "@/types/recipe";
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+export async function getUserFavorites(userId: string) {
+  const favorites = await db
+    .select({
+      id: recipe.id,
+      userId: recipe.userId,
+      title: recipe.title,
+      slug: recipe.slug,
+      description: recipe.description,
+      ingredients: recipe.ingredients,
+      instructions: recipe.instructions,
+      prepTimeMinutes: recipe.prepTimeMinutes,
+      cookTimeMinutes: recipe.cookTimeMinutes,
+      servings: recipe.servings,
+      difficulty: recipe.difficulty,
+      imageUrl: recipe.imageUrl,
+      isPublic: recipe.isPublic,
+      shareToken: recipe.shareToken,
+      categoryId: recipe.categoryId,
+      createdAt: recipe.createdAt,
+      updatedAt: recipe.updatedAt,
+      categoryName: category.name,
+      categorySlug: category.slug,
+      authorName: user.name,
+      favoritedAt: favorite.createdAt,
+    })
+    .from(favorite)
+    .innerJoin(recipe, eq(favorite.recipeId, recipe.id))
+    .leftJoin(category, eq(recipe.categoryId, category.id))
+    .leftJoin(user, eq(recipe.userId, user.id))
+    .where(eq(favorite.userId, userId))
+    .orderBy(desc(favorite.createdAt));
 
-export async function getUserFavorites(userId: string): Promise<RecipeWithDetails[]> {
-  const result = await pool.query(
-    `SELECT
-      r.*,
-      c.name as category_name,
-      c.slug as category_slug,
-      u.name as author_name,
-      array_agg(DISTINCT t.name) FILTER (WHERE t.name IS NOT NULL) as tags,
-      true as is_favorited
-    FROM favorite f
-    JOIN recipe r ON f.recipe_id = r.id
-    LEFT JOIN category c ON r.category_id = c.id
-    LEFT JOIN "user" u ON r.user_id = u.id
-    LEFT JOIN recipe_tag rt ON r.id = rt.recipe_id
-    LEFT JOIN tag t ON rt.tag_id = t.id
-    WHERE f.user_id = $1
-    GROUP BY r.id, c.id, u.id, f.created_at
-    ORDER BY f.created_at DESC`,
-    [userId]
-  );
-  return result.rows;
+  return favorites.map((r) => ({
+    ...r,
+    ingredients: r.ingredients as Ingredient[],
+    instructions: r.instructions as Instruction[],
+    isFavorited: true,
+  }));
 }
 
-export async function addFavorite(userId: string, recipeId: string): Promise<boolean> {
+export async function addFavorite(
+  userId: string,
+  recipeId: string
+): Promise<boolean> {
   try {
-    await pool.query(
-      `INSERT INTO favorite (user_id, recipe_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-      [userId, recipeId]
-    );
+    await db
+      .insert(favorite)
+      .values({ userId, recipeId })
+      .onConflictDoNothing();
     return true;
   } catch {
     return false;
   }
 }
 
-export async function removeFavorite(userId: string, recipeId: string): Promise<boolean> {
-  const result = await pool.query(
-    `DELETE FROM favorite WHERE user_id = $1 AND recipe_id = $2 RETURNING id`,
-    [userId, recipeId]
-  );
-  return result.rowCount !== null && result.rowCount > 0;
+export async function removeFavorite(
+  userId: string,
+  recipeId: string
+): Promise<boolean> {
+  const result = await db
+    .delete(favorite)
+    .where(and(eq(favorite.userId, userId), eq(favorite.recipeId, recipeId)))
+    .returning({ id: favorite.id });
+
+  return result.length > 0;
 }
 
-export async function isFavorited(userId: string, recipeId: string): Promise<boolean> {
-  const result = await pool.query(
-    `SELECT id FROM favorite WHERE user_id = $1 AND recipe_id = $2`,
-    [userId, recipeId]
-  );
-  return result.rows.length > 0;
+export async function isFavorited(
+  userId: string,
+  recipeId: string
+): Promise<boolean> {
+  const result = await db
+    .select({ id: favorite.id })
+    .from(favorite)
+    .where(and(eq(favorite.userId, userId), eq(favorite.recipeId, recipeId)))
+    .limit(1);
+
+  return result.length > 0;
 }
 
 export async function getFavoriteCount(userId: string): Promise<number> {
-  const result = await pool.query(
-    `SELECT COUNT(*) as count FROM favorite WHERE user_id = $1`,
-    [userId]
-  );
-  return parseInt(result.rows[0].count);
+  const result = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(favorite)
+    .where(eq(favorite.userId, userId));
+
+  return result[0]?.count || 0;
 }

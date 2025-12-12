@@ -1,43 +1,76 @@
-import { Pool } from "pg";
-import type { Category } from "@/types/recipe";
+import { eq, desc } from "drizzle-orm";
+import { db, category, recipe, user } from "@/lib/db";
+import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-export async function getAllCategories(): Promise<Category[]> {
-  const result = await pool.query(
-    `SELECT * FROM category ORDER BY name ASC`
-  );
-  return result.rows;
+export async function getAllCategories() {
+  return db
+    .select({
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      description: category.description,
+      createdAt: category.createdAt,
+    })
+    .from(category)
+    .orderBy(category.name);
 }
 
-export async function getCategoryBySlug(slug: string): Promise<Category | null> {
-  const result = await pool.query(
-    `SELECT * FROM category WHERE slug = $1`,
-    [slug]
-  );
-  return result.rows[0] || null;
+export async function getCategoryBySlug(slug: string) {
+  const results = await db
+    .select({
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      description: category.description,
+      createdAt: category.createdAt,
+    })
+    .from(category)
+    .where(eq(category.slug, slug))
+    .limit(1);
+
+  return results[0] || null;
 }
 
-export async function getRecipesByCategory(categorySlug: string, limit = 50, offset = 0) {
-  const result = await pool.query(
-    `SELECT
-      r.*,
-      c.name as category_name,
-      c.slug as category_slug,
-      u.name as author_name,
-      array_agg(DISTINCT t.name) FILTER (WHERE t.name IS NOT NULL) as tags
-    FROM recipe r
-    JOIN category c ON r.category_id = c.id
-    LEFT JOIN "user" u ON r.user_id = u.id
-    LEFT JOIN recipe_tag rt ON r.id = rt.recipe_id
-    LEFT JOIN tag t ON rt.tag_id = t.id
-    WHERE c.slug = $1 AND r.is_public = true
-    GROUP BY r.id, c.id, u.id
-    ORDER BY r.created_at DESC
-    LIMIT $2 OFFSET $3`,
-    [categorySlug, limit, offset]
-  );
-  return result.rows;
+export async function getRecipesByCategory(
+  categorySlug: string,
+  limit = 50,
+  offset = 0
+) {
+  const recipes = await db
+    .select({
+      id: recipe.id,
+      userId: recipe.userId,
+      title: recipe.title,
+      slug: recipe.slug,
+      description: recipe.description,
+      ingredients: recipe.ingredients,
+      instructions: recipe.instructions,
+      prepTimeMinutes: recipe.prepTimeMinutes,
+      cookTimeMinutes: recipe.cookTimeMinutes,
+      servings: recipe.servings,
+      difficulty: recipe.difficulty,
+      imageUrl: recipe.imageUrl,
+      isPublic: recipe.isPublic,
+      shareToken: recipe.shareToken,
+      categoryId: recipe.categoryId,
+      createdAt: recipe.createdAt,
+      updatedAt: recipe.updatedAt,
+      categoryName: category.name,
+      categorySlug: category.slug,
+      authorName: user.name,
+    })
+    .from(recipe)
+    .innerJoin(category, eq(recipe.categoryId, category.id))
+    .leftJoin(user, eq(recipe.userId, user.id))
+    .where(eq(category.slug, categorySlug))
+    .orderBy(desc(recipe.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  return recipes.map((r) => ({
+    ...r,
+    ingredients: r.ingredients as Ingredient[],
+    instructions: r.instructions as Instruction[],
+    difficulty: r.difficulty as Difficulty | null,
+  }));
 }

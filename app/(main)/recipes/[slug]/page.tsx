@@ -44,7 +44,7 @@ export default async function RecipePage({ params }: Props) {
     notFound();
   }
 
-  const isOwner = recipe.user_id === session.user.id;
+  const isOwner = recipe.userId === session.user.id;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">

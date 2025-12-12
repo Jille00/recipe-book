@@ -17,12 +17,12 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(
-    recipe.share_token ? `${process.env.NEXT_PUBLIC_APP_URL}/r/${recipe.share_token}` : null
+    recipe.shareToken ? `${process.env.NEXT_PUBLIC_APP_URL}/r/${recipe.shareToken}` : null
   );
   const [isSharing, setIsSharing] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const totalTime = (recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0);
+  const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this recipe?")) return;
@@ -90,8 +90,8 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
               </p>
             )}
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              {recipe.category_name && (
-                <Badge variant="default">{recipe.category_name}</Badge>
+              {recipe.categoryName && (
+                <Badge variant="default">{recipe.categoryName}</Badge>
               )}
               {recipe.difficulty && (
                 <Badge
@@ -106,7 +106,7 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
                   {recipe.difficulty}
                 </Badge>
               )}
-              {recipe.is_public && <Badge variant="secondary">Public</Badge>}
+              {recipe.isPublic && <Badge variant="secondary">Public</Badge>}
             </div>
           </div>
 
@@ -131,10 +131,10 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
       </header>
 
       {/* Image */}
-      {recipe.image_url && (
+      {recipe.imageUrl && (
         <div className="relative mb-8 aspect-video overflow-hidden rounded-xl">
           <Image
-            src={recipe.image_url}
+            src={recipe.imageUrl}
             alt={recipe.title}
             fill
             className="object-cover"
@@ -145,15 +145,15 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
 
       {/* Meta */}
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {recipe.prep_time_minutes && (
+        {recipe.prepTimeMinutes && (
           <div className="rounded-lg border border-neutral-200 p-4 text-center dark:border-neutral-800">
-            <p className="text-2xl font-bold text-orange-600">{recipe.prep_time_minutes}</p>
+            <p className="text-2xl font-bold text-orange-600">{recipe.prepTimeMinutes}</p>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">Prep (min)</p>
           </div>
         )}
-        {recipe.cook_time_minutes && (
+        {recipe.cookTimeMinutes && (
           <div className="rounded-lg border border-neutral-200 p-4 text-center dark:border-neutral-800">
-            <p className="text-2xl font-bold text-orange-600">{recipe.cook_time_minutes}</p>
+            <p className="text-2xl font-bold text-orange-600">{recipe.cookTimeMinutes}</p>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">Cook (min)</p>
           </div>
         )}
@@ -245,10 +245,10 @@ export function RecipeDetail({ recipe, isOwner = false, isPublicView = false }: 
       )}
 
       {/* Author (public view) */}
-      {isPublicView && recipe.author_name && (
+      {isPublicView && recipe.authorName && (
         <div className="mt-8 border-t border-neutral-200 pt-6 dark:border-neutral-800">
           <p className="text-neutral-600 dark:text-neutral-400">
-            Recipe by <span className="font-medium">{recipe.author_name}</span>
+            Recipe by <span className="font-medium">{recipe.authorName}</span>
           </p>
         </div>
       )}

@@ -3,10 +3,20 @@ import { auth } from "@/lib/auth";
 import { generateObject } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import { z } from "zod";
+import convert from "heic-convert";
 
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 const MAX_SIZE_PER_FILE = 10 * 1024 * 1024; // 10MB per file
 const MAX_FILES = 10;
+
+async function convertHeicToJpeg(buffer: ArrayBuffer): Promise<Buffer> {
+  const outputBuffer = await convert({
+    buffer: Buffer.from(buffer) as unknown as ArrayBuffer,
+    format: "JPEG",
+    quality: 0.9,
+  });
+  return Buffer.from(outputBuffer);
+}
 
 const extractedRecipeSchema = z.object({
   recipe: z.object({
@@ -52,6 +62,8 @@ const EXTRACTION_PROMPT = `Extract the recipe information from this image. The i
 - A handwritten recipe card
 - A screenshot of a recipe website
 - A printed recipe
+
+**IMPORTANT**: If the recipe is in a language other than English, translate ALL text to English while preserving the original recipe name in parentheses if it's a well-known dish name (e.g., "Beef Bourguignon (Boeuf Bourguignon)").
 
 Please extract ALL available information following these guidelines:
 
@@ -119,9 +131,15 @@ export async function POST(request: NextRequest) {
 
     // Validate all files
     for (const file of files) {
-      if (!ALLOWED_TYPES.includes(file.type)) {
+      // Check for HEIC files by extension if mime type isn't detected
+      const isHeic = file.type === "image/heic" ||
+                     file.type === "image/heif" ||
+                     file.name.toLowerCase().endsWith(".heic") ||
+                     file.name.toLowerCase().endsWith(".heif");
+
+      if (!ALLOWED_TYPES.includes(file.type) && !isHeic) {
         return NextResponse.json(
-          { error: `Invalid file type: ${file.name}. Please upload JPEG, PNG, or WebP` },
+          { error: `Invalid file type: ${file.name}. Please upload JPEG, PNG, WebP, or HEIC` },
           { status: 400 }
         );
       }
@@ -139,8 +157,26 @@ export async function POST(request: NextRequest) {
 
     for (const file of files) {
       const bytes = await file.arrayBuffer();
-      const base64 = Buffer.from(bytes).toString("base64");
-      const mimeType = file.type as "image/jpeg" | "image/png" | "image/webp";
+
+      // Check if this is a HEIC file and convert it
+      const isHeic = file.type === "image/heic" ||
+                     file.type === "image/heif" ||
+                     file.name.toLowerCase().endsWith(".heic") ||
+                     file.name.toLowerCase().endsWith(".heif");
+
+      let base64: string;
+      let mimeType: "image/jpeg" | "image/png" | "image/webp";
+
+      if (isHeic) {
+        // Convert HEIC to JPEG
+        const jpegBuffer = await convertHeicToJpeg(bytes);
+        base64 = jpegBuffer.toString("base64");
+        mimeType = "image/jpeg";
+      } else {
+        base64 = Buffer.from(bytes).toString("base64");
+        mimeType = file.type as "image/jpeg" | "image/png" | "image/webp";
+      }
+
       imageContents.push({
         type: "image",
         image: `data:${mimeType};base64,${base64}`,

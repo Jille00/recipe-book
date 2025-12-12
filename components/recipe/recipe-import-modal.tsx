@@ -226,7 +226,7 @@ export function RecipeImportModal({
                 <span className="font-medium">Click to upload</span> or drag and drop
               </p>
               <p className="text-xs text-muted-foreground">
-                PNG, JPG, or WebP (max. 10MB per image, up to 10 images)
+                PNG, JPG, WebP, or HEIC (max. 10MB per image, up to 10 images)
               </p>
               <Button
                 type="button"
@@ -304,7 +304,7 @@ export function RecipeImportModal({
             <input
               ref={inputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.HEIC,.heif,.HEIF"
               onChange={handleChange}
               multiple
               className="hidden"

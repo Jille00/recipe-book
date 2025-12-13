@@ -76,6 +76,13 @@ export {
   FormField,
 } from "./form";
 export { Toaster } from "./sonner";
+export {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverAnchor,
+} from "./popover";
 
 // Custom Components
 export { Spinner, type SpinnerProps } from "./spinner";
+export { Pagination } from "./pagination";

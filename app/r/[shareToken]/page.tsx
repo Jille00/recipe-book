@@ -2,9 +2,9 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
-import Image from "next/image";
 import { auth } from "@/lib/auth";
-import { getRecipeByShareToken } from "@/lib/db/queries/recipes";
+import { getRecipeByShareToken, getPublicRecipeBySlug } from "@/lib/db/queries/recipes";
+import { Header } from "@/components/layout/header";
 import { getRecipeRatingStats, getUserRating } from "@/lib/db/queries/ratings";
 import { getRecipeComments } from "@/lib/db/queries/comments";
 import { RecipeDetail } from "@/components/recipe/recipe-detail";
@@ -15,7 +15,11 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { shareToken } = await params;
-  const recipe = await getRecipeByShareToken(shareToken);
+  // Try by share token first, then by slug for public recipes
+  let recipe = await getRecipeByShareToken(shareToken);
+  if (!recipe) {
+    recipe = await getPublicRecipeBySlug(shareToken);
+  }
 
   if (!recipe) {
     return { title: "Recipe Not Found" };
@@ -44,7 +48,11 @@ export default async function SharedRecipePage({ params }: Props) {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
 
-  const recipe = await getRecipeByShareToken(shareToken);
+  // Try by share token first, then by slug for public recipes
+  let recipe = await getRecipeByShareToken(shareToken, session?.user?.id);
+  if (!recipe) {
+    recipe = await getPublicRecipeBySlug(shareToken, session?.user?.id);
+  }
 
   if (!recipe) {
     notFound();
@@ -59,20 +67,7 @@ export default async function SharedRecipePage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-background grain">
-      {/* Simple header for public view */}
-      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <Link href="/" className="inline-block">
-            <Image
-              src="/logo.svg"
-              alt="Kookboek"
-              width={120}
-              height={48}
-              className="h-12 w-auto"
-            />
-          </Link>
-        </div>
-      </header>
+      <Header />
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <RecipeDetail

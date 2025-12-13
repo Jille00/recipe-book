@@ -23,7 +23,6 @@ import {
   Home,
   UtensilsCrossed,
   Heart,
-  FolderOpen,
   Plus,
   User,
   LayoutDashboard,
@@ -36,10 +35,9 @@ import {
 
 const navigation = [
   { name: "Home", href: "/", icon: Home },
-  { name: "Search", href: "/search", icon: Search },
+  { name: "Browse", href: "/browse", icon: Search },
   { name: "My Recipes", href: "/recipes", auth: true, icon: UtensilsCrossed },
   { name: "Favorites", href: "/favorites", auth: true, icon: Heart },
-  { name: "Categories", href: "/categories", icon: FolderOpen },
 ];
 
 export function Header() {

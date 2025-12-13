@@ -46,7 +46,7 @@ export default async function FavoritesPage() {
               Save your favorite recipes here for quick access. Click the heart
               icon on any recipe to add it to your favorites.
             </p>
-            <Link href="/categories">
+            <Link href="/browse">
               <Button variant="outline">
                 <BookOpen className="h-4 w-4" />
                 Browse Recipes

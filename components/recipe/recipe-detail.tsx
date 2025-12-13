@@ -42,10 +42,7 @@ import {
   convertTemperatureInText,
   isRecognizedUnit,
 } from "@/lib/utils/unit-conversion";
-import {
-  scaleIngredients,
-  scaleNutrition,
-} from "@/lib/utils/recipe-scaling";
+import { scaleIngredients } from "@/lib/utils/recipe-scaling";
 
 interface RecipeDetailProps {
   recipe: RecipeWithDetails;
@@ -135,10 +132,8 @@ export function RecipeDetail({
     });
   }, [recipe.ingredients, scaleFactor, unitSystem]);
 
-  // Scale nutrition values
-  const scaledNutrition = useMemo(() => {
-    return scaleNutrition(recipe.nutrition, scaleFactor);
-  }, [recipe.nutrition, scaleFactor]);
+  // Nutrition values are per serving, so they don't need to be scaled
+  const nutrition = recipe.nutrition;
 
   // Convert temperatures in instructions
   const convertedInstructions = useMemo(() => {
@@ -222,45 +217,13 @@ export function RecipeDetail({
           </div>
         )}
 
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-4">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <h1 className="font-display text-3xl font-semibold text-foreground sm:text-4xl tracking-tight">
               {recipe.title}
             </h1>
-            {recipe.description && (
-              <p className="text-lg text-muted-foreground max-w-2xl">
-                {recipe.description}
-              </p>
-            )}
-            <div className="flex flex-wrap items-center gap-2">
-              {recipe.difficulty && (
-                <Badge
-                  variant={getDifficultyVariant(recipe.difficulty)}
-                  className="capitalize"
-                >
-                  {recipe.difficulty}
-                </Badge>
-              )}
-              {recipe.isPublic && (
-                <Badge variant="secondary">
-                  <Share2 className="h-3 w-3 mr-1" />
-                  Public
-                </Badge>
-              )}
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            {!isPublicView && (
-              <FavoriteButton
-                recipeId={recipe.id}
-                initialFavorited={initialFavorited ?? recipe.isFavorited ?? false}
-                variant="button"
-              />
-            )}
-            <UnitToggle recipeId={recipe.id} />
             {isOwner && (
-              <>
+              <div className="flex gap-2">
                 <Link href={`/recipes/${recipe.slug}/edit`}>
                   <Button variant="outline" size="sm">
                     <Pencil className="h-4 w-4" />
@@ -276,8 +239,37 @@ export function RecipeDetail({
                   {!isDeleting && <Trash2 className="h-4 w-4" />}
                   Delete
                 </Button>
-              </>
+              </div>
             )}
+          </div>
+          {recipe.description && (
+            <p className="text-lg text-muted-foreground max-w-2xl">
+              {recipe.description}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {recipe.difficulty && (
+              <Badge
+                variant={getDifficultyVariant(recipe.difficulty)}
+                className="capitalize"
+              >
+                {recipe.difficulty}
+              </Badge>
+            )}
+            {isOwner && recipe.isPublic && (
+              <Badge variant="secondary">
+                <Share2 className="h-3 w-3 mr-1" />
+                Public
+              </Badge>
+            )}
+            {isAuthenticated && (
+              <FavoriteButton
+                recipeId={recipe.id}
+                initialFavorited={initialFavorited ?? recipe.isFavorited ?? false}
+                variant="button"
+              />
+            )}
+            <UnitToggle recipeId={recipe.id} />
           </div>
         </div>
       </header>
@@ -358,7 +350,7 @@ export function RecipeDetail({
       </div>
 
       {/* Nutrition */}
-      {scaledNutrition && (
+      {nutrition && (
         <Card className="mb-8 p-0">
           <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pt-8">
             <div className="flex items-center gap-3">
@@ -368,20 +360,15 @@ export function RecipeDetail({
               <div>
                 <CardTitle className="font-display">Nutrition</CardTitle>
                 <CardDescription>
-                  Estimated values for {scaledServings} serving{scaledServings !== 1 ? "s" : ""}
-                  {isScaled && (
-                    <span className="text-primary ml-1">
-                      (scaled from {originalServings})
-                    </span>
-                  )}
+                  Estimated values per serving
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-6">
             <NutritionDisplay
-              nutrition={scaledNutrition}
-              servings={scaledServings}
+              nutrition={nutrition}
+              servings={originalServings}
               isEditable={false}
             />
           </CardContent>

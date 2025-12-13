@@ -36,16 +36,10 @@ export function Footer() {
                 Home
               </Link>
               <Link
-                href="/categories"
+                href="/browse"
                 className="text-sm text-muted-foreground transition-colors hover:text-primary"
               >
-                Categories
-              </Link>
-              <Link
-                href="/search"
-                className="text-sm text-muted-foreground transition-colors hover:text-primary"
-              >
-                Search Recipes
+                Browse Recipes
               </Link>
             </nav>
           </div>

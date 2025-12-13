@@ -198,6 +198,52 @@ export async function getRecipeByShareToken(
   };
 }
 
+export async function getPublicRecipeBySlug(
+  slug: string,
+  userId?: string
+): Promise<RecipeWithDetails | null> {
+  const results = await db
+    .select({
+      id: recipe.id,
+      recipeUserId: recipe.userId,
+      title: recipe.title,
+      slug: recipe.slug,
+      description: recipe.description,
+      ingredients: recipe.ingredients,
+      instructions: recipe.instructions,
+      prepTimeMinutes: recipe.prepTimeMinutes,
+      cookTimeMinutes: recipe.cookTimeMinutes,
+      servings: recipe.servings,
+      difficulty: recipe.difficulty,
+      imageUrl: recipe.imageUrl,
+      nutrition: recipe.nutrition,
+      isPublic: recipe.isPublic,
+      shareToken: recipe.shareToken,
+      createdAt: recipe.createdAt,
+      updatedAt: recipe.updatedAt,
+      authorName: user.name,
+      favoriteId: favorite.id,
+    })
+    .from(recipe)
+    .leftJoin(user, eq(recipe.userId, user.id))
+    .leftJoin(favorite, userId ? and(eq(favorite.recipeId, recipe.id), eq(favorite.userId, userId)) : sql`false`)
+    .where(and(eq(recipe.slug, slug), eq(recipe.isPublic, true)))
+    .limit(1);
+
+  if (results.length === 0) return null;
+
+  const r = results[0];
+  return {
+    ...r,
+    userId: r.recipeUserId,
+    ingredients: r.ingredients as Ingredient[],
+    instructions: r.instructions as Instruction[],
+    difficulty: r.difficulty as Difficulty | null,
+    nutrition: r.nutrition as NutritionInfo | null,
+    isFavorited: r.favoriteId !== null,
+  };
+}
+
 interface CreateRecipeInput {
   title: string;
   description?: string;

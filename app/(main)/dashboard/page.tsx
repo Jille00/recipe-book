@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 
 export const metadata = {
-  title: "Dashboard - Kookboek",
+  title: "Dashboard",
   description: "Manage your recipes and view your cooking statistics",
 };
 

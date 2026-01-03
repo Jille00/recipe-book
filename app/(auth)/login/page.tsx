@@ -5,7 +5,7 @@ import { LoginForm } from "@/components/auth/login-form";
 import { Skeleton } from "@/components/ui";
 
 export const metadata = {
-  title: "Log In - Kookboek",
+  title: "Log In",
   description: "Sign in to your Kookboek account",
 };
 

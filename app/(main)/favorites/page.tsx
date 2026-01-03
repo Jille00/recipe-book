@@ -8,7 +8,7 @@ import { getUserFavorites } from "@/lib/db/queries/favorites";
 import { RecipeCard } from "@/components/recipe/recipe-card";
 
 export const metadata = {
-  title: "Favorites - Kookboek",
+  title: "Favorites",
   description: "View your favorite recipes",
 };
 

@@ -8,7 +8,7 @@ import { RecipeCard } from "@/components/recipe/recipe-card";
 import { Plus, ChefHat } from "lucide-react";
 
 export const metadata = {
-  title: "My Recipes - Kookboek",
+  title: "My Recipes",
   description: "View and manage your recipe collection",
 };
 

@@ -10,7 +10,7 @@ import type { Metadata } from "next";
 import type { RecipeWithDetails } from "@/types/recipe";
 
 export const metadata: Metadata = {
-  title: "Browse Recipes - Kookboek",
+  title: "Browse Recipes",
   description: "Browse and search through our collection of delicious recipes",
 };
 

@@ -17,17 +17,17 @@ export async function generateMetadata({ params }: Props) {
   const session = await auth.api.getSession({ headers: headersList });
 
   if (!session?.user) {
-    return { title: "Recipe - Kookboek" };
+    return { title: "Recipe" };
   }
 
   const recipe = await getRecipeBySlug(session.user.id, slug);
 
   if (!recipe) {
-    return { title: "Recipe Not Found - Kookboek" };
+    return { title: "Recipe Not Found" };
   }
 
   return {
-    title: `${recipe.title} - Kookboek`,
+    title: recipe.title,
     description: recipe.description || `A delicious ${recipe.title} recipe`,
   };
 }

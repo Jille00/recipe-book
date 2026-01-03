@@ -5,7 +5,7 @@ import { getProfileByUserId } from "@/lib/db/queries/profile";
 import { ProfileForm } from "@/components/profile/profile-form";
 
 export const metadata = {
-  title: "Profile - Kookboek",
+  title: "Profile",
   description: "Manage your profile and preferences",
 };
 

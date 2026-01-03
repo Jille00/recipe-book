@@ -3,7 +3,7 @@ import Image from "next/image";
 import { RegisterForm } from "@/components/auth/register-form";
 
 export const metadata = {
-  title: "Sign Up - Kookboek",
+  title: "Sign Up",
   description: "Create your Kookboek account and start sharing recipes",
 };
 

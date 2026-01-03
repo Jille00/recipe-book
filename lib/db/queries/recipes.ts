@@ -414,3 +414,18 @@ export async function getUserRecipeStats(userId: string) {
 
   return result[0];
 }
+
+export async function getPublicRecipesForSitemap(): Promise<
+  { slug: string; updatedAt: Date | null }[]
+> {
+  const recipes = await db
+    .select({
+      slug: recipe.slug,
+      updatedAt: recipe.updatedAt,
+    })
+    .from(recipe)
+    .where(eq(recipe.isPublic, true))
+    .orderBy(desc(recipe.updatedAt));
+
+  return recipes;
+}

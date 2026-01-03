@@ -8,6 +8,9 @@ import { Header } from "@/components/layout/header";
 import { getRecipeRatingStats, getUserRating } from "@/lib/db/queries/ratings";
 import { getRecipeComments } from "@/lib/db/queries/comments";
 import { RecipeDetail } from "@/components/recipe/recipe-detail";
+import { RecipeJsonLd } from "@/components/seo/recipe-json-ld";
+
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.kookboek.app";
 
 interface Props {
   params: Promise<{ shareToken: string }>;
@@ -26,7 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   return {
-    title: `${recipe.title} - Kookboek`,
+    title: recipe.title,
     description: recipe.description || `A delicious ${recipe.title} recipe`,
     openGraph: {
       title: recipe.title,
@@ -65,8 +68,11 @@ export default async function SharedRecipePage({ params }: Props) {
     getRecipeComments(recipe.id, { limit: 10, offset: 0 }),
   ]);
 
+  const recipeUrl = `${siteUrl}/r/${shareToken}`;
+
   return (
     <div className="min-h-screen bg-background grain">
+      <RecipeJsonLd recipe={recipe} url={recipeUrl} />
       <Header />
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">

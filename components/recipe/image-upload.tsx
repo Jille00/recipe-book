@@ -3,15 +3,28 @@
 import { useState, useCallback, useRef } from "react";
 import Image from "next/image";
 import { Button, Spinner, Label } from "@/components/ui";
-import { ImagePlus, Upload, X, RefreshCw } from "lucide-react";
+import { ImagePlus, Upload, X, RefreshCw, Sparkles } from "lucide-react";
+
+interface RecipeContext {
+  title: string;
+  description?: string;
+  ingredients?: Array<{ text: string }>;
+  instructions?: Array<{ text: string }>;
+}
 
 interface ImageUploadProps {
   value?: string;
   onChange: (url: string) => void;
+  recipeContext?: RecipeContext;
 }
 
-export function ImageUpload({ value, onChange }: ImageUploadProps) {
+export function ImageUpload({
+  value,
+  onChange,
+  recipeContext,
+}: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -84,10 +97,45 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
     onChange("");
   }, [onChange]);
 
+  const handleGenerateAI = useCallback(async () => {
+    if (!recipeContext?.title) return;
+
+    setError(null);
+    setIsGenerating(true);
+
+    try {
+      const response = await fetch("/api/generate-recipe-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: recipeContext.title,
+          description: recipeContext.description,
+          ingredients: recipeContext.ingredients,
+          instructions: recipeContext.instructions,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Generation failed");
+      }
+
+      if (data.url) {
+        onChange(data.url);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate image");
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [recipeContext, onChange]);
+
+  const canGenerateAI =
+    recipeContext?.title && recipeContext.title.trim().length > 0;
+
   return (
     <div className="w-full">
-      <Label className="mb-2 block">Recipe Image</Label>
-
       {value ? (
         <div className="relative aspect-video overflow-hidden rounded-xl border border-border">
           <Image
@@ -97,11 +145,24 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
             className="object-cover"
           />
           <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 opacity-0 transition-opacity hover:opacity-100">
+            {canGenerateAI && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={handleGenerateAI}
+                disabled={isGenerating}
+              >
+                <Sparkles className="h-4 w-4" />
+                {isGenerating ? "Generating..." : "Regenerate"}
+              </Button>
+            )}
             <Button
               type="button"
               variant="secondary"
               size="sm"
               onClick={() => inputRef.current?.click()}
+              disabled={isGenerating}
             >
               <RefreshCw className="h-4 w-4" />
               Change
@@ -111,6 +172,7 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
               variant="destructive"
               size="sm"
               onClick={handleRemove}
+              disabled={isGenerating}
             >
               <X className="h-4 w-4" />
               Remove
@@ -129,10 +191,12 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
           onDragOver={handleDrag}
           onDrop={handleDrop}
         >
-          {isUploading ? (
+          {isUploading || isGenerating ? (
             <div className="flex flex-col items-center gap-3">
               <Spinner size="lg" />
-              <p className="text-sm text-muted-foreground">Uploading...</p>
+              <p className="text-sm text-muted-foreground">
+                {isGenerating ? "Generating image with AI..." : "Uploading..."}
+              </p>
             </div>
           ) : (
             <>
@@ -140,21 +204,35 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
                 <ImagePlus className="h-7 w-7 text-primary" />
               </div>
               <p className="mb-1 text-sm text-foreground">
-                <span className="font-medium">Click to upload</span> or drag and drop
+                <span className="font-medium">Click to upload</span> or drag and
+                drop
               </p>
               <p className="text-xs text-muted-foreground">
-                PNG, JPG, WebP or GIF (max. 5MB)
+                PNG, JPG, WebP, GIF or HEIC (max. 5MB)
               </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={() => inputRef.current?.click()}
-              >
-                <Upload className="h-4 w-4" />
-                Select Image
-              </Button>
+              <div className="mt-4 flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => inputRef.current?.click()}
+                >
+                  <Upload className="h-4 w-4" />
+                  Select Image
+                </Button>
+                {canGenerateAI && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGenerateAI}
+                    className="gap-1"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Generate with AI
+                  </Button>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -163,14 +241,12 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
+        accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.HEIC,.heif,.HEIF"
         onChange={handleChange}
         className="hidden"
       />
 
-      {error && (
-        <p className="mt-2 text-sm text-destructive">{error}</p>
-      )}
+      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
     </div>
   );
 }

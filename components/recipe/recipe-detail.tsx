@@ -293,7 +293,7 @@ export function RecipeDetail({
 
       {/* Meta Cards */}
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {recipe.prepTimeMinutes && (
+        {recipe.prepTimeMinutes != null && (
           <Card className="text-center">
             <CardContent className="py-4">
               <div className="flex justify-center mb-2">
@@ -308,7 +308,7 @@ export function RecipeDetail({
             </CardContent>
           </Card>
         )}
-        {recipe.cookTimeMinutes && (
+        {recipe.cookTimeMinutes != null && (
           <Card className="text-center">
             <CardContent className="py-4">
               <div className="flex justify-center mb-2">

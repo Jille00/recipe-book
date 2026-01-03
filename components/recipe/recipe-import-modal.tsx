@@ -21,6 +21,7 @@ import {
   ChefHat,
   X,
   Plus,
+  FileText,
 } from "lucide-react";
 import type { ExtractedRecipe, ExtractionResponse } from "@/types/extraction";
 
@@ -38,6 +39,7 @@ interface RecipeImportModalProps {
 }
 
 type ModalState = "idle" | "extracting" | "preview" | "error";
+type ImportMethod = "photo" | "url";
 
 interface SelectedFile {
   file: File;
@@ -51,7 +53,9 @@ export function RecipeImportModal({
   tags,
 }: RecipeImportModalProps) {
   const [state, setState] = useState<ModalState>("idle");
+  const [importMethod, setImportMethod] = useState<ImportMethod>("photo");
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
+  const [textInput, setTextInput] = useState("");
   const [extractedData, setExtractedData] = useState<ExtractedRecipe | null>(
     null
   );
@@ -67,6 +71,7 @@ export function RecipeImportModal({
     setState("idle");
     selectedFiles.forEach((f) => URL.revokeObjectURL(f.previewUrl));
     setSelectedFiles([]);
+    setTextInput("");
     setExtractedData(null);
     setConfidence(null);
     setWarnings([]);
@@ -170,6 +175,36 @@ export function RecipeImportModal({
     }
   };
 
+  const handleTextExtract = async () => {
+    if (!textInput.trim()) return;
+
+    setError(null);
+    setState("extracting");
+
+    try {
+      const response = await fetch("/api/import-recipe-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: textInput.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Extraction failed");
+      }
+
+      const extractionData = data as ExtractionResponse;
+      setExtractedData(extractionData.recipe);
+      setConfidence(extractionData.confidence);
+      setWarnings(extractionData.warnings || []);
+      setState("preview");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to extract recipe from text");
+      setState("error");
+    }
+  };
+
   const handleApply = () => {
     if (extractedData) {
       onImport(extractedData);
@@ -196,16 +231,51 @@ export function RecipeImportModal({
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Camera className="h-5 w-5" />
-            Import Recipe from Image
+            {importMethod === "photo" ? (
+              <Camera className="h-5 w-5" />
+            ) : (
+              <FileText className="h-5 w-5" />
+            )}
+            Import Recipe
           </DialogTitle>
           <DialogDescription>
-            Upload a photo of a recipe (cookbook page, handwritten card, or
-            screenshot) and we&apos;ll extract the details automatically.
+            {importMethod === "photo"
+              ? "Upload a photo of a recipe (cookbook page, handwritten card, or screenshot) and we'll extract the details automatically."
+              : "Paste recipe text from a website or document and we'll extract the details automatically."}
           </DialogDescription>
         </DialogHeader>
 
+        {/* Tab Switcher - only show in idle state */}
         {state === "idle" && (
+          <div className="flex gap-1 p-1 bg-muted rounded-lg">
+            <button
+              type="button"
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                importMethod === "photo"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setImportMethod("photo")}
+            >
+              <Camera className="h-4 w-4" />
+              From Photos
+            </button>
+            <button
+              type="button"
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                importMethod === "url"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setImportMethod("url")}
+            >
+              <FileText className="h-4 w-4" />
+              From Text
+            </button>
+          </div>
+        )}
+
+        {state === "idle" && importMethod === "photo" && (
           <div className="space-y-4">
             {/* Dropzone */}
             <div
@@ -312,11 +382,44 @@ export function RecipeImportModal({
           </div>
         )}
 
+        {state === "idle" && importMethod === "url" && (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="recipe-text" className="text-sm font-medium">
+                Recipe Text
+              </label>
+              <textarea
+                id="recipe-text"
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder="Paste recipe text here... (ingredients, instructions, etc.)"
+                rows={8}
+                className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+              />
+              <p className="text-xs text-muted-foreground">
+                Copy and paste recipe content from a website or document
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              onClick={handleTextExtract}
+              disabled={!textInput.trim()}
+              className="w-full"
+            >
+              <ChefHat className="h-4 w-4" />
+              Extract Recipe from Text
+            </Button>
+          </div>
+        )}
+
         {state === "extracting" && (
           <div className="flex flex-col items-center justify-center py-12">
             <Spinner size="lg" />
             <p className="mt-4 text-sm text-muted-foreground">
-              Extracting recipe from image...
+              {importMethod === "photo"
+                ? "Extracting recipe from image..."
+                : "Extracting recipe from text..."}
             </p>
             <p className="text-xs text-muted-foreground">
               This may take a few seconds
@@ -440,7 +543,7 @@ export function RecipeImportModal({
 
             <DialogFooter>
               <Button variant="outline" onClick={resetState}>
-                Try Different Image
+                {importMethod === "photo" ? "Try Different Image" : "Try Different Text"}
               </Button>
               <Button onClick={handleApply}>
                 <Check className="h-4 w-4" />

@@ -368,21 +368,6 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {/* Import from Image Button */}
-      {!isEditing && (
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setImportModalOpen(true)}
-            className="gap-2"
-          >
-            <Camera className="h-4 w-4" />
-            Import from Image
-          </Button>
-        </div>
-      )}
-
       {error && (
         <div className="flex items-center gap-3 rounded-xl bg-destructive/10 border border-destructive/20 p-4 text-destructive animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
@@ -395,16 +380,30 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       {/* Hero Section - Title & Image */}
       <Card className="overflow-hidden p-0">
         <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pt-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-              <BookOpen className="h-5 w-5 text-primary" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                <BookOpen className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="font-display">Recipe Details</CardTitle>
+                <CardDescription>
+                  Give your recipe a name and description
+                </CardDescription>
+              </div>
             </div>
-            <div>
-              <CardTitle className="font-display">Recipe Details</CardTitle>
-              <CardDescription>
-                Give your recipe a name and description
-              </CardDescription>
-            </div>
+            {!isEditing && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setImportModalOpen(true)}
+                className="gap-2"
+              >
+                <Camera className="h-4 w-4" />
+                Import
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
@@ -500,7 +499,16 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
             {/* Right: Image Upload */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Recipe Photo</Label>
-              <ImageUpload value={imageUrl} onChange={setImageUrl} />
+              <ImageUpload
+                value={imageUrl}
+                onChange={setImageUrl}
+                recipeContext={{
+                  title,
+                  description,
+                  ingredients: ingredients.filter((i) => i.text.trim()),
+                  instructions: instructions.filter((i) => i.text.trim()),
+                }}
+              />
             </div>
           </div>
         </CardContent>
@@ -650,7 +658,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                       )
                     }
                   >
-                    <SelectTrigger className="sm:col-span-3 h-9">
+                    <SelectTrigger className="sm:col-span-4 h-9">
                       <SelectValue placeholder="Unit" />
                     </SelectTrigger>
                     <SelectContent>
@@ -670,7 +678,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                     onChange={(e) =>
                       updateIngredient(ingredient.id, "text", e.target.value)
                     }
-                    className="sm:col-span-7 h-9"
+                    className="sm:col-span-6 h-9"
                   />
                 </div>
                 <Button
@@ -860,8 +868,8 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-6">
-          <label className="flex items-start gap-4 cursor-pointer p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-all duration-200">
+        <CardContent className="p-0">
+          <label className="flex items-start gap-4 cursor-pointer p-4 rounded-xl transition-all duration-200">
             <div className="pt-0.5">
               <input
                 type="checkbox"

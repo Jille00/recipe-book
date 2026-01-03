@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { generateObject } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
 import { z } from "zod";
 
 const nutritionSchema = z.object({
@@ -83,7 +82,12 @@ export async function POST(request: NextRequest) {
       .join("\n");
 
     const result = await generateObject({
-      model: anthropic("claude-sonnet-4-20250514"),
+      model: 'google/gemini-3-flash',
+      providerOptions: {
+        gateway: {
+          order: ['vertex'],
+        },
+      },
       schema: nutritionSchema,
       messages: [
         {

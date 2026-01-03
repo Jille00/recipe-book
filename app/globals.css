@@ -275,3 +275,12 @@
 .stagger > *:nth-child(8) {
   animation-delay: 525ms;
 }
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

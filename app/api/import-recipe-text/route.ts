@@ -2,20 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { generateObject } from "ai";
 import { z } from "zod";
-import convert from "heic-convert";
-
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
-const MAX_SIZE_PER_FILE = 10 * 1024 * 1024; // 10MB per file
-const MAX_FILES = 10;
-
-async function convertHeicToJpeg(buffer: ArrayBuffer): Promise<Buffer> {
-  const outputBuffer = await convert({
-    buffer: Buffer.from(buffer) as unknown as ArrayBuffer,
-    format: "JPEG",
-    quality: 0.9,
-  });
-  return Buffer.from(outputBuffer);
-}
 
 const extractedRecipeSchema = z.object({
   recipe: z.object({
@@ -56,17 +42,13 @@ const extractedRecipeSchema = z.object({
   warnings: z.array(z.string()).optional(),
 });
 
-const EXTRACTION_PROMPT = `Extract the recipe information from this image. The image may contain:
-- A photo of a cookbook page
-- A handwritten recipe card
-- A screenshot of a recipe website
-- A printed recipe
+const TEXT_EXTRACTION_PROMPT = `Extract the recipe information from this text. The text may be copied from a recipe website, cookbook, or other source.
 
 **IMPORTANT**: If the recipe is in a language other than English, translate ALL text to English while preserving the original recipe name in parentheses if it's a well-known dish name (e.g., "Beef Bourguignon (Boeuf Bourguignon)").
 
 Please extract ALL available information following these guidelines:
 
-**Title**: Extract the recipe name exactly as shown
+**Title**: Extract the recipe name
 
 **Description**: Brief description if available, or generate a one-sentence summary
 
@@ -95,16 +77,18 @@ Please extract ALL available information following these guidelines:
 **Category**: Suggest ONE category from: Appetizer, Main Course, Side Dish, Dessert, Breakfast, Soup, Salad, Beverage, Snack, Sauce, Bread, Other
 
 **Confidence**:
-- "high": Text is clear and complete
+- "high": Recipe content is clear and complete
 - "medium": Some parts unclear but extractable
-- "low": Significant portions unclear
+- "low": Significant portions missing or unclear
 
 **Warnings**: Note any issues like:
 - "Some ingredient quantities were unclear"
-- "Handwriting partially illegible in step 3"
-- "Image quality limited extraction accuracy"
+- "Instructions may be incomplete"
+- "Could not determine serving size"
 
-If any field cannot be determined, omit it rather than guessing.`;
+If any field cannot be determined, omit it rather than guessing.
+
+If this does not appear to be recipe content, set confidence to "low" and add a warning explaining that no recipe was found.`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -114,80 +98,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const formData = await request.formData();
-    const files = formData.getAll("files") as File[];
+    const body = await request.json();
+    const { text } = body;
 
-    if (!files || files.length === 0) {
-      return NextResponse.json({ error: "No images provided" }, { status: 400 });
-    }
-
-    if (files.length > MAX_FILES) {
+    if (!text || typeof text !== "string") {
       return NextResponse.json(
-        { error: `Too many images. Maximum is ${MAX_FILES}` },
+        { error: "Text content is required" },
         { status: 400 }
       );
     }
 
-    // Validate all files
-    for (const file of files) {
-      // Check for HEIC files by extension if mime type isn't detected
-      const isHeic = file.type === "image/heic" ||
-        file.type === "image/heif" ||
-        file.name.toLowerCase().endsWith(".heic") ||
-        file.name.toLowerCase().endsWith(".heif");
-
-      if (!ALLOWED_TYPES.includes(file.type) && !isHeic) {
-        return NextResponse.json(
-          { error: `Invalid file type: ${file.name}. Please upload JPEG, PNG, WebP, or HEIC` },
-          { status: 400 }
-        );
-      }
-
-      if (file.size > MAX_SIZE_PER_FILE) {
-        return NextResponse.json(
-          { error: `File too large: ${file.name}. Maximum size is 10MB per image` },
-          { status: 400 }
-        );
-      }
+    if (text.trim().length < 50) {
+      return NextResponse.json(
+        { error: "Please paste more recipe content (at least a few ingredients and instructions)" },
+        { status: 400 }
+      );
     }
 
-    // Convert all images to base64 and build content array
-    const imageContents: Array<{ type: "image"; image: string }> = [];
+    // Limit content length to avoid token limits
+    const maxLength = 30000;
+    const truncatedContent =
+      text.length > maxLength
+        ? text.slice(0, maxLength) + "\n\n[Content truncated...]"
+        : text;
 
-    for (const file of files) {
-      const bytes = await file.arrayBuffer();
-
-      // Check if this is a HEIC file and convert it
-      const isHeic = file.type === "image/heic" ||
-        file.type === "image/heif" ||
-        file.name.toLowerCase().endsWith(".heic") ||
-        file.name.toLowerCase().endsWith(".heif");
-
-      let base64: string;
-      let mimeType: "image/jpeg" | "image/png" | "image/webp";
-
-      if (isHeic) {
-        // Convert HEIC to JPEG
-        const jpegBuffer = await convertHeicToJpeg(bytes);
-        base64 = jpegBuffer.toString("base64");
-        mimeType = "image/jpeg";
-      } else {
-        base64 = Buffer.from(bytes).toString("base64");
-        mimeType = file.type as "image/jpeg" | "image/png" | "image/webp";
-      }
-
-      imageContents.push({
-        type: "image",
-        image: `data:${mimeType};base64,${base64}`,
-      });
-    }
-
-    // Build prompt based on number of images
-    const promptPrefix = files.length > 1
-      ? `I'm providing ${files.length} images of a recipe. They may be multiple pages or screenshots of the same recipe. Please combine the information from ALL images to extract the complete recipe.\n\n`
-      : "";
-
-    // Call Claude with vision (multiple images)
+    // Call Claude to extract recipe
     const result = await generateObject({
       model: 'google/gemini-3-flash',
       providerOptions: {
@@ -199,20 +134,14 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: "user",
-          content: [
-            ...imageContents,
-            {
-              type: "text",
-              text: promptPrefix + EXTRACTION_PROMPT,
-            },
-          ],
+          content: `${TEXT_EXTRACTION_PROMPT}\n\n---\n\nRecipe text:\n\n${truncatedContent}`,
         },
       ],
     });
 
     return NextResponse.json(result.object);
   } catch (error) {
-    console.error("Recipe extraction failed:", error);
+    console.error("Text recipe extraction failed:", error);
 
     if (error instanceof Error && error.message?.includes("rate limit")) {
       return NextResponse.json(
@@ -222,7 +151,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: "Failed to extract recipe. Please try a clearer image." },
+      { error: "Failed to extract recipe. Please try again." },
       { status: 500 }
     );
   }

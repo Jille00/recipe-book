@@ -3,6 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
+import { buildPasswordResetEmail, sendEmail } from "@/lib/email";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -14,10 +15,16 @@ export const auth = betterAuth({
       verification: schema.verification,
     },
   }),
-  trustedOrigins: ['https://kookboek.app', 'http://localhost:3000'],
+  trustedOrigins: ['https://kookboek.app', 'https://www.kookboek.app', 'http://localhost:3000'],
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
+    resetPasswordTokenExpiresIn: 60 * 60, // 1 hour
+    revokeSessionsOnPasswordReset: true,
+    sendResetPassword: async ({ user, url }) => {
+      const email = buildPasswordResetEmail({ name: user.name, url });
+      await sendEmail({ to: user.email, ...email });
+    },
   },
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days

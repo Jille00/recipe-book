@@ -16,6 +16,8 @@ export default function robots(): MetadataRoute.Robots {
           // Password reset links can leak into referrers; keep crawlers out.
           "/forgot-password",
           "/reset-password",
+          // Confirmation links carry a token and sign the person in.
+          "/confirm-email",
           "/api/",
         ],
       },

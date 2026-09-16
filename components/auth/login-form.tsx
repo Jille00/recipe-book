@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "@/lib/auth-client";
 import { Button, Input, Label } from "@/components/ui";
-import { Loader2, Mail, Lock } from "lucide-react";
+import { Loader2, Mail, Lock, MailCheck } from "lucide-react";
 
 // Validate callback URL to prevent open redirect attacks
 function getSafeCallbackUrl(url: string | null): string {
@@ -26,20 +26,33 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  // Set when the password was right but the email isn't confirmed yet.
+  // better-auth has already emailed a fresh link by the time we find out.
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setUnconfirmedEmail(null);
     setIsLoading(true);
 
     try {
       const result = await signIn.email({
         email,
         password,
+        // Carried through the confirmation link so confirming continues to
+        // wherever this sign-in was headed.
+        callbackURL: callbackUrl,
       });
 
       if (result.error) {
-        setError(result.error.message || "Invalid email or password");
+        const isUnconfirmed =
+          result.error.code === "EMAIL_NOT_VERIFIED" || result.error.status === 403;
+        if (isUnconfirmed) {
+          setUnconfirmedEmail(email);
+        } else {
+          setError(result.error.message || "Invalid email or password");
+        }
       } else {
         router.push(callbackUrl);
         router.refresh();
@@ -53,6 +66,28 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {unconfirmedEmail && (
+        <div
+          role="status"
+          className="rounded-xl border border-secondary/30 bg-secondary/10 p-4"
+        >
+          <div className="flex items-start gap-3">
+            <MailCheck
+              className="mt-0.5 h-5 w-5 shrink-0 text-secondary-foreground"
+              aria-hidden="true"
+            />
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Confirm your email to sign in</p>
+              <p className="text-sm text-muted-foreground">
+                We&apos;ve sent a new link to{" "}
+                <span className="font-medium text-foreground">{unconfirmedEmail}</span>.
+                Open it and you&apos;ll be signed in.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
           {error}

@@ -70,12 +70,25 @@ function escapeHtml(value: string) {
     .replace(/"/g, "&quot;");
 }
 
-export function buildPasswordResetEmail({
+/**
+ * The one layout every transactional email uses: a heading, a short message,
+ * a single call-to-action button, a plain-link fallback and a footnote.
+ * Keeping it in one place stops the emails from drifting apart visually.
+ */
+function renderActionEmail({
+  heading,
   name,
+  paragraphs,
+  buttonLabel,
   url,
+  footnote,
 }: {
+  heading: string;
   name?: string | null;
+  paragraphs: string[];
+  buttonLabel: string;
   url: string;
+  footnote: string;
 }) {
   const greeting = name ? `Hi ${escapeHtml(name)},` : "Hi,";
   const safeUrl = escapeHtml(url);
@@ -83,15 +96,27 @@ export function buildPasswordResetEmail({
   const text = [
     name ? `Hi ${name},` : "Hi,",
     "",
-    "We received a request to reset the password for your Kookboek account.",
-    "Open the link below to choose a new password. It expires in 1 hour.",
+    ...paragraphs,
     "",
     url,
     "",
-    "If you didn't request this, you can safely ignore this email.",
+    footnote,
     "",
     "— Kookboek",
   ].join("\n");
+
+  const paragraphRows = paragraphs
+    .map(
+      (paragraph, index) => `
+            <tr>
+              <td style="font-size:15px;line-height:1.6;padding-bottom:${
+                index === paragraphs.length - 1 ? 24 : 12
+              }px;">
+                ${escapeHtml(paragraph)}
+              </td>
+            </tr>`
+    )
+    .join("");
 
   const html = `<!doctype html>
 <html>
@@ -102,22 +127,16 @@ export function buildPasswordResetEmail({
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:480px;background:#FFFDF9;border:1px solid #EAE2D6;border-radius:12px;padding:32px;">
             <tr>
               <td style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:600;padding-bottom:16px;">
-                Reset your password
+                ${escapeHtml(heading)}
               </td>
             </tr>
             <tr>
               <td style="font-size:15px;line-height:1.6;padding-bottom:8px;">${greeting}</td>
-            </tr>
-            <tr>
-              <td style="font-size:15px;line-height:1.6;padding-bottom:24px;">
-                We received a request to reset the password for your Kookboek account.
-                Click the button below to choose a new password. This link expires in 1 hour.
-              </td>
-            </tr>
+            </tr>${paragraphRows}
             <tr>
               <td align="center" style="padding-bottom:24px;">
                 <a href="${safeUrl}" style="display:inline-block;background:#C75D3A;color:#FFFDF9;text-decoration:none;font-weight:600;font-size:14px;letter-spacing:0.02em;text-transform:uppercase;padding:12px 24px;border-radius:8px;">
-                  Reset password
+                  ${escapeHtml(buttonLabel)}
                 </a>
               </td>
             </tr>
@@ -129,7 +148,7 @@ export function buildPasswordResetEmail({
             </tr>
             <tr>
               <td style="font-size:13px;line-height:1.6;color:#7A736B;">
-                If you didn't request a password reset, you can safely ignore this email.
+                ${escapeHtml(footnote)}
               </td>
             </tr>
           </table>
@@ -139,5 +158,50 @@ export function buildPasswordResetEmail({
   </body>
 </html>`;
 
+  return { html, text };
+}
+
+export function buildPasswordResetEmail({
+  name,
+  url,
+}: {
+  name?: string | null;
+  url: string;
+}) {
+  const { html, text } = renderActionEmail({
+    heading: "Reset your password",
+    name,
+    paragraphs: [
+      "We received a request to reset the password for your Kookboek account.",
+      "Click the button below to choose a new password. This link expires in 1 hour.",
+    ],
+    buttonLabel: "Reset password",
+    url,
+    footnote: "If you didn't request a password reset, you can safely ignore this email.",
+  });
+
   return { subject: "Reset your Kookboek password", html, text };
+}
+
+export function buildVerificationEmail({
+  name,
+  url,
+}: {
+  name?: string | null;
+  url: string;
+}) {
+  const { html, text } = renderActionEmail({
+    heading: "Confirm your email",
+    name,
+    paragraphs: [
+      "Welcome to Kookboek. Confirm this is your email address to finish creating your account.",
+      "Click the button below to confirm. This link expires in 24 hours.",
+    ],
+    buttonLabel: "Confirm email",
+    url,
+    footnote:
+      "If you didn't create a Kookboek account, you can safely ignore this email.",
+  });
+
+  return { subject: "Confirm your email for Kookboek", html, text };
 }

@@ -1,0 +1,11 @@
+-- Email verification is now required to sign in.
+--
+-- Every account that exists before that requirement signed up when there was
+-- no way to confirm an email, so none of them are verified. Turning the
+-- requirement on without this would lock all of them out, including the
+-- owner's. They are grandfathered in as verified; only accounts created from
+-- now on have to confirm.
+--
+-- Safe to re-run: it only touches rows that are still unverified, and it must
+-- run BEFORE the code that sets requireEmailVerification is deployed.
+UPDATE "user" SET "email_verified" = true WHERE "email_verified" = false;

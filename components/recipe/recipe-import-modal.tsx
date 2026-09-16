@@ -138,6 +138,14 @@ export function RecipeImportModal({
     setError(null);
   }, [releaseAllPreviewUrls]);
 
+  // After a failed extraction, go back with the photos (or pasted text) still
+  // selected. A failure is often temporary, or caused by one bad photo that can
+  // be removed, so making someone pick every photo again helps nobody.
+  const backToInput = useCallback(() => {
+    setError(null);
+    setState("idle");
+  }, []);
+
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
       if (!isOpen) {
@@ -699,6 +707,9 @@ export function RecipeImportModal({
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={resetState}>
+                Start Over
+              </Button>
+              <Button onClick={backToInput}>
                 Try Again
               </Button>
             </DialogFooter>

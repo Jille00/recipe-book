@@ -47,11 +47,13 @@ import {
   Camera,
   Apple,
   Sparkles,
+  AlertTriangle,
   Loader2,
 } from "lucide-react";
 import { useUnitPreferences } from "@/hooks/use-unit-preferences";
 import type { UnitSystem } from "@/types/units";
 import { recipePath } from "@/lib/recipe-url";
+import { nutritionInputsKey } from "@/lib/utils/nutrition-inputs";
 
 // Unit options for ingredient selection with system info
 const UNIT_OPTIONS: Array<{
@@ -175,6 +177,14 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
   const [nutrition, setNutrition] = useState<NutritionInfo | null>(
     initialData?.nutrition || null
   );
+  // Fingerprint of the ingredients and servings the nutrition on screen was
+  // calculated from. A saved recipe's nutrition is taken to match its saved
+  // ingredients; anything edited since makes the estimate outdated.
+  const [nutritionBasis, setNutritionBasis] = useState<string | null>(() =>
+    initialData?.nutrition
+      ? nutritionInputsKey(initialData.ingredients, initialData.servings)
+      : null
+  );
   const [isCalculatingNutrition, setIsCalculatingNutrition] = useState(false);
   const [isEditingNutrition, setIsEditingNutrition] = useState(false);
 
@@ -267,6 +277,10 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       return;
     }
 
+    // Captured before the request: if the recipe is edited while this runs,
+    // the result must still count as based on what was actually sent.
+    const requestBasis = nutritionInputsKey(filteredIngredients, servings);
+
     setIsCalculatingNutrition(true);
     setError("");
 
@@ -291,6 +305,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
 
       const data = await response.json();
       setNutrition(data.nutrition);
+      setNutritionBasis(requestBasis);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to calculate nutrition"
@@ -302,8 +317,17 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
 
   const handleNutritionEdit = (updatedNutrition: NutritionInfo) => {
     setNutrition(updatedNutrition);
+    // Editing the values by hand means they were reviewed against the recipe
+    // as it is now.
+    setNutritionBasis(nutritionInputsKey(ingredients, servings));
     setIsEditingNutrition(false);
   };
+
+  const hasIngredientText = ingredients.some((i) => i.text.trim());
+  const nutritionOutdated =
+    nutrition !== null &&
+    nutritionBasis !== null &&
+    nutritionBasis !== nutritionInputsKey(ingredients, servings);
 
   const addIngredient = () => {
     setIngredients([
@@ -837,6 +861,40 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
               <p className="text-sm text-muted-foreground">
                 Calculating nutrition...
               </p>
+            </div>
+          )}
+          {nutrition && !isCalculatingNutrition && nutritionOutdated && (
+            <div
+              role="status"
+              className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm"
+            >
+              <AlertTriangle
+                className="h-4 w-4 shrink-0 text-amber-600"
+                aria-hidden="true"
+              />
+              <p className="flex-1 text-foreground">
+                The ingredients or servings have changed since this was
+                calculated, so these numbers may be out of date.
+              </p>
+              {hasIngredientText && servings ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={calculateNutrition}
+                >
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                  Recalculate
+                </Button>
+              ) : !servings ? (
+                <button
+                  type="button"
+                  onClick={focusServingsField}
+                  className="rounded-sm font-medium text-primary underline-offset-4 transition-colors hover:text-primary/80 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                >
+                  Add servings
+                </button>
+              ) : null}
             </div>
           )}
           {nutrition && !isCalculatingNutrition && (

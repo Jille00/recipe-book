@@ -23,8 +23,10 @@ import {
   X,
   Plus,
   FileText,
+  ImageOff,
 } from "lucide-react";
 import type { ExtractedRecipe, ExtractionResponse } from "@/types/extraction";
+import { isHeicFile } from "@/lib/image/decode-heic";
 import {
   compressImage,
   fitsRequestBudget,
@@ -59,7 +61,14 @@ interface SelectedFile {
   /** Stable identity so removing a tile does not re-key every later tile. */
   id: string;
   file: File;
-  previewUrl: string;
+  /** Null until a HEIC photo has been converted into something displayable. */
+  previewUrl: string | null;
+  /**
+   * HEIC photos start "converting": most desktop browsers can't display or
+   * resize HEIC, so they are turned into a JPEG first. "unreadable" means that
+   * conversion failed and there is nothing to preview.
+   */
+  status: "ready" | "converting" | "unreadable";
 }
 
 export function RecipeImportModal({
@@ -81,6 +90,7 @@ export function RecipeImportModal({
   const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const isConvertingPhotos = selectedFiles.some((f) => f.status === "converting");
   const inputRef = useRef<HTMLInputElement>(null);
   // Guards against a second click landing before `state` flips to "extracting"
   // and firing another (paid) extraction call.
@@ -89,29 +99,44 @@ export function RecipeImportModal({
   // the dialog was closed does not go on to start a (paid) extraction.
   const runIdRef = useRef(0);
 
-  // Revoke every outstanding object URL when the component goes away - closing
-  // the dialog runs resetState, but unmounting (e.g. navigating away) did not.
   const selectedFilesRef = useRef<SelectedFile[]>([]);
   useEffect(() => {
     selectedFilesRef.current = selectedFiles;
   }, [selectedFiles]);
-  useEffect(() => {
-    return () => {
-      selectedFilesRef.current.forEach((f) => URL.revokeObjectURL(f.previewUrl));
-    };
+
+  // Every preview URL this component creates is tracked here, so all of them
+  // are released on reset and unmount - including one whose photo was removed
+  // while it was still converting.
+  const previewUrlsRef = useRef(new Set<string>());
+  const createPreviewUrl = useCallback((file: File) => {
+    const url = URL.createObjectURL(file);
+    previewUrlsRef.current.add(url);
+    return url;
   }, []);
+  const releasePreviewUrl = useCallback((url: string | null) => {
+    if (url && previewUrlsRef.current.delete(url)) URL.revokeObjectURL(url);
+  }, []);
+  const releaseAllPreviewUrls = useCallback(() => {
+    previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    previewUrlsRef.current.clear();
+  }, []);
+  useEffect(() => releaseAllPreviewUrls, [releaseAllPreviewUrls]);
+
+  // HEIC conversions run one after another: each decoded 12MP photo needs
+  // about 48MB, so converting a batch in parallel could exhaust memory.
+  const conversionQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const resetState = useCallback(() => {
     runIdRef.current++;
     setState("idle");
-    selectedFiles.forEach((f) => URL.revokeObjectURL(f.previewUrl));
+    releaseAllPreviewUrls();
     setSelectedFiles([]);
     setTextInput("");
     setExtractedData(null);
     setConfidence(null);
     setWarnings([]);
     setError(null);
-  }, [selectedFiles]);
+  }, [releaseAllPreviewUrls]);
 
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
@@ -145,10 +170,12 @@ export function RecipeImportModal({
           continue;
         }
 
+        const needsConversion = isHeicFile(file);
         accepted.push({
           id: nanoid(),
           file,
-          previewUrl: URL.createObjectURL(file),
+          previewUrl: needsConversion ? null : createPreviewUrl(file),
+          status: needsConversion ? "converting" : "ready",
         });
         remainingSlots--;
       }
@@ -157,19 +184,59 @@ export function RecipeImportModal({
         setSelectedFiles((prev) => [...prev, ...accepted]);
       }
       setError(errors.length > 0 ? errors.join(" ") : null);
+
+      const runId = runIdRef.current;
+      for (const tile of accepted) {
+        if (tile.status !== "converting") continue;
+        conversionQueueRef.current = conversionQueueRef.current
+          .then(() => convertHeicTile(tile, runId))
+          .catch(() => undefined);
+      }
     },
-    [selectedFiles.length]
+    // convertHeicTile is declared below and stable; it only reads refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedFiles.length, createPreviewUrl]
   );
 
-  const removeFile = useCallback((id: string) => {
-    setSelectedFiles((prev) => {
-      const removed = prev.find((f) => f.id === id);
-      if (removed) {
-        URL.revokeObjectURL(removed.previewUrl);
-      }
-      return prev.filter((f) => f.id !== id);
+  /**
+   * Turns a HEIC photo into a JPEG so it can be previewed here and resized for
+   * upload. Converting once, up front, means the extraction step later sees an
+   * ordinary JPEG instead of decoding the HEIC a second time.
+   */
+  async function convertHeicTile(tile: SelectedFile, runId: number) {
+    // Skip photos that were removed, or a dialog that was closed, while this
+    // was waiting in the queue.
+    const stillSelected = () =>
+      runId === runIdRef.current &&
+      selectedFilesRef.current.some((f) => f.id === tile.id);
+    if (!stillSelected()) return;
+
+    const result = await compressImage(tile.file, {
+      maxBytes: IMPORT_REQUEST_BUDGET_BYTES,
+      keepTypes: IMPORT_PASSTHROUGH_TYPES,
     });
-  }, []);
+    if (!stillSelected()) return;
+
+    const previewUrl = result.decoded ? createPreviewUrl(result.file) : null;
+    setSelectedFiles((prev) =>
+      prev.map((f) =>
+        f.id !== tile.id
+          ? f
+          : result.decoded
+            ? { ...f, file: result.file, previewUrl, status: "ready" }
+            : { ...f, status: "unreadable" }
+      )
+    );
+  }
+
+  const removeFile = useCallback(
+    (id: string) => {
+      const removed = selectedFilesRef.current.find((f) => f.id === id);
+      releasePreviewUrl(removed?.previewUrl ?? null);
+      setSelectedFiles((prev) => prev.filter((f) => f.id !== id));
+    },
+    [releasePreviewUrl]
+  );
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -208,7 +275,10 @@ export function RecipeImportModal({
   const handleExtract = async () => {
     // `state` only flips on the next render, so a double-click would otherwise
     // fire two extraction calls. The ref closes that window synchronously.
-    if (extractingRef.current || selectedFiles.length === 0) return;
+    // Photos still converting from HEIC aren't ready to upload yet.
+    if (extractingRef.current || selectedFiles.length === 0 || isConvertingPhotos) {
+      return;
+    }
     extractingRef.current = true;
     const runId = runIdRef.current;
 
@@ -258,7 +328,7 @@ export function RecipeImportModal({
       // Keep the selection so the user can remove photos and retry.
       setError(
         undecodable
-          ? "Some photos (likely HEIC) can't be resized in this browser, so together they are too large to upload. Remove a few photos, or convert HEIC photos to JPEG and try again."
+          ? "Some of these photos couldn't be read, so they can't be resized and are too large to upload together. Remove them and try again."
           : "These photos are too large to upload together, even after resizing. Remove a few photos and try again."
       );
       setState("idle");
@@ -464,7 +534,9 @@ export function RecipeImportModal({
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      selectedFiles.forEach((f) => URL.revokeObjectURL(f.previewUrl));
+                      // Photos still converting check they're selected before
+                      // finishing, so clearing the list is enough to drop them.
+                      releaseAllPreviewUrls();
                       setSelectedFiles([]);
                     }}
                     className="text-muted-foreground hover:text-destructive"
@@ -478,13 +550,31 @@ export function RecipeImportModal({
                       key={sf.id}
                       className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted"
                     >
-                      <Image
-                        src={sf.previewUrl}
-                        alt={`Image ${index + 1}`}
-                        fill
-                        unoptimized
-                        className="object-cover"
-                      />
+                      {sf.status === "ready" && sf.previewUrl ? (
+                        <Image
+                          src={sf.previewUrl}
+                          alt={`Image ${index + 1}`}
+                          fill
+                          unoptimized
+                          className="object-cover"
+                        />
+                      ) : sf.status === "converting" ? (
+                        <div
+                          role="status"
+                          className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground"
+                        >
+                          <Spinner size="sm" />
+                          <span className="text-xs">Converting</span>
+                          <span className="sr-only">
+                            Converting image {index + 1} so it can be previewed
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-2 text-center text-muted-foreground">
+                          <ImageOff className="h-5 w-5" aria-hidden="true" />
+                          <span className="text-xs">Can&apos;t preview</span>
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={() => removeFile(sf.id)}
@@ -514,11 +604,25 @@ export function RecipeImportModal({
                 <Button
                   type="button"
                   onClick={handleExtract}
-                  disabled={state !== "idle" || selectedFiles.length === 0}
+                  disabled={
+                    state !== "idle" ||
+                    selectedFiles.length === 0 ||
+                    isConvertingPhotos
+                  }
                   className="w-full"
                 >
-                  <ChefHat className="h-4 w-4" aria-hidden="true" />
-                  Extract Recipe from {selectedFiles.length} Image{selectedFiles.length !== 1 ? "s" : ""}
+                  {isConvertingPhotos ? (
+                    <>
+                      <Spinner size="sm" />
+                      Converting photos…
+                    </>
+                  ) : (
+                    <>
+                      <ChefHat className="h-4 w-4" aria-hidden="true" />
+                      Extract Recipe from {selectedFiles.length} Image
+                      {selectedFiles.length !== 1 ? "s" : ""}
+                    </>
+                  )}
                 </Button>
               </div>
             )}

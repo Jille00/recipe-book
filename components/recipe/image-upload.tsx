@@ -65,7 +65,7 @@ export function ImageUpload({
           throw new Error(
             prepared.decoded
               ? "This photo is too large to upload, even after resizing. Please choose a smaller photo."
-              : "This photo can't be resized in this browser and is too large to upload. Convert it to JPEG (HEIC photos especially) or choose a smaller photo."
+              : "This photo couldn't be read, so it can't be resized and is too large to upload. Try a different photo."
           );
         }
 

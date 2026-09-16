@@ -58,6 +58,7 @@
     "embla-carousel-react": "^8.6.0",
     "heic-convert": "^2.1.0",
     "input-otp": "^1.4.2",
+    "libheif-js": "1.19.8",
     "lucide-react": "^0.562.0",
     "nanoid": "^5.1.6",
     "next": "^16.1.1",

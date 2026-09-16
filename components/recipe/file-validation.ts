@@ -124,7 +124,7 @@ export async function readResponseError(
     return "Your session has expired. Please sign in again.";
   }
   if (response.status === 413) {
-    return "The photos are too large to upload together. Try fewer photos, or convert HEIC photos to JPEG first.";
+    return "The photos are too large to upload together. Try fewer photos.";
   }
   if (response.status === 504 || response.status === 408) {
     return "The server took too long to respond. Please try again.";

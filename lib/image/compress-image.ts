@@ -17,6 +17,8 @@
  */
 
 /** Longest edge we start from. Plenty for reading cookbook text. */
+import { decodeHeicToCanvas, isHeicFile } from "./decode-heic";
+
 export const COMPRESS_MAX_EDGE = 2048;
 /**
  * Legibility floor: never shrink the long edge below this (unless the source
@@ -149,7 +151,7 @@ export interface CompressImageResult {
   file: File;
   /** True when `file` is a re-encoded JPEG rather than the original. */
   compressed: boolean;
-  /** False when the browser could not decode the image (e.g. HEIC on Chrome). */
+  /** False when the image could not be decoded at all (e.g. a corrupt file). */
   decoded: boolean;
 }
 
@@ -226,8 +228,28 @@ async function decodeWithImageElement(file: File): Promise<DecodedImage | null> 
   }
 }
 
+async function decodeWithLibheif(file: File): Promise<DecodedImage | null> {
+  const decoded = await decodeHeicToCanvas(file);
+  if (!decoded) return null;
+  const { canvas, width, height } = decoded;
+  return {
+    source: canvas,
+    width,
+    height,
+    release: () => {
+      // Free the canvas backing store (a 12MP photo is ~48MB).
+      canvas.width = 0;
+      canvas.height = 0;
+    },
+  };
+}
+
 async function decodeImage(file: File): Promise<DecodedImage | null> {
-  return (await decodeWithBitmap(file)) ?? (await decodeWithImageElement(file));
+  const native =
+    (await decodeWithBitmap(file)) ?? (await decodeWithImageElement(file));
+  if (native) return native;
+  // Desktop Chrome and Firefox can't decode HEIC; libheif can.
+  return isHeicFile(file) ? decodeWithLibheif(file) : null;
 }
 
 type Encoder = (
@@ -312,8 +334,10 @@ function jpegName(name: string): string {
  *
  * - Keeps the original when it is already an accepted type within budget.
  * - Never returns something larger than an accepted original.
- * - If the browser cannot decode the file (HEIC on desktop Chrome/Firefox),
- *   returns the original with `decoded: false`; the caller decides whether
+ * - HEIC is decoded natively where the browser can, and with libheif on
+ *   desktop Chrome and Firefox where it can't.
+ * - If the file can't be decoded at all (a corrupt image), returns the
+ *   original with `decoded: false`; the caller decides whether
  *   its size is still acceptable.
  * - If the floor is reached and it still does not fit, returns the smallest
  *   encode; the caller checks `file.size`.

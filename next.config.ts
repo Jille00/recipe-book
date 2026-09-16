@@ -49,6 +49,32 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    // Slugs renamed when accent transliteration was fixed: the old generator
+    // stripped accented letters ("Ragù" became "rag") instead of transliterating
+    // them. Both recipes were public and in the sitemap, so the old URLs are
+    // kept alive with permanent redirects rather than left to 404.
+    const renamedSlugs: Array<[from: string, to: string]> = [
+      [
+        "classic-beef-bolognese-rag-alla-bolognese",
+        "classic-beef-bolognese-ragu-alla-bolognese",
+      ],
+      [
+        "chicken-normande-kip-la-normande",
+        "chicken-normande-kip-a-la-normande",
+      ],
+    ];
+
+    return renamedSlugs.flatMap(([from, to]) => [
+      { source: `/r/${from}`, destination: `/r/${to}`, permanent: true },
+      { source: `/recipes/${from}`, destination: `/recipes/${to}`, permanent: true },
+      {
+        source: `/recipes/${from}/edit`,
+        destination: `/recipes/${to}/edit`,
+        permanent: true,
+      },
+    ]);
+  },
 };
 
 export default nextConfig;

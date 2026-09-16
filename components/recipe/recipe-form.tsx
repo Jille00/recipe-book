@@ -189,6 +189,22 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
   const [error, setError] = useState("");
   const [importModalOpen, setImportModalOpen] = useState(false);
   const errorRef = useRef<HTMLDivElement>(null);
+  const servingsInputRef = useRef<HTMLInputElement>(null);
+
+  // Nutrition is calculated per serving, but the Servings field lives in a
+  // different card from the Calculate button. The hint links straight to it.
+  const focusServingsField = () => {
+    const input = servingsInputRef.current;
+    if (!input) return;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    input.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "center",
+    });
+    input.focus({ preventScroll: true });
+  };
 
   // The banner renders at the top of a very long form, so pressing "Create
   // Recipe" at the bottom used to look like nothing happened. Bring it into
@@ -623,6 +639,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
               <div className="relative">
                 <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
+                  ref={servingsInputRef}
                   id="servings"
                   type="number"
                   min="1"
@@ -795,11 +812,22 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
             <div className="text-center py-8 text-muted-foreground">
               <Apple className="h-10 w-10 mx-auto mb-3 opacity-30" />
               <p className="text-sm">
-                {ingredients.filter((i) => i.text.trim()).length === 0
-                  ? "Add ingredients to calculate nutrition"
-                  : !servings
-                  ? "Add servings to calculate nutrition"
-                  : 'Click "Calculate" to estimate nutritional values'}
+                {ingredients.filter((i) => i.text.trim()).length === 0 ? (
+                  "Add ingredients to calculate nutrition"
+                ) : !servings ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={focusServingsField}
+                      className="rounded-sm font-medium text-primary underline-offset-4 transition-colors hover:text-primary/80 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    >
+                      Add servings
+                    </button>{" "}
+                    to calculate nutrition
+                  </>
+                ) : (
+                  'Click "Calculate" to estimate nutritional values'
+                )}
               </p>
             </div>
           )}

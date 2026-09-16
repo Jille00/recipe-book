@@ -19,6 +19,11 @@ export interface ExtractedRecipe {
   servings?: number;
   difficulty?: "easy" | "medium" | "hard";
   suggestedCategory?: string;
+  /**
+   * Photo of the dish. Only ever one of our own storage URLs: an imported
+   * page's photo is re-hosted by the server before it is returned.
+   */
+  imageUrl?: string;
 }
 
 export interface ExtractionResponse {

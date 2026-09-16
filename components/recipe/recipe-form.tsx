@@ -233,6 +233,11 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
     setCookTime(extracted.cookTimeMinutes?.toString() || "");
     setServings(extracted.servings?.toString() || "");
     setDifficulty(extracted.difficulty || "");
+    // Only a link import brings a photo (already re-hosted in our storage).
+    // Keep the current photo when the import has none.
+    if (extracted.imageUrl) {
+      setImageUrl(extracted.imageUrl);
+    }
 
     // Map ingredients with new IDs
     setIngredients(

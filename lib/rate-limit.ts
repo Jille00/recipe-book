@@ -42,6 +42,8 @@ export const RATE_LIMITS = {
   "ai:generate-recipe-image": { limit: 5, windowMs: 60_000 },
   // Storage uploads.
   upload: { limit: 30, windowMs: 60_000 },
+  // Link import - makes outbound requests to the given site (and its photo).
+  "import:recipe-url": { limit: 10, windowMs: 60_000 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

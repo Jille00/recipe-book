@@ -1,11 +1,36 @@
 /**
- * Shared client-side validation and response handling for the recipe image
+ * Shared client-side limits, validation and response handling for the recipe image
  * uploads (single photo upload and the multi-image import modal).
  */
 
-export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5MB - matches the upload UI copy
-export const MAX_IMPORT_BYTES = 10 * 1024 * 1024; // 10MB per image in the import modal
+/*
+ * Vercel Functions reject request bodies over ~4.5MB with 413
+ * FUNCTION_PAYLOAD_TOO_LARGE before our code runs (measured: 4.0MB gets
+ * through, 4.4MB does not, multipart framing included). The limit cannot be
+ * raised, so photos are shrunk in the browser (lib/image/compress-image.ts)
+ * to fit these budgets before they are sent.
+ */
+
+/** Whole-request budget for the photo import (all images together). */
+export const IMPORT_REQUEST_BUDGET_BYTES = 3_800_000;
+/** Budget for a single recipe cover photo. */
+export const UPLOAD_BUDGET_BYTES = 3_500_000;
 export const MAX_IMPORT_FILES = 10;
+/**
+ * Sanity cap on what we are willing to decode in the browser. Anything under
+ * this is shrunk to fit the budgets above; a bigger file would risk running a
+ * phone out of memory while decoding.
+ */
+export const MAX_SOURCE_BYTES = 50 * 1024 * 1024;
+
+/** Types the server takes as-is; anything else is re-encoded as JPEG. */
+export const UPLOAD_PASSTHROUGH_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+];
+export const IMPORT_PASSTHROUGH_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export const UPLOAD_IMAGE_TYPES = [
   "image/jpeg",
@@ -47,11 +72,14 @@ export function formatBytes(bytes: number): string {
  * Validate a file picked through the input *or* dropped on the dropzone.
  * Drag-and-drop bypasses the input's `accept` filter entirely, so this has to
  * run for both paths. Returns an error message, or null when the file is fine.
+ *
+ * Size is only checked against a generous sanity cap: large photos are fine
+ * because they are shrunk before upload.
  */
 export function validateImageFile(
   file: File,
-  maxBytes: number,
-  allowedTypes: string[]
+  allowedTypes: string[],
+  maxBytes: number = MAX_SOURCE_BYTES
 ): string | null {
   const name = file.name.toLowerCase();
   const allowedExtensions = allowedTypes.flatMap(
@@ -96,7 +124,7 @@ export async function readResponseError(
     return "Your session has expired. Please sign in again.";
   }
   if (response.status === 413) {
-    return "That file is too large for the server to accept.";
+    return "The photos are too large to upload together. Try fewer photos, or convert HEIC photos to JPEG first.";
   }
   if (response.status === 504 || response.status === 408) {
     return "The server took too long to respond. Please try again.";

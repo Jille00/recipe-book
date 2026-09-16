@@ -26,10 +26,15 @@ import {
 } from "lucide-react";
 import type { ExtractedRecipe, ExtractionResponse } from "@/types/extraction";
 import {
+  compressImage,
+  fitsRequestBudget,
+  perImageBudget,
+} from "@/lib/image/compress-image";
+import {
   IMPORT_IMAGE_TYPES,
-  MAX_IMPORT_BYTES,
+  IMPORT_PASSTHROUGH_TYPES,
+  IMPORT_REQUEST_BUDGET_BYTES,
   MAX_IMPORT_FILES,
-  formatBytes,
   parseJsonResponse,
   validateImageFile,
 } from "./file-validation";
@@ -47,7 +52,7 @@ interface RecipeImportModalProps {
   tags: Tag[];
 }
 
-type ModalState = "idle" | "extracting" | "preview" | "error";
+type ModalState = "idle" | "preparing" | "extracting" | "preview" | "error";
 type ImportMethod = "photo" | "url";
 
 interface SelectedFile {
@@ -80,6 +85,9 @@ export function RecipeImportModal({
   // Guards against a second click landing before `state` flips to "extracting"
   // and firing another (paid) extraction call.
   const extractingRef = useRef(false);
+  // Bumped whenever the modal resets, so photo compression that finishes after
+  // the dialog was closed does not go on to start a (paid) extraction.
+  const runIdRef = useRef(0);
 
   // Revoke every outstanding object URL when the component goes away - closing
   // the dialog runs resetState, but unmounting (e.g. navigating away) did not.
@@ -94,6 +102,7 @@ export function RecipeImportModal({
   }, []);
 
   const resetState = useCallback(() => {
+    runIdRef.current++;
     setState("idle");
     selectedFiles.forEach((f) => URL.revokeObjectURL(f.previewUrl));
     setSelectedFiles([]);
@@ -114,8 +123,8 @@ export function RecipeImportModal({
     [onOpenChange, resetState]
   );
 
-  // Enforces the stated limits ("max 10MB per image, up to 10 images") and the
-  // accepted formats. Drag-and-drop never sees the input's `accept` filter, so
+  // Enforces the image count and the accepted formats. Large photos are fine:
+  // they are shrunk before upload (see handleExtract). Drag-and-drop never sees the input's `accept` filter, so
   // this has to run for both the picker and the dropzone - otherwise a dropped
   // PDF got an object URL that next/image could not render.
   const handleFilesSelect = useCallback(
@@ -130,11 +139,7 @@ export function RecipeImportModal({
           break;
         }
 
-        const validationError = validateImageFile(
-          file,
-          MAX_IMPORT_BYTES,
-          IMPORT_IMAGE_TYPES
-        );
+        const validationError = validateImageFile(file, IMPORT_IMAGE_TYPES);
         if (validationError) {
           errors.push(validationError);
           continue;
@@ -205,14 +210,67 @@ export function RecipeImportModal({
     // fire two extraction calls. The ref closes that window synchronously.
     if (extractingRef.current || selectedFiles.length === 0) return;
     extractingRef.current = true;
+    const runId = runIdRef.current;
 
     setError(null);
+    setState("preparing");
+
+    // Vercel rejects request bodies over ~4.5MB before our route runs, so
+    // shrink every photo to a share of one whole-request budget first.
+    let prepared: Awaited<ReturnType<typeof compressImage>>[];
+    try {
+      const budget = perImageBudget(
+        IMPORT_REQUEST_BUDGET_BYTES,
+        selectedFiles.length
+      );
+      prepared = [];
+      // One at a time: decoding several 12MP photos at once can exhaust
+      // memory on phones.
+      for (const sf of selectedFiles) {
+        prepared.push(
+          await compressImage(sf.file, {
+            maxBytes: budget,
+            keepTypes: IMPORT_PASSTHROUGH_TYPES,
+          })
+        );
+      }
+    } catch {
+      extractingRef.current = false;
+      if (runId !== runIdRef.current) return;
+      setError("We couldn't prepare these photos. Please try different photos.");
+      setState("idle");
+      return;
+    }
+
+    if (runId !== runIdRef.current) {
+      extractingRef.current = false;
+      return;
+    }
+
+    if (
+      !fitsRequestBudget(
+        prepared.map((p) => p.file.size),
+        IMPORT_REQUEST_BUDGET_BYTES
+      )
+    ) {
+      extractingRef.current = false;
+      const undecodable = prepared.some((p) => !p.decoded);
+      // Keep the selection so the user can remove photos and retry.
+      setError(
+        undecodable
+          ? "Some photos (likely HEIC) can't be resized in this browser, so together they are too large to upload. Remove a few photos, or convert HEIC photos to JPEG and try again."
+          : "These photos are too large to upload together, even after resizing. Remove a few photos and try again."
+      );
+      setState("idle");
+      return;
+    }
+
     setState("extracting");
 
     try {
       const formData = new FormData();
-      selectedFiles.forEach((sf) => {
-        formData.append("files", sf.file);
+      prepared.forEach((p) => {
+        formData.append("files", p.file);
       });
 
       const response = await fetch("/api/extract-recipe", {
@@ -365,8 +423,8 @@ export function RecipeImportModal({
                 <span className="font-medium">Click to upload</span> or drag and drop
               </p>
               <p className="text-xs text-muted-foreground">
-                PNG, JPG, WebP, or HEIC (max. {formatBytes(MAX_IMPORT_BYTES)}{" "}
-                per image, up to {MAX_IMPORT_FILES} images)
+                PNG, JPG, WebP, or HEIC (up to {MAX_IMPORT_FILES} images; large
+                photos are resized automatically)
               </p>
               <Button
                 type="button"
@@ -383,7 +441,7 @@ export function RecipeImportModal({
               </Button>
             </div>
 
-            {/* Validation feedback (wrong format, too large, too many) */}
+            {/* Validation feedback (wrong format, too many, too large to upload) */}
             {error && (
               <p
                 role="alert"
@@ -507,13 +565,18 @@ export function RecipeImportModal({
           </div>
         )}
 
-        {state === "extracting" && (
-          <div className="flex flex-col items-center justify-center py-12">
+        {(state === "preparing" || state === "extracting") && (
+          <div
+            className="flex flex-col items-center justify-center py-12"
+            aria-live="polite"
+          >
             <Spinner size="lg" />
             <p className="mt-4 text-sm text-muted-foreground">
-              {importMethod === "photo"
-                ? "Extracting recipe from image..."
-                : "Extracting recipe from text..."}
+              {state === "preparing"
+                ? `Preparing ${selectedFiles.length === 1 ? "photo" : "photos"} for upload...`
+                : importMethod === "photo"
+                  ? "Extracting recipe from image..."
+                  : "Extracting recipe from text..."}
             </p>
             <p className="text-xs text-muted-foreground">
               This may take a few seconds

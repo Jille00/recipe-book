@@ -4,10 +4,11 @@ import { useState, useCallback, useRef } from "react";
 import Image from "next/image";
 import { Button, Spinner } from "@/components/ui";
 import { ImagePlus, Upload, X, RefreshCw, Sparkles } from "lucide-react";
+import { compressImage } from "@/lib/image/compress-image";
 import {
-  MAX_UPLOAD_BYTES,
+  UPLOAD_BUDGET_BYTES,
   UPLOAD_IMAGE_TYPES,
-  formatBytes,
+  UPLOAD_PASSTHROUGH_TYPES,
   parseJsonResponse,
   validateImageFile,
 } from "./file-validation";
@@ -30,7 +31,10 @@ export function ImageUpload({
   onChange,
   recipeContext,
 }: ImageUploadProps) {
-  const [isUploading, setIsUploading] = useState(false);
+  // "preparing" = shrinking the photo in the browser, "uploading" = POSTing it.
+  const [uploadPhase, setUploadPhase] = useState<
+    "preparing" | "uploading" | null
+  >(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,23 +44,36 @@ export function ImageUpload({
     async (file: File) => {
       // Validate before we spend a round trip - and before drag-and-drop can
       // sneak past the input's `accept` filter.
-      const validationError = validateImageFile(
-        file,
-        MAX_UPLOAD_BYTES,
-        UPLOAD_IMAGE_TYPES
-      );
+      const validationError = validateImageFile(file, UPLOAD_IMAGE_TYPES);
       if (validationError) {
         setError(validationError);
         return;
       }
 
       setError(null);
-      setIsUploading(true);
-
-      const formData = new FormData();
-      formData.append("file", file);
+      setUploadPhase("preparing");
 
       try {
+        // Vercel rejects request bodies over ~4.5MB before our route runs, so
+        // shrink large photos in the browser first.
+        const prepared = await compressImage(file, {
+          maxBytes: UPLOAD_BUDGET_BYTES,
+          keepTypes: UPLOAD_PASSTHROUGH_TYPES,
+        });
+
+        if (prepared.file.size > UPLOAD_BUDGET_BYTES) {
+          throw new Error(
+            prepared.decoded
+              ? "This photo is too large to upload, even after resizing. Please choose a smaller photo."
+              : "This photo can't be resized in this browser and is too large to upload. Convert it to JPEG (HEIC photos especially) or choose a smaller photo."
+          );
+        }
+
+        setUploadPhase("uploading");
+
+        const formData = new FormData();
+        formData.append("file", prepared.file);
+
         const response = await fetch("/api/upload", {
           method: "POST",
           body: formData,
@@ -75,7 +92,7 @@ export function ImageUpload({
       } catch (err) {
         setError(err instanceof Error ? err.message : "Upload failed");
       } finally {
-        setIsUploading(false);
+        setUploadPhase(null);
       }
     },
     [onChange]
@@ -162,7 +179,7 @@ export function ImageUpload({
 
   const canGenerateAI =
     recipeContext?.title && recipeContext.title.trim().length > 0;
-  const isBusy = isUploading || isGenerating;
+  const isBusy = uploadPhase !== null || isGenerating;
 
   return (
     <div className="w-full">
@@ -236,7 +253,11 @@ export function ImageUpload({
             <div className="flex flex-col items-center gap-3">
               <Spinner size="lg" />
               <p className="text-sm text-muted-foreground">
-                {isGenerating ? "Generating image with AI..." : "Uploading..."}
+                {isGenerating
+                  ? "Generating image with AI..."
+                  : uploadPhase === "preparing"
+                    ? "Preparing photo..."
+                    : "Uploading..."}
               </p>
             </div>
           ) : (
@@ -249,7 +270,8 @@ export function ImageUpload({
                 drop
               </p>
               <p className="text-xs text-muted-foreground">
-                PNG, JPG, WebP, GIF or HEIC (max. {formatBytes(MAX_UPLOAD_BYTES)})
+                PNG, JPG, WebP, GIF or HEIC (large photos are resized
+                automatically)
               </p>
               <div className="mt-4 flex gap-2">
                 <Button

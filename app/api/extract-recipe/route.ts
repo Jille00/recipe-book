@@ -6,13 +6,20 @@ import convert from "heic-convert";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
-const MAX_SIZE_PER_FILE = 10 * 1024 * 1024; // 10MB per file
 const MAX_FILES = 10;
-// All images have to be base64 encoded into a single prompt, so the request
-// peaks at roughly 1.4x the total upload size in memory. Cap the total so a
-// single request cannot exhaust the lambda's heap (an OOM kills the process
-// before the error handler can run).
-const MAX_TOTAL_BYTES = 20 * 1024 * 1024; // 20MB across all images
+// Vercel Functions reject request bodies over ~4.5MB with 413
+// FUNCTION_PAYLOAD_TOO_LARGE before this route runs (measured in production:
+// 4.0MB arrives, 4.4MB does not), and that cannot be raised. The client
+// shrinks photos to fit ~3.8MB in total (components/recipe/file-validation.ts),
+// so these caps sit just under the platform ceiling: anything larger could
+// never have arrived on Vercel anyway, and locally we answer with a clear
+// message instead. Keeping the total small also bounds memory, since every
+// image is base64 encoded into a single prompt (~1.4x the upload size).
+const MAX_TOTAL_BYTES = 4 * 1024 * 1024; // 4MB across all images
+const MAX_SIZE_PER_FILE = MAX_TOTAL_BYTES; // one photo may use the whole budget
+// Boundaries and per-part headers on top of the file bytes.
+const MULTIPART_OVERHEAD_ALLOWANCE = 64 * 1024;
+const MAX_MB = MAX_TOTAL_BYTES / (1024 * 1024);
 
 async function convertHeicToJpeg(buffer: ArrayBuffer): Promise<Buffer> {
   const outputBuffer = await convert({
@@ -147,10 +154,10 @@ export async function POST(request: NextRequest) {
 
     // Reject oversized requests before formData() buffers the whole body.
     const contentLength = Number(request.headers.get("content-length") ?? 0);
-    if (contentLength > MAX_TOTAL_BYTES) {
+    if (contentLength > MAX_TOTAL_BYTES + MULTIPART_OVERHEAD_ALLOWANCE) {
       return NextResponse.json(
         {
-          error: `Images are too large in total. Maximum is ${MAX_TOTAL_BYTES / (1024 * 1024)}MB across all images`,
+          error: `The photos are too large to upload together (maximum ${MAX_MB}MB in total). Try fewer photos.`,
         },
         { status: 413 }
       );
@@ -188,7 +195,7 @@ export async function POST(request: NextRequest) {
       if (file.size > MAX_SIZE_PER_FILE) {
         return NextResponse.json(
           {
-            error: `File too large: ${file.name}. Maximum size is ${MAX_SIZE_PER_FILE / (1024 * 1024)}MB per image`,
+            error: `"${file.name}" is too large to upload (maximum ${MAX_SIZE_PER_FILE / (1024 * 1024)}MB). Try a smaller photo.`,
           },
           { status: 400 }
         );
@@ -199,7 +206,7 @@ export async function POST(request: NextRequest) {
     if (totalBytes > MAX_TOTAL_BYTES) {
       return NextResponse.json(
         {
-          error: `Images are too large in total. Maximum is ${MAX_TOTAL_BYTES / (1024 * 1024)}MB across all images`,
+          error: `The photos are too large to upload together (maximum ${MAX_MB}MB in total). Try fewer photos.`,
         },
         { status: 400 }
       );

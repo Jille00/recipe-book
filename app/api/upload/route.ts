@@ -4,7 +4,14 @@ import { getStorageClient } from "@/lib/supabase/storage";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import convert from "heic-convert";
 
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+// Vercel Functions reject request bodies over ~4.5MB with 413
+// FUNCTION_PAYLOAD_TOO_LARGE before this route runs (measured: 4.0MB arrives,
+// 4.4MB does not), and that cannot be raised. The client shrinks cover photos
+// to ~3.5MB or less before upload, so cap just under the platform ceiling.
+const MAX_SIZE = 4 * 1024 * 1024; // 4MB
+// Boundary and part headers on top of the file bytes.
+const MULTIPART_OVERHEAD_ALLOWANCE = 64 * 1024;
+const TOO_LARGE_MESSAGE = `Photo too large. Maximum size is ${MAX_SIZE / (1024 * 1024)}MB`;
 
 type DetectedImage = {
   mime: "image/jpeg" | "image/png" | "image/webp" | "image/gif" | "image/heic";
@@ -91,11 +98,8 @@ export async function POST(request: NextRequest) {
 
     // Reject oversized requests before formData() buffers the whole body.
     const contentLength = Number(request.headers.get("content-length") ?? 0);
-    if (contentLength > MAX_SIZE * 2) {
-      return NextResponse.json(
-        { error: "File too large. Maximum size is 5MB" },
-        { status: 413 }
-      );
+    if (contentLength > MAX_SIZE + MULTIPART_OVERHEAD_ALLOWANCE) {
+      return NextResponse.json({ error: TOO_LARGE_MESSAGE }, { status: 413 });
     }
 
     const formData = await request.formData();
@@ -107,10 +111,7 @@ export async function POST(request: NextRequest) {
 
     // Validate file size
     if (file.size > MAX_SIZE) {
-      return NextResponse.json(
-        { error: "File too large. Maximum size is 5MB" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: TOO_LARGE_MESSAGE }, { status: 400 });
     }
 
     // Validate the actual content, not the declared mime type / file name

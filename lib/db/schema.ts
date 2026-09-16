@@ -9,8 +9,9 @@ import {
   index,
   unique,
   primaryKey,
+  check,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 // =====================
 // Better Auth Tables (from generated auth-schema.ts)
@@ -139,6 +140,9 @@ export const recipe = pgTable(
   (table) => [
     index("idx_recipe_user_id").on(table.userId),
     index("idx_recipe_is_public").on(table.isPublic),
+    // The unique (user_id, slug) index leads with user_id, so it cannot serve
+    // the public "slug + is_public" lookup. This one can.
+    index("idx_recipe_slug").on(table.slug),
     index("idx_recipe_share_token").on(table.shareToken),
     index("idx_recipe_created_at").on(table.createdAt),
     unique("recipe_user_slug_unique").on(table.userId, table.slug),
@@ -198,6 +202,7 @@ export const rating = pgTable(
     index("idx_rating_recipe_id").on(table.recipeId),
     index("idx_rating_user_id").on(table.userId),
     unique("rating_user_recipe_unique").on(table.userId, table.recipeId),
+    check("rating_value_range", sql`${table.value} between 1 and 5`),
   ]
 );
 
@@ -219,6 +224,8 @@ export const comment = pgTable(
     index("idx_comment_recipe_id").on(table.recipeId),
     index("idx_comment_user_id").on(table.userId),
     index("idx_comment_created_at").on(table.createdAt),
+    // Mirrors MAX_COMMENT_LENGTH in lib/db/queries/comments.ts
+    check("comment_content_length", sql`char_length(${table.content}) <= 1000`),
   ]
 );
 

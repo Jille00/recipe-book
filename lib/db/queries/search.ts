@@ -133,6 +133,8 @@ export async function searchRecipes(
     instructions: r.instructions as Instruction[],
     difficulty: r.difficulty as Difficulty | null,
     nutrition: r.nutrition as NutritionInfo | null,
+    // Share tokens are owner-only capabilities; never include them in listings.
+    shareToken: userId && r.userId === userId ? r.shareToken : null,
     isOwn: userId ? r.userId === userId : false,
   }));
 }
@@ -253,6 +255,8 @@ export async function getPublicRecipes(
       instructions: r.instructions as Instruction[],
       difficulty: r.difficulty as Difficulty | null,
       nutrition: r.nutrition as NutritionInfo | null,
+      // Share tokens are owner-only capabilities; never include them in listings.
+      shareToken: userId && r.userId === userId ? r.shareToken : null,
       isOwn: false,
       isFavorited: r.favoriteId !== null,
     })),

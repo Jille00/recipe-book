@@ -1,6 +1,17 @@
 import { eq, and, desc, sql } from "drizzle-orm";
 import { db, comment, user } from "@/lib/db";
 
+/** Maximum length of a comment, mirrored by a database constraint. */
+export const MAX_COMMENT_LENGTH = 1000;
+
+/** Thrown for user-fixable input problems; routes map this to a 400. */
+export class CommentValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CommentValidationError";
+  }
+}
+
 export interface CommentWithUser {
   id: string;
   userId: string;
@@ -25,7 +36,10 @@ export async function getRecipeComments(
   recipeId: string,
   options: { limit?: number; offset?: number } = {}
 ): Promise<PaginatedComments> {
-  const { limit = 10, offset = 0 } = options;
+  // Defence in depth: callers validate query params, but never let a bad
+  // value turn into an unbounded (or NaN) query.
+  const limit = Math.min(100, Math.max(1, Math.floor(options.limit ?? 10) || 10));
+  const offset = Math.max(0, Math.floor(options.offset ?? 0) || 0);
 
   // Get total count
   const countResult = await db
@@ -87,10 +101,12 @@ export async function createComment(
   // Validate content length
   const trimmedContent = content.trim();
   if (trimmedContent.length === 0) {
-    throw new Error("Comment content cannot be empty");
+    throw new CommentValidationError("Comment content cannot be empty");
   }
-  if (trimmedContent.length > 1000) {
-    throw new Error("Comment content exceeds maximum length of 1000 characters");
+  if (trimmedContent.length > MAX_COMMENT_LENGTH) {
+    throw new CommentValidationError(
+      `Comment must be ${MAX_COMMENT_LENGTH} characters or less`
+    );
   }
 
   const [newComment] = await db
@@ -131,10 +147,12 @@ export async function updateComment(
 ): Promise<CommentWithUser | null> {
   const trimmedContent = content.trim();
   if (trimmedContent.length === 0) {
-    throw new Error("Comment content cannot be empty");
+    throw new CommentValidationError("Comment content cannot be empty");
   }
-  if (trimmedContent.length > 1000) {
-    throw new Error("Comment content exceeds maximum length of 1000 characters");
+  if (trimmedContent.length > MAX_COMMENT_LENGTH) {
+    throw new CommentValidationError(
+      `Comment must be ${MAX_COMMENT_LENGTH} characters or less`
+    );
   }
 
   const result = await db

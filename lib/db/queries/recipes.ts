@@ -1,5 +1,5 @@
-import { eq, and, desc, sql } from "drizzle-orm";
-import { db, recipe, user, recipeTag, tag, favorite } from "@/lib/db";
+import { eq, and, desc, sql, isNull } from "drizzle-orm";
+import { db, recipe, user, recipeTag, favorite } from "@/lib/db";
 import { generateUniqueSlug } from "@/lib/utils/slug";
 import { generateShareToken } from "@/lib/utils/share-token";
 import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
@@ -240,6 +240,9 @@ export async function getPublicRecipeBySlug(
     instructions: r.instructions as Instruction[],
     difficulty: r.difficulty as Difficulty | null,
     nutrition: r.nutrition as NutritionInfo | null,
+    // The share token still works after a recipe is made private again, so it
+    // must never be handed to anyone but the owner.
+    shareToken: r.recipeUserId === userId ? r.shareToken : null,
     isFavorited: r.favoriteId !== null,
   };
 }
@@ -260,45 +263,49 @@ interface CreateRecipeInput {
 }
 
 export async function createRecipe(userId: string, data: CreateRecipeInput) {
-  // Get existing slugs for this user
-  const existingSlugs = await db
-    .select({ slug: recipe.slug })
-    .from(recipe)
-    .where(eq(recipe.userId, userId));
+  // Recipe + tags are written in one transaction: an invalid tag id must not
+  // leave an orphaned recipe behind.
+  return await db.transaction(async (tx) => {
+    // Get existing slugs for this user
+    const existingSlugs = await tx
+      .select({ slug: recipe.slug })
+      .from(recipe)
+      .where(eq(recipe.userId, userId));
 
-  const slugs = existingSlugs.map((r) => r.slug);
-  const slug = generateUniqueSlug(data.title, slugs);
+    const slugs = existingSlugs.map((r) => r.slug);
+    const slug = generateUniqueSlug(data.title, slugs);
 
-  const [newRecipe] = await db
-    .insert(recipe)
-    .values({
-      userId,
-      title: data.title,
-      slug,
-      description: data.description || null,
-      ingredients: data.ingredients,
-      instructions: data.instructions,
-      prepTimeMinutes: data.prep_time_minutes || null,
-      cookTimeMinutes: data.cook_time_minutes || null,
-      servings: data.servings || null,
-      difficulty: data.difficulty || null,
-      imageUrl: data.image_url || null,
-      nutrition: data.nutrition || null,
-      isPublic: data.is_public || false,
-    })
-    .returning();
+    const [newRecipe] = await tx
+      .insert(recipe)
+      .values({
+        userId,
+        title: data.title,
+        slug,
+        description: data.description || null,
+        ingredients: data.ingredients,
+        instructions: data.instructions,
+        prepTimeMinutes: data.prep_time_minutes || null,
+        cookTimeMinutes: data.cook_time_minutes || null,
+        servings: data.servings || null,
+        difficulty: data.difficulty || null,
+        imageUrl: data.image_url || null,
+        nutrition: data.nutrition || null,
+        isPublic: data.is_public || false,
+      })
+      .returning();
 
-  // Add tags if provided
-  if (data.tag_ids && data.tag_ids.length > 0) {
-    await db.insert(recipeTag).values(
-      data.tag_ids.map((tagId) => ({
-        recipeId: newRecipe.id,
-        tagId,
-      }))
-    );
-  }
+    // Add tags if provided
+    if (data.tag_ids && data.tag_ids.length > 0) {
+      await tx.insert(recipeTag).values(
+        data.tag_ids.map((tagId) => ({
+          recipeId: newRecipe.id,
+          tagId,
+        }))
+      );
+    }
 
-  return newRecipe;
+    return newRecipe;
+  });
 }
 
 export async function updateRecipe(
@@ -306,64 +313,74 @@ export async function updateRecipe(
   userId: string,
   data: Partial<CreateRecipeInput>
 ) {
-  // First verify ownership
-  const existing = await db
-    .select()
-    .from(recipe)
-    .where(and(eq(recipe.id, id), eq(recipe.userId, userId)))
-    .limit(1);
-
-  if (existing.length === 0) {
-    return null;
-  }
-
-  const updateData: Record<string, unknown> = {
-    updatedAt: new Date(),
-  };
-
-  if (data.title !== undefined) {
-    // Generate new slug if title changed
-    const existingSlugs = await db
-      .select({ slug: recipe.slug })
+  // Everything (recipe row + tag rows) happens in one transaction so a failure
+  // halfway through cannot drop the existing tags.
+  return await db.transaction(async (tx) => {
+    // First verify ownership
+    const existing = await tx
+      .select({ id: recipe.id })
       .from(recipe)
-      .where(and(eq(recipe.userId, userId), sql`${recipe.id} != ${id}`));
+      .where(and(eq(recipe.id, id), eq(recipe.userId, userId)))
+      .limit(1);
 
-    const slugs = existingSlugs.map((r) => r.slug);
-    updateData.title = data.title;
-    updateData.slug = generateUniqueSlug(data.title, slugs);
-  }
-
-  if (data.description !== undefined) updateData.description = data.description;
-  if (data.ingredients !== undefined) updateData.ingredients = data.ingredients;
-  if (data.instructions !== undefined) updateData.instructions = data.instructions;
-  if (data.prep_time_minutes !== undefined) updateData.prepTimeMinutes = data.prep_time_minutes;
-  if (data.cook_time_minutes !== undefined) updateData.cookTimeMinutes = data.cook_time_minutes;
-  if (data.servings !== undefined) updateData.servings = data.servings;
-  if (data.difficulty !== undefined) updateData.difficulty = data.difficulty;
-  if (data.image_url !== undefined) updateData.imageUrl = data.image_url;
-  if (data.nutrition !== undefined) updateData.nutrition = data.nutrition;
-  if (data.is_public !== undefined) updateData.isPublic = data.is_public;
-
-  const [updated] = await db
-    .update(recipe)
-    .set(updateData)
-    .where(eq(recipe.id, id))
-    .returning();
-
-  // Update tags if provided
-  if (data.tag_ids !== undefined) {
-    await db.delete(recipeTag).where(eq(recipeTag.recipeId, id));
-    if (data.tag_ids.length > 0) {
-      await db.insert(recipeTag).values(
-        data.tag_ids.map((tagId) => ({
-          recipeId: id,
-          tagId,
-        }))
-      );
+    if (existing.length === 0) {
+      return null;
     }
-  }
 
-  return updated;
+    const updateData: Record<string, unknown> = {
+      updatedAt: new Date(),
+    };
+
+    if (data.title !== undefined) {
+      // Generate new slug if title changed
+      const existingSlugs = await tx
+        .select({ slug: recipe.slug })
+        .from(recipe)
+        .where(and(eq(recipe.userId, userId), sql`${recipe.id} != ${id}`));
+
+      const slugs = existingSlugs.map((r) => r.slug);
+      updateData.title = data.title;
+      updateData.slug = generateUniqueSlug(data.title, slugs);
+    }
+
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.ingredients !== undefined) updateData.ingredients = data.ingredients;
+    if (data.instructions !== undefined) updateData.instructions = data.instructions;
+    if (data.prep_time_minutes !== undefined) updateData.prepTimeMinutes = data.prep_time_minutes;
+    if (data.cook_time_minutes !== undefined) updateData.cookTimeMinutes = data.cook_time_minutes;
+    if (data.servings !== undefined) updateData.servings = data.servings;
+    if (data.difficulty !== undefined) updateData.difficulty = data.difficulty;
+    if (data.image_url !== undefined) updateData.imageUrl = data.image_url;
+    if (data.nutrition !== undefined) updateData.nutrition = data.nutrition;
+    if (data.is_public !== undefined) updateData.isPublic = data.is_public;
+
+    // The ownership predicate is repeated here: checking first and then
+    // updating on the id alone leaves a check-then-act gap.
+    const [updated] = await tx
+      .update(recipe)
+      .set(updateData)
+      .where(and(eq(recipe.id, id), eq(recipe.userId, userId)))
+      .returning();
+
+    if (!updated) {
+      return null;
+    }
+
+    // Update tags if provided
+    if (data.tag_ids !== undefined) {
+      await tx.delete(recipeTag).where(eq(recipeTag.recipeId, id));
+      if (data.tag_ids.length > 0) {
+        await tx.insert(recipeTag).values(
+          data.tag_ids.map((tagId) => ({
+            recipeId: id,
+            tagId,
+          }))
+        );
+      }
+    }
+
+    return updated;
+  });
 }
 
 export async function deleteRecipe(id: string, userId: string): Promise<boolean> {
@@ -375,19 +392,58 @@ export async function deleteRecipe(id: string, userId: string): Promise<boolean>
   return result.length > 0;
 }
 
+/**
+ * Get the recipe's share token, creating one on first use.
+ *
+ * This is deliberately get-or-create: regenerating on every call would
+ * silently invalidate links that have already been handed out. Use
+ * `revokeRecipeShareToken` to explicitly invalidate a link (the next call here
+ * then mints a fresh one).
+ */
 export async function generateRecipeShareToken(
   id: string,
   userId: string
 ): Promise<string | null> {
+  const existing = await db
+    .select({ shareToken: recipe.shareToken })
+    .from(recipe)
+    .where(and(eq(recipe.id, id), eq(recipe.userId, userId)))
+    .limit(1);
+
+  if (existing.length === 0) {
+    return null;
+  }
+
+  if (existing[0].shareToken) {
+    return existing[0].shareToken;
+  }
+
   const token = generateShareToken();
 
   const result = await db
     .update(recipe)
     .set({ shareToken: token })
-    .where(and(eq(recipe.id, id), eq(recipe.userId, userId)))
+    .where(
+      and(
+        eq(recipe.id, id),
+        eq(recipe.userId, userId),
+        isNull(recipe.shareToken)
+      )
+    )
     .returning({ shareToken: recipe.shareToken });
 
-  return result[0]?.shareToken || null;
+  if (result[0]?.shareToken) {
+    return result[0].shareToken;
+  }
+
+  // A concurrent request created one first - return that token.
+  const current = await db
+    .select({ shareToken: recipe.shareToken })
+    .from(recipe)
+    .where(and(eq(recipe.id, id), eq(recipe.userId, userId)))
+    .limit(1);
+
+  return current[0]?.shareToken || null;
 }
 
 export async function revokeRecipeShareToken(

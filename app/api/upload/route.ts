@@ -1,14 +1,77 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getStorageClient } from "@/lib/supabase/storage";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import convert from "heic-convert";
 
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
-async function convertHeicToJpeg(buffer: ArrayBuffer): Promise<Buffer> {
+type DetectedImage = {
+  mime: "image/jpeg" | "image/png" | "image/webp" | "image/gif" | "image/heic";
+  ext: "jpg" | "png" | "webp" | "gif" | "heic";
+};
+
+const HEIF_BRANDS = new Set([
+  "heic",
+  "heix",
+  "hevc",
+  "hevx",
+  "heim",
+  "heis",
+  "hevm",
+  "hevs",
+  "mif1",
+  "msf1",
+]);
+
+/**
+ * Determine the real image type from the file's magic bytes. The
+ * client-declared `file.type` and `file.name` are attacker controlled, so they
+ * are never trusted for validation or for the stored object's extension.
+ */
+function detectImageType(buffer: Buffer): DetectedImage | null {
+  if (buffer.length < 12) return null;
+
+  // JPEG: FF D8 FF
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return { mime: "image/jpeg", ext: "jpg" };
+  }
+
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (
+    buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+  ) {
+    return { mime: "image/png", ext: "png" };
+  }
+
+  // GIF: "GIF87a" / "GIF89a"
+  const header6 = buffer.subarray(0, 6).toString("latin1");
+  if (header6 === "GIF87a" || header6 === "GIF89a") {
+    return { mime: "image/gif", ext: "gif" };
+  }
+
+  // WebP: "RIFF" .... "WEBP"
+  if (
+    buffer.subarray(0, 4).toString("latin1") === "RIFF" &&
+    buffer.subarray(8, 12).toString("latin1") === "WEBP"
+  ) {
+    return { mime: "image/webp", ext: "webp" };
+  }
+
+  // HEIC/HEIF: ISO-BMFF box with "ftyp" at offset 4 and a HEIF brand
+  if (buffer.subarray(4, 8).toString("latin1") === "ftyp") {
+    const brand = buffer.subarray(8, 12).toString("latin1");
+    if (HEIF_BRANDS.has(brand)) {
+      return { mime: "image/heic", ext: "heic" };
+    }
+  }
+
+  return null;
+}
+
+async function convertHeicToJpeg(buffer: Buffer): Promise<Buffer<ArrayBuffer>> {
   const outputBuffer = await convert({
-    buffer: Buffer.from(buffer) as unknown as ArrayBuffer,
+    buffer: buffer as unknown as ArrayBuffer,
     format: "JPEG",
     quality: 0.9,
   });
@@ -23,25 +86,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const limited = enforceRateLimit("upload", session.user.id);
+    if (limited) return limited;
+
+    // Reject oversized requests before formData() buffers the whole body.
+    const contentLength = Number(request.headers.get("content-length") ?? 0);
+    if (contentLength > MAX_SIZE * 2) {
+      return NextResponse.json(
+        { error: "File too large. Maximum size is 5MB" },
+        { status: 413 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
-    }
-
-    // Check for HEIC files by extension if mime type isn't detected
-    const isHeic = file.type === "image/heic" ||
-      file.type === "image/heif" ||
-      file.name.toLowerCase().endsWith(".heic") ||
-      file.name.toLowerCase().endsWith(".heif");
-
-    // Validate file type
-    if (!ALLOWED_TYPES.includes(file.type) && !isHeic) {
-      return NextResponse.json(
-        { error: "Invalid file type. Allowed: JPEG, PNG, WebP, GIF, HEIC" },
-        { status: 400 }
-      );
     }
 
     // Validate file size
@@ -52,28 +113,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get storage client (lazy initialization)
-    const supabase = getStorageClient();
+    // Validate the actual content, not the declared mime type / file name
+    let buffer = Buffer.from(await file.arrayBuffer());
+    const detected = detectImageType(buffer);
 
-    // Handle HEIC conversion
-    let fileData: Buffer | File = file;
-    let contentType = file.type;
-    let ext = file.name.split(".").pop() || "jpg";
+    if (!detected) {
+      return NextResponse.json(
+        { error: "Invalid file type. Allowed: JPEG, PNG, WebP, GIF, HEIC" },
+        { status: 400 }
+      );
+    }
 
-    if (isHeic) {
-      const bytes = await file.arrayBuffer();
-      fileData = await convertHeicToJpeg(bytes);
+    let contentType: string = detected.mime;
+    let ext: string = detected.ext;
+
+    if (detected.mime === "image/heic") {
+      buffer = await convertHeicToJpeg(buffer);
       contentType = "image/jpeg";
       ext = "jpg";
     }
 
-    // Generate unique filename
+    // Get storage client (lazy initialization)
+    const supabase = getStorageClient();
+
+    // Generate unique filename - extension comes from the detected type
     const fileName = `${session.user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
       .from("recipe-images")
-      .upload(fileName, fileData, {
+      .upload(fileName, buffer, {
         contentType,
         upsert: false,
       });

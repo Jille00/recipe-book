@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Image from "next/image";
+import { nanoid } from "nanoid";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +25,14 @@ import {
   FileText,
 } from "lucide-react";
 import type { ExtractedRecipe, ExtractionResponse } from "@/types/extraction";
+import {
+  IMPORT_IMAGE_TYPES,
+  MAX_IMPORT_BYTES,
+  MAX_IMPORT_FILES,
+  formatBytes,
+  parseJsonResponse,
+  validateImageFile,
+} from "./file-validation";
 
 interface Tag {
   id: string;
@@ -42,6 +51,8 @@ type ModalState = "idle" | "extracting" | "preview" | "error";
 type ImportMethod = "photo" | "url";
 
 interface SelectedFile {
+  /** Stable identity so removing a tile does not re-key every later tile. */
+  id: string;
   file: File;
   previewUrl: string;
 }
@@ -66,6 +77,21 @@ export function RecipeImportModal({
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Guards against a second click landing before `state` flips to "extracting"
+  // and firing another (paid) extraction call.
+  const extractingRef = useRef(false);
+
+  // Revoke every outstanding object URL when the component goes away - closing
+  // the dialog runs resetState, but unmounting (e.g. navigating away) did not.
+  const selectedFilesRef = useRef<SelectedFile[]>([]);
+  useEffect(() => {
+    selectedFilesRef.current = selectedFiles;
+  }, [selectedFiles]);
+  useEffect(() => {
+    return () => {
+      selectedFilesRef.current.forEach((f) => URL.revokeObjectURL(f.previewUrl));
+    };
+  }, []);
 
   const resetState = useCallback(() => {
     setState("idle");
@@ -88,22 +114,55 @@ export function RecipeImportModal({
     [onOpenChange, resetState]
   );
 
-  const handleFilesSelect = useCallback((files: FileList | File[]) => {
-    const newFiles: SelectedFile[] = Array.from(files).map((file) => ({
-      file,
-      previewUrl: URL.createObjectURL(file),
-    }));
-    setSelectedFiles((prev) => [...prev, ...newFiles]);
-    setError(null);
-  }, []);
+  // Enforces the stated limits ("max 10MB per image, up to 10 images") and the
+  // accepted formats. Drag-and-drop never sees the input's `accept` filter, so
+  // this has to run for both the picker and the dropzone - otherwise a dropped
+  // PDF got an object URL that next/image could not render.
+  const handleFilesSelect = useCallback(
+    (files: FileList | File[]) => {
+      const errors: string[] = [];
+      const accepted: SelectedFile[] = [];
+      let remainingSlots = MAX_IMPORT_FILES - selectedFiles.length;
 
-  const removeFile = useCallback((index: number) => {
+      for (const file of Array.from(files)) {
+        if (remainingSlots <= 0) {
+          errors.push(`You can add at most ${MAX_IMPORT_FILES} images.`);
+          break;
+        }
+
+        const validationError = validateImageFile(
+          file,
+          MAX_IMPORT_BYTES,
+          IMPORT_IMAGE_TYPES
+        );
+        if (validationError) {
+          errors.push(validationError);
+          continue;
+        }
+
+        accepted.push({
+          id: nanoid(),
+          file,
+          previewUrl: URL.createObjectURL(file),
+        });
+        remainingSlots--;
+      }
+
+      if (accepted.length > 0) {
+        setSelectedFiles((prev) => [...prev, ...accepted]);
+      }
+      setError(errors.length > 0 ? errors.join(" ") : null);
+    },
+    [selectedFiles.length]
+  );
+
+  const removeFile = useCallback((id: string) => {
     setSelectedFiles((prev) => {
-      const removed = prev[index];
+      const removed = prev.find((f) => f.id === id);
       if (removed) {
         URL.revokeObjectURL(removed.previewUrl);
       }
-      return prev.filter((_, i) => i !== index);
+      return prev.filter((f) => f.id !== id);
     });
   }, []);
 
@@ -142,7 +201,10 @@ export function RecipeImportModal({
   );
 
   const handleExtract = async () => {
-    if (selectedFiles.length === 0) return;
+    // `state` only flips on the next render, so a double-click would otherwise
+    // fire two extraction calls. The ref closes that window synchronously.
+    if (extractingRef.current || selectedFiles.length === 0) return;
+    extractingRef.current = true;
 
     setError(null);
     setState("extracting");
@@ -158,13 +220,11 @@ export function RecipeImportModal({
         body: formData,
       });
 
-      const data = await response.json();
+      const extractionData = await parseJsonResponse<ExtractionResponse>(
+        response,
+        "Extraction failed"
+      );
 
-      if (!response.ok) {
-        throw new Error(data.error || "Extraction failed");
-      }
-
-      const extractionData = data as ExtractionResponse;
       setExtractedData(extractionData.recipe);
       setConfidence(extractionData.confidence);
       setWarnings(extractionData.warnings || []);
@@ -172,11 +232,14 @@ export function RecipeImportModal({
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to extract recipe");
       setState("error");
+    } finally {
+      extractingRef.current = false;
     }
   };
 
   const handleTextExtract = async () => {
-    if (!textInput.trim()) return;
+    if (extractingRef.current || !textInput.trim()) return;
+    extractingRef.current = true;
 
     setError(null);
     setState("extracting");
@@ -188,20 +251,24 @@ export function RecipeImportModal({
         body: JSON.stringify({ text: textInput.trim() }),
       });
 
-      const data = await response.json();
+      const extractionData = await parseJsonResponse<ExtractionResponse>(
+        response,
+        "Extraction failed"
+      );
 
-      if (!response.ok) {
-        throw new Error(data.error || "Extraction failed");
-      }
-
-      const extractionData = data as ExtractionResponse;
       setExtractedData(extractionData.recipe);
       setConfidence(extractionData.confidence);
       setWarnings(extractionData.warnings || []);
       setState("preview");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to extract recipe from text");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to extract recipe from text"
+      );
       setState("error");
+    } finally {
+      extractingRef.current = false;
     }
   };
 
@@ -283,11 +350,13 @@ export function RecipeImportModal({
                 dragActive
                   ? "border-primary bg-primary/5"
                   : "border-border hover:border-primary/50 hover:bg-muted/50"
-              }`}
+              } cursor-pointer`}
+              role="presentation"
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
+              onClick={() => inputRef.current?.click()}
             >
               <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                 <Camera className="h-6 w-6 text-primary" />
@@ -296,19 +365,34 @@ export function RecipeImportModal({
                 <span className="font-medium">Click to upload</span> or drag and drop
               </p>
               <p className="text-xs text-muted-foreground">
-                PNG, JPG, WebP, or HEIC (max. 10MB per image, up to 10 images)
+                PNG, JPG, WebP, or HEIC (max. {formatBytes(MAX_IMPORT_BYTES)}{" "}
+                per image, up to {MAX_IMPORT_FILES} images)
               </p>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 className="mt-3"
-                onClick={() => inputRef.current?.click()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  inputRef.current?.click();
+                }}
               >
                 <Upload className="h-4 w-4" />
                 Select Images
               </Button>
             </div>
+
+            {/* Validation feedback (wrong format, too large, too many) */}
+            {error && (
+              <p
+                role="alert"
+                className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+              >
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>{error}</span>
+              </p>
+            )}
 
             {/* Selected Images Grid */}
             {selectedFiles.length > 0 && (
@@ -333,39 +417,49 @@ export function RecipeImportModal({
                 <div className="grid grid-cols-4 gap-2">
                   {selectedFiles.map((sf, index) => (
                     <div
-                      key={index}
+                      key={sf.id}
                       className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted"
                     >
                       <Image
                         src={sf.previewUrl}
                         alt={`Image ${index + 1}`}
                         fill
+                        unoptimized
                         className="object-cover"
                       />
                       <button
                         type="button"
-                        onClick={() => removeFile(index)}
-                        className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/80"
+                        onClick={() => removeFile(sf.id)}
+                        aria-label={`Remove image ${index + 1}`}
+                        // Always visible where there is no hover (touch, small
+                        // screens); revealed on hover or keyboard focus above.
+                        className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white transition-opacity hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-3 w-3" aria-hidden="true" />
                       </button>
                       <span className="absolute bottom-1 left-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-xs text-white">
                         {index + 1}
                       </span>
                     </div>
                   ))}
-                  {selectedFiles.length < 10 && (
+                  {selectedFiles.length < MAX_IMPORT_FILES && (
                     <button
                       type="button"
                       onClick={() => inputRef.current?.click()}
+                      aria-label="Add more images"
                       className="flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-muted/50 transition-colors"
                     >
-                      <Plus className="h-6 w-6 text-muted-foreground" />
+                      <Plus className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
                     </button>
                   )}
                 </div>
-                <Button type="button" onClick={handleExtract} className="w-full">
-                  <ChefHat className="h-4 w-4" />
+                <Button
+                  type="button"
+                  onClick={handleExtract}
+                  disabled={state !== "idle" || selectedFiles.length === 0}
+                  className="w-full"
+                >
+                  <ChefHat className="h-4 w-4" aria-hidden="true" />
                   Extract Recipe from {selectedFiles.length} Image{selectedFiles.length !== 1 ? "s" : ""}
                 </Button>
               </div>
@@ -404,7 +498,7 @@ export function RecipeImportModal({
             <Button
               type="button"
               onClick={handleTextExtract}
-              disabled={!textInput.trim()}
+              disabled={state !== "idle" || !textInput.trim()}
               className="w-full"
             >
               <ChefHat className="h-4 w-4" />

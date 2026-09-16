@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { generateObject } from "ai";
 import { z } from "zod";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const nutritionSchema = z.object({
   nutrition: z.object({
@@ -14,6 +15,25 @@ const nutritionSchema = z.object({
     confidence: z.enum(["high", "medium", "low"]).describe("Confidence level of the estimates"),
     warnings: z.array(z.string()).optional().describe("Any warnings about the calculation"),
   }),
+});
+
+const MAX_INGREDIENTS = 100;
+
+// Shape of the request body - validated at runtime, since the TypeScript cast
+// that used to describe it is erased and a null/garbage element crashed the
+// formatting step with a 500.
+const requestSchema = z.object({
+  ingredients: z
+    .array(
+      z.object({
+        text: z.string().min(1).max(500),
+        amount: z.string().max(50).optional().nullable(),
+        unit: z.string().max(50).optional().nullable(),
+      })
+    )
+    .min(1, "At least one ingredient is required")
+    .max(MAX_INGREDIENTS, `A recipe can have at most ${MAX_INGREDIENTS} ingredients`),
+  servings: z.number().int().positive().max(1000),
 });
 
 const NUTRITION_PROMPT = `You are a nutrition expert. Calculate the estimated nutritional values for this recipe based on the provided ingredients.
@@ -53,26 +73,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { ingredients, servings } = body;
+    const limited = enforceRateLimit("ai:calculate-nutrition", session.user.id);
+    if (limited) return limited;
 
-    if (!ingredients || !Array.isArray(ingredients) || ingredients.length === 0) {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+
+    const parsed = requestSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "At least one ingredient is required" },
+        { error: parsed.error.issues[0].message },
         { status: 400 }
       );
     }
 
-    if (!servings || typeof servings !== "number" || servings < 1) {
-      return NextResponse.json(
-        { error: "Servings must be a positive number" },
-        { status: 400 }
-      );
-    }
+    const { ingredients, servings } = parsed.data;
 
     // Format ingredients for the prompt
     const formattedIngredients = ingredients
-      .map((ing: { text: string; amount?: string; unit?: string }, index: number) => {
+      .map((ing, index) => {
         const parts = [];
         if (ing.amount) parts.push(ing.amount);
         if (ing.unit) parts.push(ing.unit);

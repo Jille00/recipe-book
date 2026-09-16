@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import Image from "next/image";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -19,9 +20,10 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Dashboard",
   description: "Manage your recipes and view your cooking statistics",
+  robots: { index: false, follow: false },
 };
 
 export default async function DashboardPage() {

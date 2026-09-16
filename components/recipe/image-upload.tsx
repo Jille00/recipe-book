@@ -2,8 +2,15 @@
 
 import { useState, useCallback, useRef } from "react";
 import Image from "next/image";
-import { Button, Spinner, Label } from "@/components/ui";
+import { Button, Spinner } from "@/components/ui";
 import { ImagePlus, Upload, X, RefreshCw, Sparkles } from "lucide-react";
+import {
+  MAX_UPLOAD_BYTES,
+  UPLOAD_IMAGE_TYPES,
+  formatBytes,
+  parseJsonResponse,
+  validateImageFile,
+} from "./file-validation";
 
 interface RecipeContext {
   title: string;
@@ -31,6 +38,18 @@ export function ImageUpload({
 
   const handleUpload = useCallback(
     async (file: File) => {
+      // Validate before we spend a round trip - and before drag-and-drop can
+      // sneak past the input's `accept` filter.
+      const validationError = validateImageFile(
+        file,
+        MAX_UPLOAD_BYTES,
+        UPLOAD_IMAGE_TYPES
+      );
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+
       setError(null);
       setIsUploading(true);
 
@@ -43,14 +62,15 @@ export function ImageUpload({
           body: formData,
         });
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "Upload failed");
-        }
+        const data = await parseJsonResponse<{ url?: string }>(
+          response,
+          "Upload failed"
+        );
 
         if (data.url) {
           onChange(data.url);
+        } else {
+          throw new Error("The server did not return an image URL.");
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Upload failed");
@@ -86,12 +106,20 @@ export function ImageUpload({
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files && e.target.files[0]) {
-        handleUpload(e.target.files[0]);
+      const file = e.target.files?.[0];
+      // Clear the input so removing an image and picking the very same file
+      // again still fires a change event.
+      e.target.value = "";
+      if (file) {
+        handleUpload(file);
       }
     },
     [handleUpload]
   );
+
+  const openFilePicker = useCallback(() => {
+    inputRef.current?.click();
+  }, []);
 
   const handleRemove = useCallback(() => {
     onChange("");
@@ -115,14 +143,15 @@ export function ImageUpload({
         }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Generation failed");
-      }
+      const data = await parseJsonResponse<{ url?: string }>(
+        response,
+        "Generation failed"
+      );
 
       if (data.url) {
         onChange(data.url);
+      } else {
+        throw new Error("The server did not return an image URL.");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate image");
@@ -133,6 +162,7 @@ export function ImageUpload({
 
   const canGenerateAI =
     recipeContext?.title && recipeContext.title.trim().length > 0;
+  const isBusy = isUploading || isGenerating;
 
   return (
     <div className="w-full">
@@ -144,7 +174,7 @@ export function ImageUpload({
             fill
             className="object-cover"
           />
-          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 opacity-0 transition-opacity hover:opacity-100">
+          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 opacity-0 transition-opacity hover:opacity-100 focus-within:opacity-100">
             {canGenerateAI && (
               <Button
                 type="button"
@@ -153,7 +183,7 @@ export function ImageUpload({
                 onClick={handleGenerateAI}
                 disabled={isGenerating}
               >
-                <Sparkles className="h-4 w-4" />
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
                 {isGenerating ? "Generating..." : "Regenerate"}
               </Button>
             )}
@@ -161,10 +191,10 @@ export function ImageUpload({
               type="button"
               variant="secondary"
               size="sm"
-              onClick={() => inputRef.current?.click()}
+              onClick={openFilePicker}
               disabled={isGenerating}
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className="h-4 w-4" aria-hidden="true" />
               Change
             </Button>
             <Button
@@ -174,14 +204,25 @@ export function ImageUpload({
               onClick={handleRemove}
               disabled={isGenerating}
             >
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4" aria-hidden="true" />
               Remove
             </Button>
           </div>
         </div>
       ) : (
         <div
+          // The copy promises "Click to upload", so the whole dashed area now
+          // opens the picker. It is marked presentational rather than given
+          // role="button" because it contains real buttons, and nesting
+          // interactive content inside a widget role is invalid; keyboard
+          // users reach the same action through "Select Image" below, which is
+          // focusable and activates the same handler.
+          role="presentation"
+          aria-busy={isBusy || undefined}
+          onClick={isBusy ? undefined : openFilePicker}
           className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-all ${
+            isBusy ? "" : "cursor-pointer"
+          } ${
             dragActive
               ? "border-primary bg-primary/5"
               : "border-border hover:border-primary/50 hover:bg-muted/50"
@@ -191,7 +232,7 @@ export function ImageUpload({
           onDragOver={handleDrag}
           onDrop={handleDrop}
         >
-          {isUploading || isGenerating ? (
+          {isBusy ? (
             <div className="flex flex-col items-center gap-3">
               <Spinner size="lg" />
               <p className="text-sm text-muted-foreground">
@@ -201,23 +242,28 @@ export function ImageUpload({
           ) : (
             <>
               <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                <ImagePlus className="h-7 w-7 text-primary" />
+                <ImagePlus className="h-7 w-7 text-primary" aria-hidden="true" />
               </div>
               <p className="mb-1 text-sm text-foreground">
                 <span className="font-medium">Click to upload</span> or drag and
                 drop
               </p>
               <p className="text-xs text-muted-foreground">
-                PNG, JPG, WebP, GIF or HEIC (max. 5MB)
+                PNG, JPG, WebP, GIF or HEIC (max. {formatBytes(MAX_UPLOAD_BYTES)})
               </p>
               <div className="mt-4 flex gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => inputRef.current?.click()}
+                  onClick={(e) => {
+                    // The whole dropzone is clickable; don't let the click
+                    // bubble and open the picker twice.
+                    e.stopPropagation();
+                    openFilePicker();
+                  }}
                 >
-                  <Upload className="h-4 w-4" />
+                  <Upload className="h-4 w-4" aria-hidden="true" />
                   Select Image
                 </Button>
                 {canGenerateAI && (
@@ -225,10 +271,13 @@ export function ImageUpload({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={handleGenerateAI}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGenerateAI();
+                    }}
                     className="gap-1"
                   >
-                    <Sparkles className="h-4 w-4" />
+                    <Sparkles className="h-4 w-4" aria-hidden="true" />
                     Generate with AI
                   </Button>
                 )}
@@ -244,9 +293,14 @@ export function ImageUpload({
         accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.HEIC,.heif,.HEIF"
         onChange={handleChange}
         className="hidden"
+        tabIndex={-1}
       />
 
-      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

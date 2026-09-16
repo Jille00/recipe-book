@@ -30,24 +30,34 @@ export function RatingDisplay({
   showCount = true,
   className,
 }: RatingDisplayProps) {
-  const fullStars = Math.floor(averageRating);
-  const hasHalfStar = averageRating - fullStars >= 0.5;
-  const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+  // Bad data (or a future rating scale) must not be able to crash the card:
+  // an out-of-range average used to make `emptyStars` negative, and
+  // `[...Array(-1)]` throws a RangeError.
+  const safeAverage = Number.isFinite(averageRating)
+    ? Math.min(5, Math.max(0, averageRating))
+    : 0;
+  const fullStars = Math.floor(safeAverage);
+  const hasHalfStar = safeAverage - fullStars >= 0.5;
+  const emptyStars = Math.max(0, 5 - fullStars - (hasHalfStar ? 1 : 0));
 
   if (totalRatings === 0) {
     return (
       <div className={cn("flex items-center gap-1", className)}>
-        <div className="flex">
+        <div className="flex" role="img" aria-label="Not yet rated">
           {[...Array(5)].map((_, i) => (
             <Star
               key={i}
+              aria-hidden="true"
               className={cn(sizeClasses[size], "text-sand")}
               fill="none"
             />
           ))}
         </div>
         {showCount && (
-          <span className={cn("text-muted-foreground", textSizeClasses[size])}>
+          <span
+            aria-hidden="true"
+            className={cn("text-muted-foreground", textSizeClasses[size])}
+          >
             No ratings
           </span>
         )}
@@ -57,17 +67,27 @@ export function RatingDisplay({
 
   return (
     <div className={cn("flex items-center gap-1", className)}>
-      <div className="flex">
+      <div
+        className="flex"
+        // With showCount={false} the numeric rating is the only visible cue
+        // and the star row carries no text at all, so name it explicitly.
+        role="img"
+        aria-label={`Rated ${safeAverage.toFixed(1)} out of 5 from ${totalRatings} rating${
+          totalRatings !== 1 ? "s" : ""
+        }`}
+      >
         {/* Full stars */}
         {[...Array(fullStars)].map((_, i) => (
           <Star
             key={`full-${i}`}
+            aria-hidden="true"
             className={cn(sizeClasses[size], "text-amber fill-amber")}
           />
         ))}
         {/* Half star - we'll render as full for simplicity */}
         {hasHalfStar && (
           <Star
+            aria-hidden="true"
             className={cn(sizeClasses[size], "text-amber fill-amber/50")}
           />
         )}
@@ -75,16 +95,23 @@ export function RatingDisplay({
         {[...Array(emptyStars)].map((_, i) => (
           <Star
             key={`empty-${i}`}
+            aria-hidden="true"
             className={cn(sizeClasses[size], "text-sand")}
             fill="none"
           />
         ))}
       </div>
-      <span className={cn("font-medium text-foreground", textSizeClasses[size])}>
-        {averageRating.toFixed(1)}
+      <span
+        aria-hidden="true"
+        className={cn("font-medium text-foreground", textSizeClasses[size])}
+      >
+        {safeAverage.toFixed(1)}
       </span>
       {showCount && (
-        <span className={cn("text-muted-foreground", textSizeClasses[size])}>
+        <span
+          aria-hidden="true"
+          className={cn("text-muted-foreground", textSizeClasses[size])}
+        >
           ({totalRatings})
         </span>
       )}

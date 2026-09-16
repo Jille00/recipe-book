@@ -1,4 +1,4 @@
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, or, desc, sql } from "drizzle-orm";
 import { db, favorite, recipe, user } from "@/lib/db";
 import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
 import type { NutritionInfo } from "@/types/nutrition";
@@ -29,7 +29,14 @@ export async function getUserFavorites(userId: string) {
     .from(favorite)
     .innerJoin(recipe, eq(favorite.recipeId, recipe.id))
     .leftJoin(user, eq(recipe.userId, user.id))
-    .where(eq(favorite.userId, userId))
+    .where(
+      and(
+        eq(favorite.userId, userId),
+        // Only surface recipes the user is still allowed to see: a recipe that
+        // was public when favorited must not stay readable after it goes private.
+        or(eq(recipe.isPublic, true), eq(recipe.userId, userId))
+      )
+    )
     .orderBy(desc(favorite.createdAt));
 
   return favorites.map((r) => ({
@@ -38,10 +45,20 @@ export async function getUserFavorites(userId: string) {
     instructions: r.instructions as Instruction[],
     difficulty: r.difficulty as Difficulty | null,
     nutrition: r.nutrition as NutritionInfo | null,
+    // Never hand another user's share token to a viewer.
+    shareToken: r.userId === userId ? r.shareToken : null,
     isFavorited: true,
   }));
 }
 
+/**
+ * Adds a favorite. Callers MUST have verified that the user is allowed to see
+ * the recipe first (public or their own).
+ *
+ * Returns false only when the recipe no longer exists (foreign key violation);
+ * any other database error is rethrown instead of being swallowed as a
+ * generic failure.
+ */
 export async function addFavorite(
   userId: string,
   recipeId: string
@@ -52,8 +69,12 @@ export async function addFavorite(
       .values({ userId, recipeId })
       .onConflictDoNothing();
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    // 23503 = foreign_key_violation -> recipe was deleted in the meantime
+    if ((error as { code?: string } | null)?.code === "23503") {
+      return false;
+    }
+    throw error;
   }
 }
 

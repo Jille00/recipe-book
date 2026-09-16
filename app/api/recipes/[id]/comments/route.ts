@@ -4,8 +4,17 @@ import {
   getRecipeComments,
   createComment,
   getCommentCount,
+  MAX_COMMENT_LENGTH,
 } from "@/lib/db/queries/comments";
 import { getRecipeById } from "@/lib/db/queries/recipes";
+import {
+  canReadRecipe,
+  invalidIdResponse,
+  isUuid,
+  parsePaginationParam,
+} from "@/lib/api-utils";
+
+const MAX_COMMENT_PAGE_SIZE = 100;
 
 export async function GET(
   request: NextRequest,
@@ -13,9 +22,39 @@ export async function GET(
 ) {
   try {
     const { id: recipeId } = await params;
+
+    if (!isUuid(recipeId)) {
+      return invalidIdResponse("recipe");
+    }
+
+    const session = await auth.api.getSession({ headers: request.headers });
+
+    // Comments inherit the visibility of their recipe: private recipes must
+    // not expose commenter names/avatars to anyone but the owner.
+    const recipe = await getRecipeById(recipeId);
+    if (!recipe) {
+      return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
+    }
+
+    // A share link is the only proof a non-owner holds for a private recipe,
+    // and the page itself is rendered from it, so accept it here too.
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get("limit") || "10", 10);
-    const offset = parseInt(searchParams.get("offset") || "0", 10);
+    const presentedToken = searchParams.get("shareToken");
+
+    if (!canReadRecipe(recipe, session?.user?.id, presentedToken)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const limit = parsePaginationParam(searchParams.get("limit"), {
+      fallback: 10,
+      min: 1,
+      max: MAX_COMMENT_PAGE_SIZE,
+    });
+    const offset = parsePaginationParam(searchParams.get("offset"), {
+      fallback: 0,
+      min: 0,
+      max: 100_000,
+    });
 
     const result = await getRecipeComments(recipeId, { limit, offset });
 
@@ -35,6 +74,11 @@ export async function POST(
 ) {
   try {
     const { id: recipeId } = await params;
+
+    if (!isUuid(recipeId)) {
+      return invalidIdResponse("recipe");
+    }
+
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
@@ -58,9 +102,16 @@ export async function POST(
     const body = await request.json();
     const { content } = body;
 
-    if (!content || typeof content !== "string") {
+    if (!content || typeof content !== "string" || content.trim().length === 0) {
       return NextResponse.json(
         { error: "Comment content is required" },
+        { status: 400 }
+      );
+    }
+
+    if (content.trim().length > MAX_COMMENT_LENGTH) {
+      return NextResponse.json(
+        { error: `Comment must be ${MAX_COMMENT_LENGTH} characters or less` },
         { status: 400 }
       );
     }
@@ -75,8 +126,9 @@ export async function POST(
     });
   } catch (error) {
     console.error("Error creating comment:", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to create comment";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to create comment" },
+      { status: 500 }
+    );
   }
 }

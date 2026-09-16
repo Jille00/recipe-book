@@ -1,12 +1,14 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 import { Skeleton } from "@/components/ui";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Reset Password",
   description: "Choose a new password for your Kookboek account",
+  robots: { index: false, follow: false },
 };
 
 export default function ResetPasswordPage() {
@@ -18,10 +20,10 @@ export default function ResetPasswordPage() {
           <div className="mb-8">
             <Link href="/" className="inline-block">
               <Image
-                src="/logo.svg"
+                src="/logo.png"
                 alt="Kookboek"
-                width={120}
-                height={48}
+                width={96}
+                height={96}
                 className="h-12 w-auto"
               />
             </Link>

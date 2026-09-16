@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -7,9 +8,10 @@ import { Button, Card, CardContent } from "@/components/ui";
 import { RecipeCard } from "@/components/recipe/recipe-card";
 import { Plus, ChefHat } from "lucide-react";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "My Recipes",
   description: "View and manage your recipe collection",
+  robots: { index: false, follow: false },
 };
 
 export default async function RecipesPage() {

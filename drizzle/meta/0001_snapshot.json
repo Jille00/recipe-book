@@ -1,6 +1,6 @@
 {
-  "id": "8941322f-b07c-4b86-8dda-d0e57345d53f",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "df2d1cce-eeff-43b4-88a5-c27a2bea24e6",
+  "prevId": "8941322f-b07c-4b86-8dda-d0e57345d53f",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -248,7 +248,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "comment_content_length": {
+          "name": "comment_content_length",
+          "value": "char_length(\"comment\".\"content\") <= 1000"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.favorite": {
@@ -545,7 +550,12 @@
         }
       },
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "rating_value_range": {
+          "name": "rating_value_range",
+          "value": "\"rating\".\"value\" between 1 and 5"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.recipe": {
@@ -682,6 +692,21 @@
           "columns": [
             {
               "expression": "is_public",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_recipe_slug": {
+          "name": "idx_recipe_slug",
+          "columns": [
+            {
+              "expression": "slug",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

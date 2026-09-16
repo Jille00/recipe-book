@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { addFavorite, removeFavorite, isFavorited } from "@/lib/db/queries/favorites";
+import { getRecipeById } from "@/lib/db/queries/recipes";
+import { invalidIdResponse, isUuid } from "@/lib/api-utils";
 
 export async function GET(
   request: NextRequest,
@@ -8,6 +10,11 @@ export async function GET(
 ) {
   try {
     const { recipeId } = await params;
+
+    if (!isUuid(recipeId)) {
+      return invalidIdResponse("recipe");
+    }
+
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
@@ -31,19 +38,35 @@ export async function POST(
 ) {
   try {
     const { recipeId } = await params;
+
+    if (!isUuid(recipeId)) {
+      return invalidIdResponse("recipe");
+    }
+
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Only recipes the user is allowed to see may be favorited - otherwise a
+    // favorite grants permanent read access to a private recipe.
+    const recipe = await getRecipeById(recipeId);
+    if (!recipe) {
+      return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
+    }
+
+    if (!recipe.isPublic && recipe.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Cannot favorite private recipes" },
+        { status: 403 }
+      );
+    }
+
     const success = await addFavorite(session.user.id, recipeId);
 
     if (!success) {
-      return NextResponse.json(
-        { error: "Failed to add favorite" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
     }
 
     return NextResponse.json({ success: true, isFavorited: true });
@@ -62,6 +85,11 @@ export async function DELETE(
 ) {
   try {
     const { recipeId } = await params;
+
+    if (!isUuid(recipeId)) {
+      return invalidIdResponse("recipe");
+    }
+
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {

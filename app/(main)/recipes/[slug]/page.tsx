@@ -1,4 +1,6 @@
-import { notFound } from "next/navigation";
+import { cache } from "react";
+import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { getRecipeBySlug } from "@/lib/db/queries/recipes";
@@ -11,37 +13,73 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
-export async function generateMetadata({ params }: Props) {
-  const { slug } = await params;
+// generateMetadata and the page render in the same request; Next only dedupes
+// `fetch`, not Drizzle calls, so cache the reads ourselves.
+const getSession = cache(async () => {
   const headersList = await headers();
-  const session = await auth.api.getSession({ headers: headersList });
+  return auth.api.getSession({ headers: headersList });
+});
+
+const getRecipe = cache(async (userId: string, slug: string) =>
+  getRecipeBySlug(userId, slug)
+);
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const session = await getSession();
+
+  // Personal recipe pages are never indexable.
+  const privateRobots = { index: false, follow: false };
 
   if (!session?.user) {
-    return { title: "Recipe" };
+    return { title: "Recipe", robots: privateRobots };
   }
 
-  const recipe = await getRecipeBySlug(session.user.id, slug);
+  const recipe = await getRecipe(session.user.id, slug);
 
   if (!recipe) {
-    return { title: "Recipe Not Found" };
+    return { title: "Recipe Not Found", robots: privateRobots };
   }
+
+  const description = recipe.description || `A delicious ${recipe.title} recipe`;
 
   return {
     title: recipe.title,
-    description: recipe.description || `A delicious ${recipe.title} recipe`,
+    description,
+    robots: privateRobots,
+    // A public recipe lives at /r/{slug} too; point search engines there so the
+    // same recipe is not split across two URLs.
+    alternates: recipe.isPublic ? { canonical: `/r/${recipe.slug}` } : undefined,
+    openGraph: {
+      type: "article",
+      url: `/r/${recipe.slug}`,
+      siteName: "Kookboek",
+      title: `${recipe.title} | Kookboek`,
+      description,
+      images: recipe.imageUrl ? [{ url: recipe.imageUrl }] : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${recipe.title} | Kookboek`,
+      description,
+      images: recipe.imageUrl ? [recipe.imageUrl] : [],
+    },
   };
 }
 
 export default async function RecipePage({ params }: Props) {
   const { slug } = await params;
-  const headersList = await headers();
-  const session = await auth.api.getSession({ headers: headersList });
+  const session = await getSession();
 
   if (!session?.user) {
-    notFound();
+    // Match every other protected page: prompt to sign in (and come back here)
+    // rather than claiming the recipe does not exist.
+    redirect(
+      `/login?callbackUrl=${encodeURIComponent(`/recipes/${slug}`)}`
+    );
   }
 
-  const recipe = await getRecipeBySlug(session.user.id, slug);
+  const recipe = await getRecipe(session.user.id, slug);
 
   if (!recipe) {
     notFound();

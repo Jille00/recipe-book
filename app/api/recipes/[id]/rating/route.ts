@@ -7,6 +7,7 @@ import {
   deleteRating,
 } from "@/lib/db/queries/ratings";
 import { getRecipeById } from "@/lib/db/queries/recipes";
+import { canReadRecipe, invalidIdResponse, isUuid } from "@/lib/api-utils";
 
 export async function GET(
   request: NextRequest,
@@ -14,7 +15,25 @@ export async function GET(
 ) {
   try {
     const { id: recipeId } = await params;
+
+    if (!isUuid(recipeId)) {
+      return invalidIdResponse("recipe");
+    }
+
     const session = await auth.api.getSession({ headers: request.headers });
+
+    // Ratings are only visible for recipes the caller may see - otherwise this
+    // endpoint confirms the existence of private recipes.
+    const recipe = await getRecipeById(recipeId);
+    if (!recipe) {
+      return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
+    }
+
+    const presentedToken = new URL(request.url).searchParams.get("shareToken");
+
+    if (!canReadRecipe(recipe, session?.user?.id, presentedToken)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     // Get rating stats (public)
     const stats = await getRecipeRatingStats(recipeId);
@@ -44,6 +63,11 @@ export async function POST(
 ) {
   try {
     const { id: recipeId } = await params;
+
+    if (!isUuid(recipeId)) {
+      return invalidIdResponse("recipe");
+    }
+
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
@@ -97,6 +121,11 @@ export async function DELETE(
 ) {
   try {
     const { id: recipeId } = await params;
+
+    if (!isUuid(recipeId)) {
+      return invalidIdResponse("recipe");
+    }
+
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {

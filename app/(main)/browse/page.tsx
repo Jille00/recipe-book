@@ -6,27 +6,89 @@ import { BrowseFilters } from "@/components/browse/browse-filters";
 import { getAllTags } from "@/lib/db/queries/tags";
 import { getPublicRecipes, type SearchFilters } from "@/lib/db/queries/search";
 import { auth } from "@/lib/auth";
+import { parsePaginationParam } from "@/lib/api-utils";
+import { SITE_OG_IMAGE } from "../../site-url";
 import type { Metadata } from "next";
 import type { RecipeWithDetails } from "@/types/recipe";
 
-export const metadata: Metadata = {
-  title: "Browse Recipes",
-  description: "Browse and search through our collection of delicious recipes",
-};
-
 const PAGE_SIZE = 12;
+const MAX_PAGE = 1000;
+
+const BROWSE_DESCRIPTION =
+  "Browse and search through our collection of delicious recipes";
+
+interface BrowseSearchParams {
+  q?: string;
+  tags?: string | string[];
+  difficulty?: string;
+  prepTime?: string;
+  cookTime?: string;
+  minServings?: string;
+  maxServings?: string;
+  page?: string;
+}
 
 interface Props {
-  searchParams: Promise<{
-    q?: string;
-    tags?: string | string[];
-    difficulty?: string;
-    prepTime?: string;
-    cookTime?: string;
-    minServings?: string;
-    maxServings?: string;
-    page?: string;
-  }>;
+  searchParams: Promise<BrowseSearchParams>;
+}
+
+function parsePage(raw: string | undefined): number {
+  return parsePaginationParam(raw ?? null, {
+    fallback: 1,
+    min: 1,
+    max: MAX_PAGE,
+  });
+}
+
+function hasActiveFilters(params: BrowseSearchParams): boolean {
+  return Boolean(
+    params.q ||
+      params.tags ||
+      params.difficulty ||
+      params.prepTime ||
+      params.cookTime ||
+      params.minServings ||
+      params.maxServings
+  );
+}
+
+export async function generateMetadata({
+  searchParams,
+}: Props): Promise<Metadata> {
+  const params = await searchParams;
+  const page = parsePage(params.page);
+  const filtered = hasActiveFilters(params);
+
+  const title = params.q
+    ? `Search: ${params.q}`
+    : page > 1
+      ? `Browse Recipes - Page ${page}`
+      : "Browse Recipes";
+
+  // Filter permutations are endless; only the plain (and paginated) listing is
+  // worth indexing, and each page canonicalises to its own URL.
+  const canonical = page > 1 ? `/browse?page=${page}` : "/browse";
+
+  return {
+    title,
+    description: BROWSE_DESCRIPTION,
+    alternates: { canonical },
+    robots: filtered ? { index: false, follow: true } : undefined,
+    openGraph: {
+      type: "website",
+      url: canonical,
+      title: `${title} | Kookboek`,
+      description: BROWSE_DESCRIPTION,
+      siteName: "Kookboek",
+      images: [SITE_OG_IMAGE],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} | Kookboek`,
+      description: BROWSE_DESCRIPTION,
+      images: [SITE_OG_IMAGE.url],
+    },
+  };
 }
 
 export default async function BrowsePage({ searchParams }: Props) {
@@ -34,9 +96,8 @@ export default async function BrowsePage({ searchParams }: Props) {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
 
-  // Parse search params
-  const currentPage = Math.max(1, parseInt(params.page || "1", 10));
-  const offset = (currentPage - 1) * PAGE_SIZE;
+  // Parse search params ("?page=abc" and "?page=-3" both fall back to 1)
+  const requestedPage = parsePage(params.page);
 
   // Build filters
   const filters: SearchFilters = {};
@@ -82,12 +143,33 @@ export default async function BrowsePage({ searchParams }: Props) {
   }
 
   // Fetch tags and recipes in parallel
-  const [tags, { recipes, total }] = await Promise.all([
+  const [tags, firstResult] = await Promise.all([
     getAllTags(),
-    getPublicRecipes(filters, PAGE_SIZE, offset, session?.user?.id),
+    getPublicRecipes(
+      filters,
+      PAGE_SIZE,
+      (requestedPage - 1) * PAGE_SIZE,
+      session?.user?.id
+    ),
   ]);
 
-  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const { total } = firstResult;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // "?page=9999" would otherwise render an empty list next to a non-zero
+  // result count; clamp to the last page that actually has results.
+  const currentPage = Math.min(requestedPage, totalPages);
+  const recipes =
+    currentPage === requestedPage
+      ? firstResult.recipes
+      : (
+          await getPublicRecipes(
+            filters,
+            PAGE_SIZE,
+            (currentPage - 1) * PAGE_SIZE,
+            session?.user?.id
+          )
+        ).recipes;
 
   // Convert search params to record for pagination
   const searchParamsRecord: Record<string, string | string[] | undefined> = {

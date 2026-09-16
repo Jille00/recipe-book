@@ -1,5 +1,5 @@
-import { eq, and, sql, avg } from "drizzle-orm";
-import { db, rating, user } from "@/lib/db";
+import { eq, and, sql } from "drizzle-orm";
+import { db, rating } from "@/lib/db";
 
 export interface RatingStats {
   averageRating: number;
@@ -50,37 +50,6 @@ export async function getRecipeRatingStats(
     averageRating: Number(result[0]?.averageRating) || 0,
     totalRatings: result[0]?.totalRatings || 0,
   };
-}
-
-/**
- * Get rating stats for multiple recipes (for recipe cards)
- */
-export async function getRecipesRatingStats(
-  recipeIds: string[]
-): Promise<Map<string, RatingStats>> {
-  if (recipeIds.length === 0) {
-    return new Map();
-  }
-
-  const results = await db
-    .select({
-      recipeId: rating.recipeId,
-      averageRating: sql<number>`coalesce(avg(${rating.value})::numeric(3,2), 0)`,
-      totalRatings: sql<number>`count(*)::int`,
-    })
-    .from(rating)
-    .where(sql`${rating.recipeId} IN ${recipeIds}`)
-    .groupBy(rating.recipeId);
-
-  const statsMap = new Map<string, RatingStats>();
-  for (const row of results) {
-    statsMap.set(row.recipeId, {
-      averageRating: Number(row.averageRating) || 0,
-      totalRatings: row.totalRatings || 0,
-    });
-  }
-
-  return statsMap;
 }
 
 /**

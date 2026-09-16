@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Button, Card, CardContent } from "@/components/ui";
@@ -7,9 +8,10 @@ import { auth } from "@/lib/auth";
 import { getUserFavorites } from "@/lib/db/queries/favorites";
 import { RecipeCard } from "@/components/recipe/recipe-card";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Favorites",
   description: "View your favorite recipes",
+  robots: { index: false, follow: false },
 };
 
 export default async function FavoritesPage() {
@@ -56,14 +58,20 @@ export default async function FavoritesPage() {
         </Card>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {favorites.map((recipe) => (
-            <RecipeCard
-              key={recipe.id}
-              recipe={recipe}
-              showAuthor={recipe.userId !== session.user.id}
-              initialFavorited={true}
-            />
-          ))}
+          {favorites.map((recipe) => {
+            // /recipes/{slug} only resolves recipes the current user owns, so
+            // favorites belonging to someone else must use the public route.
+            const isOwnRecipe = recipe.userId === session.user.id;
+            return (
+              <RecipeCard
+                key={recipe.id}
+                recipe={recipe}
+                href={isOwnRecipe ? undefined : `/r/${recipe.slug}`}
+                showAuthor={!isOwnRecipe}
+                initialFavorited={true}
+              />
+            );
+          })}
         </div>
       )}
     </div>

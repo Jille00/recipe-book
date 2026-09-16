@@ -1,7 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { generateText } from "ai";
+import { z } from "zod";
 import { getStorageClient } from "@/lib/supabase/storage";
+import { enforceRateLimit } from "@/lib/rate-limit";
+
+// Runtime validation of the request body: `instructions.map(...)` used to throw
+// a TypeError (surfacing as a 500) when the field was missing or not an array.
+const requestSchema = z.object({
+  title: z.string().min(1, "Recipe title is required").max(200),
+  description: z.string().max(1000).optional().nullable(),
+  ingredients: z
+    .array(z.object({ text: z.string().max(500) }))
+    .max(100)
+    .optional()
+    .default([]),
+  instructions: z
+    .array(z.object({ text: z.string().max(2000) }))
+    .max(100)
+    .optional()
+    .default([]),
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,26 +30,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { title, description, ingredients, instructions } = body;
+    const limited = enforceRateLimit("ai:generate-recipe-image", session.user.id);
+    if (limited) return limited;
 
-    if (!title) {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+
+    const parsed = requestSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Recipe title is required" },
+        { error: parsed.error.issues[0].message },
         { status: 400 }
       );
     }
 
+    const { title, description, ingredients, instructions } = parsed.data;
+
     // Build a descriptive prompt for the image generation
     const ingredientList = ingredients
-      ?.slice(0, 8)
-      .map((i: { text: string }) => i.text)
+      .slice(0, 8)
+      .map((i) => i.text)
       .join(", ");
 
     // Extract visual cues from instructions (garnishes, presentation, cooking style)
-    const instructionHints = instructions
-      .map((i: { text: string }) => i.text)
-      .join(" ")
+    const instructionHints = instructions.map((i) => i.text).join(" ");
 
     const prompt = `A beautiful, appetizing food photography shot of "${title}". ${description ? description + ". " : ""
       }${ingredientList ? `Made with ${ingredientList}. ` : ""}${instructionHints ? `Cooking style: ${instructionHints}. ` : ""

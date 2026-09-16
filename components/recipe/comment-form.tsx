@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Button, Textarea } from "@/components/ui";
+import { useId, useState } from "react";
+import { Button, Label, Textarea } from "@/components/ui";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
 import type { CommentWithUser } from "@/lib/db/queries/comments";
@@ -61,18 +61,37 @@ export function CommentForm({ recipeId, onCommentAdded }: CommentFormProps) {
   const charactersRemaining = 1000 - content.length;
   const isOverLimit = charactersRemaining < 0;
 
+  const fieldId = useId();
+  const textareaId = `${fieldId}-comment`;
+  const counterId = `${fieldId}-counter`;
+
+  // Only speak once the count starts to matter, so typing is not narrated
+  // character by character - but going over the limit is always announced.
+  const counterAnnouncement = isOverLimit
+    ? `Comment is ${Math.abs(charactersRemaining)} characters over the 1000 character limit`
+    : charactersRemaining <= 100
+    ? `${charactersRemaining} characters remaining`
+    : "";
+
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
+      <Label htmlFor={textareaId} className="sr-only">
+        Your comment
+      </Label>
       <Textarea
+        id={textareaId}
         placeholder="Share your thoughts about this recipe..."
         value={content}
         onChange={(e) => setContent(e.target.value)}
         rows={3}
         className="resize-none"
         disabled={isSubmitting}
+        aria-describedby={counterId}
+        aria-invalid={isOverLimit || undefined}
       />
       <div className="flex items-center justify-between">
         <span
+          id={counterId}
           className={`text-xs ${
             isOverLimit
               ? "text-destructive"
@@ -82,6 +101,9 @@ export function CommentForm({ recipeId, onCommentAdded }: CommentFormProps) {
           }`}
         >
           {charactersRemaining} characters remaining
+        </span>
+        <span role="status" aria-live="polite" className="sr-only">
+          {counterAnnouncement}
         </span>
         <Button
           type="submit"

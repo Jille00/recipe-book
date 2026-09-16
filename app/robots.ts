@@ -1,6 +1,5 @@
 import { MetadataRoute } from "next";
-
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.kookboek.app";
+import { SITE_URL } from "./site-url";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -14,10 +13,13 @@ export default function robots(): MetadataRoute.Robots {
           "/favorites",
           "/profile",
           "/settings",
+          // Password reset links can leak into referrers; keep crawlers out.
+          "/forgot-password",
+          "/reset-password",
           "/api/",
         ],
       },
     ],
-    sitemap: `${siteUrl}/sitemap.xml`,
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

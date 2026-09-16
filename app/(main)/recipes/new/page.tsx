@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -6,9 +7,10 @@ import { RecipeForm } from "@/components/recipe/recipe-form";
 import { getAllTags } from "@/lib/db/queries/tags";
 import { ArrowLeft } from "lucide-react";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Create Recipe",
   description: "Add a new recipe to your collection",
+  robots: { index: false, follow: false },
 };
 
 export default async function NewRecipePage() {

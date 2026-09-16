@@ -1,16 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  Button,
-  Input,
-  Label,
-} from "@/components/ui";
+import { useState } from "react";
+import { Button, Input, Label } from "@/components/ui";
 import {
   Apple,
   Beef,
@@ -44,6 +35,35 @@ const NUTRIENT_CONFIG = [
   { key: "sugar", label: "Sugar", unit: "g", icon: Cookie, color: "text-pink-500" },
 ] as const;
 
+type NutrientKey = (typeof NUTRIENT_CONFIG)[number]["key"];
+
+/**
+ * The editable fields are kept as raw strings while editing. Round-tripping
+ * through `parseFloat` stripped a trailing decimal point, so typing "12.5"
+ * lost the "." on the keystroke after it and produced "125".
+ */
+function toDrafts(nutrition: NutritionInfo | null): Record<NutrientKey, string> {
+  const drafts = {} as Record<NutrientKey, string>;
+  for (const { key } of NUTRIENT_CONFIG) {
+    const value = nutrition?.[key];
+    drafts[key] = value === null || value === undefined ? "" : String(value);
+  }
+  return drafts;
+}
+
+function fromDrafts(
+  base: NutritionInfo,
+  drafts: Record<NutrientKey, string>
+): NutritionInfo {
+  const next: NutritionInfo = { ...base };
+  for (const { key } of NUTRIENT_CONFIG) {
+    const raw = drafts[key].trim();
+    const parsed = raw === "" ? NaN : Number(raw);
+    next[key] = Number.isFinite(parsed) ? parsed : null;
+  }
+  return next;
+}
+
 function getConfidenceBadgeStyles(confidence: "high" | "medium" | "low") {
   switch (confidence) {
     case "high":
@@ -64,36 +84,32 @@ export function NutritionDisplay({
   onStartEdit,
   onCancelEdit,
 }: NutritionDisplayProps) {
-  const [editValues, setEditValues] = useState<NutritionInfo | null>(nutrition);
-
-  // Sync editValues when nutrition prop changes
-  useEffect(() => {
-    setEditValues(nutrition);
-  }, [nutrition]);
+  const [drafts, setDrafts] = useState<Record<NutrientKey, string>>(() =>
+    toDrafts(nutrition)
+  );
+  // Reset the drafts when the nutrition prop changes (React's "adjust state
+  // during render" pattern - no effect, no extra render pass).
+  const [lastNutrition, setLastNutrition] = useState(nutrition);
+  if (lastNutrition !== nutrition) {
+    setLastNutrition(nutrition);
+    setDrafts(toDrafts(nutrition));
+  }
 
   const handleSave = () => {
-    if (editValues && onEdit) {
-      onEdit(editValues);
+    if (nutrition && onEdit) {
+      onEdit(fromDrafts(nutrition, drafts));
     }
   };
 
-  const handleInputChange = (key: keyof NutritionInfo, value: string) => {
-    if (!editValues) return;
-
-    if (key === "confidence" || key === "warnings") return;
-
-    const numValue = value === "" ? null : parseFloat(value);
-    setEditValues({
-      ...editValues,
-      [key]: numValue,
-    });
+  const handleInputChange = (key: NutrientKey, value: string) => {
+    setDrafts((prev) => ({ ...prev, [key]: value }));
   };
 
   if (!nutrition) {
     return null;
   }
 
-  if (isEditing && editValues) {
+  if (isEditing) {
     return (
       <div className="space-y-4">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -107,7 +123,7 @@ export function NutritionDisplay({
                 type="number"
                 min="0"
                 step={key === "calories" ? "1" : "0.1"}
-                value={editValues[key] ?? ""}
+                value={drafts[key] ?? ""}
                 onChange={(e) => handleInputChange(key, e.target.value)}
                 className="h-9"
               />

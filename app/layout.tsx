@@ -4,11 +4,10 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { Toaster } from "@/components/ui";
 import { UnitPreferencesProvider } from "@/contexts/unit-preferences-context";
-
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.kookboek.app";
+import { SITE_OG_IMAGE, SITE_URL } from "./site-url";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Kookboek - Your Personal Cookbook",
     template: "%s | Kookboek",
@@ -26,22 +25,17 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Kookboek" }],
   creator: "Kookboek",
+  // Site-wide fallback only. Next.js replaces the whole `openGraph` object
+  // when a route declares its own, so every page sets its own title and url.
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: siteUrl,
+    url: SITE_URL,
     siteName: "Kookboek",
     title: "Kookboek - Your Personal Cookbook",
     description:
       "Create, organize, and share your favorite recipes with friends and family.",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Kookboek - Your Personal Cookbook",
-      },
-    ],
+    images: [SITE_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",

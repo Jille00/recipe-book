@@ -1,10 +1,12 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import Image from "next/image";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Forgot Password",
   description: "Reset the password for your Kookboek account",
+  robots: { index: false, follow: false },
 };
 
 export default function ForgotPasswordPage() {
@@ -16,10 +18,10 @@ export default function ForgotPasswordPage() {
           <div className="mb-8">
             <Link href="/" className="inline-block">
               <Image
-                src="/logo.svg"
+                src="/logo.png"
                 alt="Kookboek"
-                width={120}
-                height={48}
+                width={96}
+                height={96}
                 className="h-12 w-auto"
               />
             </Link>

@@ -3,10 +3,16 @@ import { auth } from "@/lib/auth";
 import { generateObject } from "ai";
 import { z } from "zod";
 import convert from "heic-convert";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 const MAX_SIZE_PER_FILE = 10 * 1024 * 1024; // 10MB per file
 const MAX_FILES = 10;
+// All images have to be base64 encoded into a single prompt, so the request
+// peaks at roughly 1.4x the total upload size in memory. Cap the total so a
+// single request cannot exhaust the lambda's heap (an OOM kills the process
+// before the error handler can run).
+const MAX_TOTAL_BYTES = 20 * 1024 * 1024; // 20MB across all images
 
 async function convertHeicToJpeg(buffer: ArrayBuffer): Promise<Buffer> {
   const outputBuffer = await convert({
@@ -106,12 +112,48 @@ Please extract ALL available information following these guidelines:
 
 If any field cannot be determined, omit it rather than guessing.`;
 
+/**
+ * Read a single upload, convert it if needed and base64-encode it. Kept in its
+ * own function so the raw ArrayBuffer / Buffer become unreachable (and
+ * collectable) as soon as it returns.
+ */
+async function encodeImage(
+  file: File,
+  isHeic: boolean
+): Promise<{ base64: string; mimeType: "image/jpeg" | "image/png" | "image/webp" }> {
+  const bytes = await file.arrayBuffer();
+
+  if (isHeic) {
+    const jpegBuffer = await convertHeicToJpeg(bytes);
+    return { base64: jpegBuffer.toString("base64"), mimeType: "image/jpeg" };
+  }
+
+  return {
+    base64: Buffer.from(bytes).toString("base64"),
+    mimeType: file.type as "image/jpeg" | "image/png" | "image/webp",
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const limited = enforceRateLimit("ai:extract-recipe", session.user.id);
+    if (limited) return limited;
+
+    // Reject oversized requests before formData() buffers the whole body.
+    const contentLength = Number(request.headers.get("content-length") ?? 0);
+    if (contentLength > MAX_TOTAL_BYTES) {
+      return NextResponse.json(
+        {
+          error: `Images are too large in total. Maximum is ${MAX_TOTAL_BYTES / (1024 * 1024)}MB across all images`,
+        },
+        { status: 413 }
+      );
     }
 
     const formData = await request.formData();
@@ -145,40 +187,41 @@ export async function POST(request: NextRequest) {
 
       if (file.size > MAX_SIZE_PER_FILE) {
         return NextResponse.json(
-          { error: `File too large: ${file.name}. Maximum size is 10MB per image` },
+          {
+            error: `File too large: ${file.name}. Maximum size is ${MAX_SIZE_PER_FILE / (1024 * 1024)}MB per image`,
+          },
           { status: 400 }
         );
       }
     }
 
+    const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+    if (totalBytes > MAX_TOTAL_BYTES) {
+      return NextResponse.json(
+        {
+          error: `Images are too large in total. Maximum is ${MAX_TOTAL_BYTES / (1024 * 1024)}MB across all images`,
+        },
+        { status: 400 }
+      );
+    }
+
     // Convert all images to base64 and build content array
     const imageContents: Array<{ type: "image"; image: string }> = [];
 
+    // Process one file at a time and drop every intermediate buffer as soon as
+    // it has been encoded, so only the base64 payloads stay resident.
     for (const file of files) {
-      const bytes = await file.arrayBuffer();
-
       // Check if this is a HEIC file and convert it
       const isHeic = file.type === "image/heic" ||
         file.type === "image/heif" ||
         file.name.toLowerCase().endsWith(".heic") ||
         file.name.toLowerCase().endsWith(".heif");
 
-      let base64: string;
-      let mimeType: "image/jpeg" | "image/png" | "image/webp";
-
-      if (isHeic) {
-        // Convert HEIC to JPEG
-        const jpegBuffer = await convertHeicToJpeg(bytes);
-        base64 = jpegBuffer.toString("base64");
-        mimeType = "image/jpeg";
-      } else {
-        base64 = Buffer.from(bytes).toString("base64");
-        mimeType = file.type as "image/jpeg" | "image/png" | "image/webp";
-      }
+      const encoded = await encodeImage(file, isHeic);
 
       imageContents.push({
         type: "image",
-        image: `data:${mimeType};base64,${base64}`,
+        image: `data:${encoded.mimeType};base64,${encoded.base64}`,
       });
     }
 

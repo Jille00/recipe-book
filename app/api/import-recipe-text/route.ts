@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { generateObject } from "ai";
 import { z } from "zod";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const extractedRecipeSchema = z.object({
   recipe: z.object({
@@ -97,6 +98,9 @@ export async function POST(request: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const limited = enforceRateLimit("ai:import-recipe-text", session.user.id);
+    if (limited) return limited;
 
     const body = await request.json();
     const { text } = body;

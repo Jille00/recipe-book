@@ -8,21 +8,24 @@ export default function manifest(): MetadataRoute.Manifest {
       "Create, organize, and share your favorite recipes with friends and family.",
     start_url: "/",
     display: "standalone",
-    background_color: "#ffffff",
-    theme_color: "#16a34a",
+    background_color: "#fffcf8",
+    theme_color: "#c75d3a",
     icons: [
       {
         src: "/icon-192.png",
         sizes: "192x192",
         type: "image/png",
+        purpose: "any",
       },
       {
         src: "/icon-512.png",
         sizes: "512x512",
         type: "image/png",
+        purpose: "any",
       },
       {
-        src: "/icon-512.png",
+        // Separate artwork with the safe-zone padding Android crops into.
+        src: "/icon-maskable-512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",

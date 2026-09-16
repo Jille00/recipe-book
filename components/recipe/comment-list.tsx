@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui";
 import { CommentItem } from "./comment-item";
 import { CommentForm } from "./comment-form";
@@ -14,6 +15,8 @@ interface CommentListProps {
   initialComments?: CommentWithUser[];
   initialTotal?: number;
   isAuthenticated?: boolean;
+  /** Present when the recipe is being viewed through a share link. */
+  shareToken?: string;
 }
 
 export function CommentList({
@@ -23,40 +26,63 @@ export function CommentList({
   initialComments = [],
   initialTotal = 0,
   isAuthenticated = false,
+  shareToken,
 }: CommentListProps) {
   const [comments, setComments] = useState<CommentWithUser[]>(initialComments);
   const [total, setTotal] = useState(initialTotal);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(initialComments.length < initialTotal);
+  // How many comments the *server* has already handed us. Deriving this from
+  // `comments.length` broke as soon as a comment was added (it skipped one) or
+  // deleted (it refetched a rendered comment and duplicated its key).
+  const [serverOffset, setServerOffset] = useState(initialComments.length);
 
   const loadMore = useCallback(async () => {
     if (isLoading || !hasMore) return;
 
     setIsLoading(true);
     try {
-      const res = await fetch(
-        `/api/recipes/${recipeId}/comments?offset=${comments.length}&limit=10`
-      );
+      const query = new URLSearchParams({
+        offset: String(serverOffset),
+        limit: "10",
+      });
+      // Proves read access when a private recipe is open via its share link.
+      if (shareToken) query.set("shareToken", shareToken);
+
+      const res = await fetch(`/api/recipes/${recipeId}/comments?${query}`);
       if (!res.ok) throw new Error("Failed to load comments");
 
       const data = await res.json();
-      setComments((prev) => [...prev, ...data.comments]);
+      const incoming: CommentWithUser[] = data.comments ?? [];
+
+      setComments((prev) => {
+        const seen = new Set(prev.map((c) => c.id));
+        return [...prev, ...incoming.filter((c) => !seen.has(c.id))];
+      });
+      setServerOffset((prev) => prev + incoming.length);
       setHasMore(data.hasMore);
       setTotal(data.total);
     } catch (error) {
       console.error("Error loading comments:", error);
+      toast.error("Could not load more comments. Please try again.");
     } finally {
       setIsLoading(false);
     }
-  }, [recipeId, comments.length, isLoading, hasMore]);
+  }, [recipeId, serverOffset, isLoading, hasMore, shareToken]);
 
   const handleCommentAdded = useCallback((comment: CommentWithUser) => {
     setComments((prev) => [comment, ...prev]);
     setTotal((prev) => prev + 1);
+    // The new comment sits at the top server-side too, pushing every row we
+    // already hold one position further down.
+    setServerOffset((prev) => prev + 1);
   }, []);
 
+  // Only rendered comments can be deleted, so the removed row is always one we
+  // had already fetched: the pagination cursor moves back with it.
   const handleCommentDeleted = useCallback((commentId: string) => {
     setComments((prev) => prev.filter((c) => c.id !== commentId));
+    setServerOffset((prev) => Math.max(0, prev - 1));
     setTotal((prev) => Math.max(0, prev - 1));
   }, []);
 

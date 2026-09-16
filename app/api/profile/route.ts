@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
-import { upsertProfile, updateUserName } from "@/lib/db/queries/profile";
+import {
+  upsertProfile,
+  updateUserName,
+  getProfileByUserId,
+} from "@/lib/db/queries/profile";
 
 // Validation schema for profile updates
 const profileUpdateSchema = z.object({
@@ -73,19 +77,30 @@ export async function PUT(request: Request) {
       );
     }
 
-    const { name, bio, website, location } = validationResult.data;
+    const data = validationResult.data;
+    const { name } = data;
 
     // Update user name if changed
     if (name && name !== session.user.name) {
       await updateUserName(session.user.id, name);
     }
 
-    // Update profile - convert empty strings to null
-    const profile = await upsertProfile(session.user.id, {
-      bio: bio || null,
-      website: website || null,
-      location: location || null,
-    });
+    // Only write the profile fields the caller actually sent - a PUT with just
+    // `name` must not wipe bio/website/location. Empty strings become null.
+    const profileUpdates: {
+      bio?: string | null;
+      website?: string | null;
+      location?: string | null;
+    } = {};
+
+    if ("bio" in data) profileUpdates.bio = data.bio || null;
+    if ("website" in data) profileUpdates.website = data.website || null;
+    if ("location" in data) profileUpdates.location = data.location || null;
+
+    const profile =
+      Object.keys(profileUpdates).length > 0
+        ? await upsertProfile(session.user.id, profileUpdates)
+        : await getProfileByUserId(session.user.id);
 
     return NextResponse.json({ success: true, profile });
   } catch (error) {

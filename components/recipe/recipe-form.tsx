@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { nanoid } from "nanoid";
 import {
@@ -115,12 +115,32 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
   const isEditing = !!initialData?.id;
   const { globalPreference } = useUnitPreferences();
 
-  // Filter units based on user preference
-  const filteredUnitOptions = useMemo(() => {
-    return UNIT_OPTIONS.filter(
-      (unit) => unit.system === "common" || unit.system === globalPreference
-    );
-  }, [globalPreference]);
+  /**
+   * Units offered for one ingredient row: everything matching the user's
+   * global preference, plus the unit this row already uses. Without that
+   * addition, editing a recipe saved in "cup" as a metric user rendered an
+   * empty unit field (no matching SelectItem) and any pick silently rewrote
+   * the stored unit.
+   */
+  const unitOptionsFor = useCallback(
+    (currentUnit?: string) => {
+      const options = UNIT_OPTIONS.filter(
+        (unit) => unit.system === "common" || unit.system === globalPreference
+      );
+
+      const unit = (currentUnit || "").trim();
+      if (!unit || options.some((option) => option.value === unit)) {
+        return options;
+      }
+
+      const known = UNIT_OPTIONS.find((option) => option.value === unit);
+      return [
+        ...options,
+        known ?? { value: unit, label: unit, system: "common" as const },
+      ];
+    },
+    [globalPreference]
+  );
 
   const [title, setTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(
@@ -167,6 +187,16 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const errorRef = useRef<HTMLDivElement>(null);
+
+  // The banner renders at the top of a very long form, so pressing "Create
+  // Recipe" at the bottom used to look like nothing happened. Bring it into
+  // view (and focus it) whenever a new message appears.
+  useEffect(() => {
+    if (!error) return;
+    errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    errorRef.current?.focus({ preventScroll: true });
+  }, [error]);
 
   // Handle import from AI extraction
   const handleImportRecipe = (extracted: ExtractedRecipe) => {
@@ -369,9 +399,15 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {error && (
-        <div className="flex items-center gap-3 rounded-xl bg-destructive/10 border border-destructive/20 p-4 text-destructive animate-in fade-in slide-in-from-top-2 duration-300">
+        <div
+          ref={errorRef}
+          role="alert"
+          aria-live="assertive"
+          tabIndex={-1}
+          className="flex items-center gap-3 rounded-xl bg-destructive/10 border border-destructive/20 p-4 text-destructive animate-in fade-in slide-in-from-top-2 duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
+        >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
-            <AlertCircle className="h-5 w-5" />
+            <AlertCircle className="h-5 w-5" aria-hidden="true" />
           </div>
           <p className="text-sm font-medium">{error}</p>
         </div>
@@ -641,6 +677,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                 </span>
                 <div className="flex-1 grid gap-2 sm:grid-cols-12">
                   <Input
+                    aria-label={`Ingredient ${index + 1} quantity`}
                     placeholder="Qty"
                     value={ingredient.amount || ""}
                     onChange={(e) =>
@@ -658,11 +695,14 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                       )
                     }
                   >
-                    <SelectTrigger className="sm:col-span-4 h-9">
+                    <SelectTrigger
+                      aria-label={`Ingredient ${index + 1} unit`}
+                      className="sm:col-span-4 h-9"
+                    >
                       <SelectValue placeholder="Unit" />
                     </SelectTrigger>
                     <SelectContent>
-                      {filteredUnitOptions.map((unit) => (
+                      {unitOptionsFor(ingredient.unit).map((unit) => (
                         <SelectItem
                           key={unit.value || "none"}
                           value={unit.value || "none"}
@@ -673,6 +713,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                     </SelectContent>
                   </Select>
                   <Input
+                    aria-label={`Ingredient ${index + 1} name`}
                     placeholder="Ingredient (e.g., all-purpose flour, sifted)"
                     value={ingredient.text}
                     onChange={(e) =>
@@ -687,9 +728,13 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                   size="icon-sm"
                   onClick={() => removeIngredient(ingredient.id)}
                   disabled={ingredients.length === 1}
-                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                  aria-label={`Remove ingredient ${index + 1}`}
+                  // Hover-only controls are unreachable on touch devices and
+                  // invisible to keyboard users, so only fade on >= sm and
+                  // always reveal while something in the row has focus.
+                  className="text-muted-foreground hover:text-destructive transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
             ))}
@@ -820,6 +865,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                 </div>
                 <div className="flex-1 pb-4">
                   <Textarea
+                    aria-label={`Step ${index + 1} instructions`}
                     placeholder={`Describe step ${index + 1}...`}
                     value={instruction.text}
                     onChange={(e) =>
@@ -835,9 +881,10 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                   size="icon-sm"
                   onClick={() => removeInstruction(instruction.id)}
                   disabled={instructions.length === 1}
-                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity mt-1"
+                  aria-label={`Remove step ${index + 1}`}
+                  className="text-muted-foreground hover:text-destructive transition-opacity mt-1 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
             ))}

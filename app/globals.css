@@ -284,3 +284,162 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Skip link — visible only while focused (see STYLE_GUIDE 09)
+   ───────────────────────────────────────────────────────────── */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 1100;
+  border-radius: 0.5rem;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.skip-link:focus {
+  left: 1rem;
+  top: 0.75rem;
+}
+
+.skip-link:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--background),
+    0 0 0 4px var(--primary);
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Print — a recipe should come off the printer like a page from
+   a cookbook: title, photo, times, ingredients, instructions.
+   ───────────────────────────────────────────────────────────── */
+@media print {
+  @page {
+    margin: 1.5cm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Paper needs no texture overlay */
+  .grain::before {
+    display: none !important;
+  }
+
+  /* Anything interactive. Site chrome (the sticky header, the footer and
+     their navs) opts out with `print:hidden` -- element selectors would also
+     catch the <header> that wraps a recipe's own title. */
+  .skip-link,
+  button,
+  [role="button"],
+  [role="dialog"],
+  [role="menu"],
+  [data-slot="dropdown-menu-content"],
+  [data-sonner-toaster],
+  form,
+  textarea,
+  select,
+  input {
+    display: none !important;
+  }
+
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+
+  /* Sticky sidebars must not float away on paper */
+  .sticky,
+  .fixed {
+    position: static !important;
+  }
+
+  /* Cards flatten into plain blocks */
+  [data-slot="card"] {
+    background: transparent !important;
+    box-shadow: none !important;
+    border-color: #999 !important;
+    break-inside: avoid;
+  }
+
+  /* Ink-friendly: no filled brand blocks */
+  .bg-primary,
+  .bg-primary\/5,
+  .bg-primary\/10,
+  .bg-secondary\/30,
+  .bg-muted,
+  .bg-card,
+  .bg-background,
+  .glass {
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  li,
+  span,
+  div,
+  a {
+    color: #000 !important;
+  }
+
+  a {
+    text-decoration: none !important;
+  }
+
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Never split an ingredient or an instruction step across pages */
+  li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Step numbers keep their circle as an outline */
+  ol > li > span:first-child {
+    border: 1px solid #000 !important;
+    background: transparent !important;
+  }
+
+  img {
+    max-width: 100% !important;
+    break-inside: avoid;
+  }
+
+  /* Keep the hero photo from eating the first page */
+  .aspect-video {
+    max-height: 9cm !important;
+  }
+}

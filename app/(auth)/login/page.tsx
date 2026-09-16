@@ -1,12 +1,14 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { LoginForm } from "@/components/auth/login-form";
 import { Skeleton } from "@/components/ui";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Log In",
   description: "Sign in to your Kookboek account",
+  alternates: { canonical: "/login" },
 };
 
 export default function LoginPage() {
@@ -18,10 +20,10 @@ export default function LoginPage() {
           <div className="mb-8">
             <Link href="/" className="inline-block">
               <Image
-                src="/logo.svg"
+                src="/logo.png"
                 alt="Kookboek"
-                width={120}
-                height={48}
+                width={96}
+                height={96}
                 className="h-12 w-auto"
               />
             </Link>
@@ -45,7 +47,8 @@ export default function LoginPage() {
         <div className="absolute inset-0 flex items-center justify-center p-12">
           <div className="max-w-lg text-center">
             <p className="font-display text-4xl font-semibold text-foreground/80">
-              "Cooking is like love. It should be entered into with abandon or not at all."
+              &ldquo;Cooking is like love. It should be entered into with abandon or
+              not at all.&rdquo;
             </p>
             <p className="mt-4 text-muted-foreground">— Harriet Van Horne</p>
           </div>

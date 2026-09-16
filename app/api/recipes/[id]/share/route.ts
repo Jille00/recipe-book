@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { generateRecipeShareToken, revokeRecipeShareToken } from "@/lib/db/queries/recipes";
+import { getRequestOrigin, invalidIdResponse, isUuid } from "@/lib/api-utils";
 
 export async function POST(
   request: NextRequest,
@@ -8,6 +9,11 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+
+    if (!isUuid(id)) {
+      return invalidIdResponse("recipe");
+    }
+
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
@@ -23,7 +29,7 @@ export async function POST(
       );
     }
 
-    const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/r/${shareToken}`;
+    const shareUrl = `${getRequestOrigin(request)}/r/${shareToken}`;
     return NextResponse.json({ shareToken, shareUrl });
   } catch (error) {
     console.error("Error generating share token:", error);
@@ -40,6 +46,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
+    if (!isUuid(id)) {
+      return invalidIdResponse("recipe");
+    }
+
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useId } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -43,11 +43,14 @@ import {
   isRecognizedUnit,
 } from "@/lib/utils/unit-conversion";
 import { scaleIngredients } from "@/lib/utils/recipe-scaling";
+import { cn } from "@/lib/utils";
 
 interface RecipeDetailProps {
   recipe: RecipeWithDetails;
   isOwner?: boolean;
   isPublicView?: boolean;
+  /** The share-link token this page was opened with, when applicable. */
+  shareToken?: string;
   initialFavorited?: boolean;
   currentUserId?: string;
   isAuthenticated?: boolean;
@@ -61,7 +64,9 @@ export function RecipeDetail({
   recipe,
   isOwner = false,
   isPublicView = false,
-  initialFavorited = false,
+  shareToken,
+  // No default: `false` here would shadow the `?? recipe.isFavorited` fallback.
+  initialFavorited,
   currentUserId,
   isAuthenticated = false,
   initialRatingStats,
@@ -78,6 +83,12 @@ export function RecipeDetail({
   );
   const [isSharing, setIsSharing] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Check-off state keyed by ingredient identity (not list position), so a tick
+  // always belongs to the ingredient it was put on.
+  const [checkedIngredients, setCheckedIngredients] = useState<
+    Record<string, boolean>
+  >({});
+  const ingredientFieldId = useId();
 
   const { unitSystem } = useRecipeUnitSystem(recipe.id);
 
@@ -89,7 +100,6 @@ export function RecipeDetail({
     increment,
     decrement,
     resetToOriginal,
-    isScaled,
   } = useRecipeScaling(recipe.servings || 1);
 
   const totalTime =
@@ -135,6 +145,12 @@ export function RecipeDetail({
   // Nutrition values are per serving, so they don't need to be scaled
   const nutrition = recipe.nutrition;
 
+  // The measured amounts change when the recipe is rescaled, so previously
+  // ticked ingredients no longer reflect what has actually been measured out.
+  useEffect(() => {
+    setCheckedIngredients({});
+  }, [scaleFactor]);
+
   // Convert temperatures in instructions
   const convertedInstructions = useMemo(() => {
     return recipe.instructions.map((instruction) => ({
@@ -142,6 +158,27 @@ export function RecipeDetail({
       convertedText: convertTemperatureInText(instruction.text, unitSystem),
     }));
   }, [recipe.instructions, unitSystem]);
+
+  /**
+   * Pull an error message out of a failed response without assuming it is
+   * JSON - an expired session, a 413 or a gateway timeout often answer with
+   * HTML, and `response.json()` would throw "Unexpected token '<'".
+   */
+  const readErrorMessage = async (res: Response, fallback: string) => {
+    if (res.status === 401 || res.status === 403) {
+      return "Your session has expired. Please sign in again.";
+    }
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      try {
+        const data = await res.json();
+        if (data?.error) return String(data.error);
+      } catch {
+        // Fall through to the generic message
+      }
+    }
+    return `${fallback} (${res.status})`;
+  };
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this recipe?")) return;
@@ -151,12 +188,19 @@ export function RecipeDetail({
       const res = await fetch(`/api/recipes/${recipe.id}`, {
         method: "DELETE",
       });
-      if (res.ok) {
-        router.push("/recipes");
-        router.refresh();
+
+      if (!res.ok) {
+        throw new Error(await readErrorMessage(res, "Failed to delete recipe"));
       }
+
+      toast.success("Recipe deleted");
+      router.push("/recipes");
+      router.refresh();
     } catch (error) {
       console.error("Error deleting recipe:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete recipe"
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -168,23 +212,47 @@ export function RecipeDetail({
       const res = await fetch(`/api/recipes/${recipe.id}/share`, {
         method: "POST",
       });
-      const data = await res.json();
-      if (data.shareUrl) {
-        setShareUrl(data.shareUrl);
+
+      if (!res.ok) {
+        throw new Error(
+          await readErrorMessage(res, "Failed to generate share link")
+        );
       }
+
+      const data = await res.json();
+      if (!data?.shareUrl) {
+        throw new Error("The server did not return a share link");
+      }
+      setShareUrl(data.shareUrl);
     } catch (error) {
       console.error("Error generating share link:", error);
-      toast.error("Failed to generate share link");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to generate share link"
+      );
     } finally {
       setIsSharing(false);
     }
   };
 
   const handleCopyLink = async () => {
-    if (shareUrl) {
+    if (!shareUrl) return;
+
+    // `navigator.clipboard` is undefined on non-secure origins and can reject
+    // when the permission is denied, so both cases need handling.
+    if (!navigator.clipboard?.writeText) {
+      toast.error("Copying is not available here. Please copy the link manually.");
+      return;
+    }
+
+    try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Error copying share link:", error);
+      toast.error("Could not copy the link. Please copy it manually.");
     }
   };
 
@@ -368,7 +436,7 @@ export function RecipeDetail({
           <CardContent className="p-6">
             <NutritionDisplay
               nutrition={nutrition}
-              servings={originalServings}
+              servings={scaledServings}
               isEditable={false}
             />
           </CardContent>
@@ -384,13 +452,32 @@ export function RecipeDetail({
                 Ingredients
               </h2>
               <ul className="space-y-3">
-                {convertedIngredients.map((ingredient, index) => (
-                  <li key={index} className="flex items-start gap-3">
+                {convertedIngredients.map((ingredient, index) => {
+                  const ingredientKey = ingredient.id || `index-${index}`;
+                  const checkboxId = `${ingredientFieldId}-${ingredientKey}`;
+                  const isChecked = checkedIngredients[ingredientKey] ?? false;
+
+                  return (
+                  <li key={ingredientKey} className="flex items-start gap-3">
                     <input
+                      id={checkboxId}
                       type="checkbox"
+                      checked={isChecked}
+                      onChange={(e) =>
+                        setCheckedIngredients((prev) => ({
+                          ...prev,
+                          [ingredientKey]: e.target.checked,
+                        }))
+                      }
                       className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary/50 focus:ring-offset-0"
                     />
-                    <span className="text-muted-foreground">
+                    <label
+                      htmlFor={checkboxId}
+                      className={cn(
+                        "cursor-pointer text-muted-foreground",
+                        isChecked && "line-through opacity-60"
+                      )}
+                    >
                       {ingredient.converted ? (
                         // Unit conversion applied (and possibly scaling)
                         <>
@@ -409,9 +496,15 @@ export function RecipeDetail({
                             {ingredient.scaledAmount}{" "}
                           </span>
                           {ingredient.unit && <span>{ingredient.unit} </span>}
-                          <span className="text-xs text-muted-foreground/70">
-                            (was {ingredient.originalAmount})
-                          </span>{" "}
+                          {/* Countable items round back to their original
+                              amount at small scale factors; "1 (was 1)" is
+                              just noise, so only note a real change. */}
+                          {ingredient.scaledAmount !==
+                            ingredient.originalAmount && (
+                            <span className="text-xs text-muted-foreground/70">
+                              (was {ingredient.originalAmount}){" "}
+                            </span>
+                          )}
                         </>
                       ) : (
                         // No conversion or scaling
@@ -425,9 +518,10 @@ export function RecipeDetail({
                         </>
                       )}
                       {ingredient.text}
-                    </span>
+                    </label>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </CardContent>
           </Card>
@@ -496,6 +590,7 @@ export function RecipeDetail({
       {(recipe.isPublic || isOwner) && initialRatingStats && (
         <div className="mt-8">
           <RatingsCommentsSection
+            shareToken={shareToken}
             recipeId={recipe.id}
             recipeOwnerId={recipe.userId}
             initialRatingStats={initialRatingStats}

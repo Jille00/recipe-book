@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
@@ -11,37 +12,47 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
+// generateMetadata and the page run in the same request; Next only dedupes
+// `fetch`, not Drizzle calls, so cache the reads ourselves.
+const getSession = cache(async () => {
+  const headersList = await headers();
+  return auth.api.getSession({ headers: headersList });
+});
+
+const getRecipe = cache(async (userId: string, slug: string) =>
+  getRecipeBySlug(userId, slug)
+);
+
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
-  const headersList = await headers();
-  const session = await auth.api.getSession({ headers: headersList });
+  const session = await getSession();
 
   if (!session?.user) {
-    return { title: "Edit Recipe" };
+    return { title: "Edit Recipe", robots: { index: false, follow: false } };
   }
 
-  const recipe = await getRecipeBySlug(session.user.id, slug);
+  const recipe = await getRecipe(session.user.id, slug);
 
   if (!recipe) {
-    return { title: "Recipe Not Found" };
+    return { title: "Recipe Not Found", robots: { index: false, follow: false } };
   }
 
   return {
     title: `Edit ${recipe.title}`,
     description: `Edit your ${recipe.title} recipe`,
+    robots: { index: false, follow: false },
   };
 }
 
 export default async function EditRecipePage({ params }: Props) {
   const { slug } = await params;
-  const headersList = await headers();
-  const session = await auth.api.getSession({ headers: headersList });
+  const session = await getSession();
 
   if (!session?.user) {
-    redirect("/login");
+    redirect(`/login?callbackUrl=${encodeURIComponent(`/recipes/${slug}/edit`)}`);
   }
 
-  const recipe = await getRecipeBySlug(session.user.id, slug);
+  const recipe = await getRecipe(session.user.id, slug);
 
   if (!recipe) {
     notFound();

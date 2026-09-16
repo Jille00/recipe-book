@@ -27,8 +27,16 @@ export function UnitToggle({ recipeId }: UnitToggleProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Scale className="h-4 w-4" />
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          // Below `sm` the label span is hidden, which would leave the trigger
+          // with no accessible name at all. The aria-label names the control
+          // and exposes the current system at every breakpoint.
+          aria-label={`Unit system: ${getSystemDisplayName(unitSystem)}`}
+        >
+          <Scale className="h-4 w-4" aria-hidden="true" />
           <span className="hidden sm:inline">
             {getSystemDisplayName(unitSystem)}
           </span>

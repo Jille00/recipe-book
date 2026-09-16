@@ -1,5 +1,7 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Button, Card, CardContent } from "@/components/ui";
+import { SITE_OG_IMAGE } from "../site-url";
 import {
   ChefHat,
   BookOpen,
@@ -9,6 +11,31 @@ import {
   Smartphone,
   ArrowRight,
 } from "lucide-react";
+
+const HOME_DESCRIPTION =
+  "Create, organize, and share your favorite recipes with friends and family. Your personal digital cookbook for all your culinary creations.";
+
+export const metadata: Metadata = {
+  title: {
+    absolute: "Kookboek - Your Personal Cookbook",
+  },
+  description: HOME_DESCRIPTION,
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    url: "/",
+    title: "Kookboek - Your Personal Cookbook",
+    description: HOME_DESCRIPTION,
+    siteName: "Kookboek",
+    images: [SITE_OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Kookboek - Your Personal Cookbook",
+    description: HOME_DESCRIPTION,
+    images: [SITE_OG_IMAGE.url],
+  },
+};
 
 export default function HomePage() {
   const features = [
@@ -133,8 +160,8 @@ export default function HomePage() {
               Start your recipe collection today
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-primary-foreground/80">
-              Join thousands of home cooks who use Kookboek to organize and
-              share their culinary creations.
+              Kookboek is free to use. Create an account, add your first
+              recipe, and build a cookbook you will actually cook from.
             </p>
             <div className="mt-8">
               <Link href="/register">

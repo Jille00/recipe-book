@@ -4,8 +4,11 @@ import {
   getCommentById,
   updateComment,
   deleteComment,
+  CommentValidationError,
+  MAX_COMMENT_LENGTH,
 } from "@/lib/db/queries/comments";
 import { getRecipeById } from "@/lib/db/queries/recipes";
+import { invalidIdResponse, isUuid } from "@/lib/api-utils";
 
 export async function PATCH(
   request: NextRequest,
@@ -13,6 +16,11 @@ export async function PATCH(
 ) {
   try {
     const { id: commentId } = await params;
+
+    if (!isUuid(commentId)) {
+      return invalidIdResponse("comment");
+    }
+
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
@@ -22,9 +30,16 @@ export async function PATCH(
     const body = await request.json();
     const { content } = body;
 
-    if (!content || typeof content !== "string") {
+    if (!content || typeof content !== "string" || content.trim().length === 0) {
       return NextResponse.json(
         { error: "Comment content is required" },
+        { status: 400 }
+      );
+    }
+
+    if (content.trim().length > MAX_COMMENT_LENGTH) {
+      return NextResponse.json(
+        { error: `Comment must be ${MAX_COMMENT_LENGTH} characters or less` },
         { status: 400 }
       );
     }
@@ -43,10 +58,14 @@ export async function PATCH(
       comment: updated,
     });
   } catch (error) {
+    if (error instanceof CommentValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error("Error updating comment:", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to update comment";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update comment" },
+      { status: 500 }
+    );
   }
 }
 
@@ -56,6 +75,11 @@ export async function DELETE(
 ) {
   try {
     const { id: commentId } = await params;
+
+    if (!isUuid(commentId)) {
+      return invalidIdResponse("comment");
+    }
+
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {

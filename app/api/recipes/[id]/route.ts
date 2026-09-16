@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getRecipeById, updateRecipe, deleteRecipe } from "@/lib/db/queries/recipes";
-import { recipeSchema } from "@/lib/utils/validation";
+import { recipeUpdateSchema } from "@/lib/utils/validation";
+import { invalidIdResponse, isUuid } from "@/lib/api-utils";
 
 export async function GET(
   request: NextRequest,
@@ -9,6 +10,11 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+
+    if (!isUuid(id)) {
+      return invalidIdResponse("recipe");
+    }
+
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
@@ -21,12 +27,18 @@ export async function GET(
       return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
     }
 
+    const isOwner = recipe.userId === session.user.id;
+
     // Check if user owns the recipe or if it's public
-    if (recipe.userId !== session.user.id && !recipe.isPublic) {
+    if (!isOwner && !recipe.isPublic) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return NextResponse.json(recipe);
+    // The share token is a capability that keeps working after a recipe goes
+    // private - only its owner ever gets to see it.
+    return NextResponse.json(
+      isOwner ? recipe : { ...recipe, shareToken: null }
+    );
   } catch (error) {
     console.error("Error fetching recipe:", error);
     return NextResponse.json(
@@ -42,6 +54,11 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+
+    if (!isUuid(id)) {
+      return invalidIdResponse("recipe");
+    }
+
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
@@ -50,8 +67,10 @@ export async function PUT(
 
     const body = await request.json();
 
-    // Validate input against schema
-    const validationResult = recipeSchema.safeParse(body);
+    // Validate input against the partial update schema: fields that are not
+    // sent must stay untouched (a full schema with defaults would, for
+    // example, silently unpublish the recipe).
+    const validationResult = recipeUpdateSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
         { error: validationResult.error.issues[0].message },
@@ -84,6 +103,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
+    if (!isUuid(id)) {
+      return invalidIdResponse("recipe");
+    }
+
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {

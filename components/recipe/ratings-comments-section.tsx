@@ -19,6 +19,7 @@ interface RatingsCommentsSectionProps {
   currentUserId?: string;
   isAuthenticated?: boolean;
   isPublicView?: boolean;
+  shareToken?: string;
 }
 
 export function RatingsCommentsSection({
@@ -30,7 +31,7 @@ export function RatingsCommentsSection({
   initialCommentTotal = 0,
   currentUserId,
   isAuthenticated = false,
-  isPublicView = false,
+  shareToken,
 }: RatingsCommentsSectionProps) {
   const [ratingStats, setRatingStats] = useState<RatingStats>(initialRatingStats);
 
@@ -107,6 +108,7 @@ export function RatingsCommentsSection({
       <Card>
         <CardContent className="p-6">
           <CommentList
+            shareToken={shareToken}
             recipeId={recipeId}
             recipeOwnerId={recipeOwnerId}
             currentUserId={currentUserId}

@@ -1,12 +1,14 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { getProfileByUserId } from "@/lib/db/queries/profile";
 import { ProfileForm } from "@/components/profile/profile-form";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Profile",
   description: "Manage your profile and preferences",
+  robots: { index: false, follow: false },
 };
 
 export default async function ProfilePage() {

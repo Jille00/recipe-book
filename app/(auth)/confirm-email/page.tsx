@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 export const metadata: Metadata = {
   title: "Confirm Email",
@@ -45,8 +46,7 @@ const FAILURES: Record<string, { title: string; body: string }> = {
 // Only continue to a path on this site. Anything else could send someone off
 // to another domain straight after they've been signed in.
 function safeNext(next: string | undefined): string {
-  if (next && next.startsWith("/") && !next.startsWith("//")) return next;
-  return "/dashboard";
+  return safeRedirectPath(next, "/dashboard");
 }
 
 export default async function ConfirmEmailPage({ searchParams }: Props) {

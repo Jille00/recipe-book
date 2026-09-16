@@ -1,3 +1,5 @@
+import { safeRedirectPath } from "@/lib/safe-redirect";
+
 /** Where a verification link lands, whether it worked or not. */
 export const CONFIRM_EMAIL_PATH = "/confirm-email";
 
@@ -15,11 +17,12 @@ export function withConfirmationLanding(verificationUrl: string): string {
   const requested = url.searchParams.get("callbackURL") ?? "/";
 
   if (!requested.startsWith(CONFIRM_EMAIL_PATH)) {
-    // Only same-site relative paths may be carried forward.
-    const isSafePath = requested.startsWith("/") && !requested.startsWith("//");
+    // Only same-site paths may be carried forward (see safeRedirectPath for
+    // why a simple "doesn't start with //" check is not enough).
+    const destination = safeRedirectPath(requested, "/");
     const landing =
-      isSafePath && requested !== "/"
-        ? `${CONFIRM_EMAIL_PATH}?next=${encodeURIComponent(requested)}`
+      destination !== "/"
+        ? `${CONFIRM_EMAIL_PATH}?next=${encodeURIComponent(destination)}`
         : CONFIRM_EMAIL_PATH;
     url.searchParams.set("callbackURL", landing);
   }

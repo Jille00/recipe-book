@@ -4,17 +4,14 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "@/lib/auth-client";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 import { Button, Input, Label } from "@/components/ui";
 import { Loader2, Mail, Lock, MailCheck } from "lucide-react";
 
-// Validate callback URL to prevent open redirect attacks
+// Where to go after signing in. Validated so a crafted link can't send someone
+// to another site right after they sign in.
 function getSafeCallbackUrl(url: string | null): string {
-  if (!url) return "/dashboard";
-  // Only allow relative URLs starting with /
-  if (url.startsWith("/") && !url.startsWith("//")) {
-    return url;
-  }
-  return "/dashboard";
+  return safeRedirectPath(url, "/dashboard");
 }
 
 export function LoginForm() {

@@ -63,7 +63,10 @@ const EXTENSION_BY_TYPE: Record<string, string[]> = {
 
 export function formatBytes(bytes: number): string {
   if (bytes >= 1024 * 1024) {
-    return `${(bytes / (1024 * 1024)).toFixed(bytes % (1024 * 1024) === 0 ? 0 : 1)}MB`;
+    // One decimal at most, and none when it would read ".0": a file one byte
+    // over 50MB should say "50MB", not "50.0MB" next to a "50MB" limit.
+    const megabytes = Math.round((bytes / (1024 * 1024)) * 10) / 10;
+    return `${megabytes}MB`;
   }
   return `${Math.max(1, Math.round(bytes / 1024))}KB`;
 }

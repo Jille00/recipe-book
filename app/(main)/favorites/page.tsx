@@ -59,14 +59,11 @@ export default async function FavoritesPage() {
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {favorites.map((recipe) => {
-            // /recipes/{slug} only resolves recipes the current user owns, so
-            // favorites belonging to someone else must use the public route.
             const isOwnRecipe = recipe.userId === session.user.id;
             return (
               <RecipeCard
                 key={recipe.id}
                 recipe={recipe}
-                href={isOwnRecipe ? undefined : `/r/${recipe.slug}`}
                 showAuthor={!isOwnRecipe}
                 initialFavorited={true}
               />

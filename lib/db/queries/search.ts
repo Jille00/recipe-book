@@ -28,7 +28,7 @@ export interface SearchRecipeResult {
   imageUrl: string | null;
   nutrition: NutritionInfo | null;
   isPublic: boolean | null;
-  shareToken: string | null;
+  code: string;
   createdAt: Date | null;
   updatedAt: Date | null;
   authorName: string | null;
@@ -115,7 +115,7 @@ export async function searchRecipes(
       imageUrl: recipe.imageUrl,
       nutrition: recipe.nutrition,
       isPublic: recipe.isPublic,
-      shareToken: recipe.shareToken,
+      code: recipe.code,
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
       authorName: user.name,
@@ -134,7 +134,6 @@ export async function searchRecipes(
     difficulty: r.difficulty as Difficulty | null,
     nutrition: r.nutrition as NutritionInfo | null,
     // Share tokens are owner-only capabilities; never include them in listings.
-    shareToken: userId && r.userId === userId ? r.shareToken : null,
     isOwn: userId ? r.userId === userId : false,
   }));
 }
@@ -229,7 +228,7 @@ export async function getPublicRecipes(
       imageUrl: recipe.imageUrl,
       nutrition: recipe.nutrition,
       isPublic: recipe.isPublic,
-      shareToken: recipe.shareToken,
+      code: recipe.code,
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
       authorName: user.name,
@@ -256,7 +255,6 @@ export async function getPublicRecipes(
       difficulty: r.difficulty as Difficulty | null,
       nutrition: r.nutrition as NutritionInfo | null,
       // Share tokens are owner-only capabilities; never include them in listings.
-      shareToken: userId && r.userId === userId ? r.shareToken : null,
       isOwn: false,
       isFavorited: r.favoriteId !== null,
     })),

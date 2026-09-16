@@ -3,10 +3,10 @@ import Image from "next/image";
 import type { RecipeWithDetails } from "@/types/recipe";
 import { Clock, Users, ChefHat, Star } from "lucide-react";
 import { FavoriteButton } from "./favorite-button";
+import { recipePath } from "@/lib/recipe-url";
 
 interface RecipeCardProps {
   recipe: RecipeWithDetails;
-  href?: string;
   showAuthor?: boolean;
   showFavorite?: boolean;
   initialFavorited?: boolean;
@@ -14,7 +14,6 @@ interface RecipeCardProps {
 
 export function RecipeCard({
   recipe,
-  href,
   showAuthor = false,
   showFavorite = true,
   // No default here on purpose: a `false` default would shadow the
@@ -22,7 +21,9 @@ export function RecipeCard({
   // for callers that pass the whole recipe but no explicit prop.
   initialFavorited,
 }: RecipeCardProps) {
-  const link = href || `/recipes/${recipe.slug}`;
+  // One address for every viewer, so a card links the same place for owners
+  // and everyone else.
+  const link = recipePath(recipe);
   const totalTime =
     (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
 

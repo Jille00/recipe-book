@@ -51,6 +51,7 @@ import {
 } from "lucide-react";
 import { useUnitPreferences } from "@/hooks/use-unit-preferences";
 import type { UnitSystem } from "@/types/units";
+import { recipePath } from "@/lib/recipe-url";
 
 // Unit options for ingredient selection with system info
 const UNIT_OPTIONS: Array<{
@@ -387,7 +388,8 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       }
 
       const data = await response.json();
-      router.push(`/recipes/${data.slug}`);
+      // Land on the recipe's one address, which is also its share link.
+      router.push(recipePath(data));
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -911,7 +913,9 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
             </div>
             <div>
               <CardTitle className="font-display">Visibility</CardTitle>
-              <CardDescription>Control who can see your recipe</CardDescription>
+              <CardDescription>
+                You can always share a recipe by sending its link
+              </CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -930,8 +934,9 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                 Make this recipe public
               </p>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Anyone with the link can view this recipe. Perfect for sharing
-                with friends and family.
+                Show it on Browse and in search results so anyone can find it.
+                When it&apos;s not public, only people you send the link to can
+                open it.
               </p>
             </div>
           </label>

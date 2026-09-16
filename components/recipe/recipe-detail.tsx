@@ -12,7 +12,6 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  Input,
 } from "@/components/ui";
 import { UnitToggle } from "./unit-toggle";
 import { NutritionDisplay } from "./nutrition-display";
@@ -30,13 +29,14 @@ import {
   Pencil,
   Trash2,
   Share2,
-  Copy,
-  Check,
+  Globe,
+  Link2,
   Utensils,
   Apple,
 } from "lucide-react";
 import { useRecipeUnitSystem } from "@/hooks/use-unit-preferences";
 import { useRecipeScaling } from "@/hooks/use-recipe-scaling";
+import { recipePath, recipeEditPath } from "@/lib/recipe-url";
 import {
   convertUnit,
   convertTemperatureInText,
@@ -48,9 +48,6 @@ import { cn } from "@/lib/utils";
 interface RecipeDetailProps {
   recipe: RecipeWithDetails;
   isOwner?: boolean;
-  isPublicView?: boolean;
-  /** The share-link token this page was opened with, when applicable. */
-  shareToken?: string;
   initialFavorited?: boolean;
   currentUserId?: string;
   isAuthenticated?: boolean;
@@ -63,8 +60,6 @@ interface RecipeDetailProps {
 export function RecipeDetail({
   recipe,
   isOwner = false,
-  isPublicView = false,
-  shareToken,
   // No default: `false` here would shadow the `?? recipe.isFavorited` fallback.
   initialFavorited,
   currentUserId,
@@ -76,13 +71,6 @@ export function RecipeDetail({
 }: RecipeDetailProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
-  const [shareUrl, setShareUrl] = useState<string | null>(
-    recipe.shareToken && process.env.NEXT_PUBLIC_APP_URL
-      ? `${process.env.NEXT_PUBLIC_APP_URL}/r/${recipe.shareToken}`
-      : null
-  );
-  const [isSharing, setIsSharing] = useState(false);
-  const [copied, setCopied] = useState(false);
   // Check-off state keyed by ingredient identity (not list position), so a tick
   // always belongs to the ingredient it was put on.
   const [checkedIngredients, setCheckedIngredients] = useState<
@@ -206,53 +194,38 @@ export function RecipeDetail({
     }
   };
 
+  // Every recipe has one address and it is the one in the address bar, so
+  // sharing needs no setup: hand that address to the native share sheet (which
+  // is how people send links on a phone) or copy it.
   const handleShare = async () => {
-    setIsSharing(true);
-    try {
-      const res = await fetch(`/api/recipes/${recipe.id}/share`, {
-        method: "POST",
-      });
+    const url = `${window.location.origin}${recipePath(recipe)}`;
 
-      if (!res.ok) {
-        throw new Error(
-          await readErrorMessage(res, "Failed to generate share link")
-        );
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: recipe.title, url });
+        return;
+      } catch (error) {
+        // Dismissing the sheet is not an error worth reporting.
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        // Otherwise fall through to copying.
       }
-
-      const data = await res.json();
-      if (!data?.shareUrl) {
-        throw new Error("The server did not return a share link");
-      }
-      setShareUrl(data.shareUrl);
-    } catch (error) {
-      console.error("Error generating share link:", error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to generate share link"
-      );
-    } finally {
-      setIsSharing(false);
     }
-  };
 
-  const handleCopyLink = async () => {
-    if (!shareUrl) return;
-
-    // `navigator.clipboard` is undefined on non-secure origins and can reject
-    // when the permission is denied, so both cases need handling.
     if (!navigator.clipboard?.writeText) {
-      toast.error("Copying is not available here. Please copy the link manually.");
+      toast.error("Copying isn't available here. Copy the link from the address bar.");
       return;
     }
 
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(url);
+      toast.success(
+        recipe.isPublic || !isOwner
+          ? "Link copied"
+          : "Link copied. Anyone you send it to can open this recipe."
+      );
     } catch (error) {
-      console.error("Error copying share link:", error);
-      toast.error("Could not copy the link. Please copy it manually.");
+      console.error("Error copying link:", error);
+      toast.error("Couldn't copy the link. Copy it from the address bar.");
     }
   };
 
@@ -273,7 +246,7 @@ export function RecipeDetail({
     <article className="mx-auto max-w-4xl">
       {/* Header */}
       <header className="mb-8">
-        {!isPublicView && (
+        {isOwner && (
           <div className="mb-6">
             <Link
               href="/recipes"
@@ -290,25 +263,31 @@ export function RecipeDetail({
             <h1 className="font-display text-3xl font-semibold text-foreground sm:text-4xl tracking-tight">
               {recipe.title}
             </h1>
-            {isOwner && (
-              <div className="flex gap-2">
-                <Link href={`/recipes/${recipe.slug}/edit`}>
-                  <Button variant="outline" size="sm">
-                    <Pencil className="h-4 w-4" />
-                    Edit
+            <div className="flex gap-2 print:hidden">
+              <Button variant="outline" size="sm" onClick={handleShare}>
+                <Share2 className="h-4 w-4" aria-hidden="true" />
+                Share
+              </Button>
+              {isOwner && (
+                <>
+                  <Link href={recipeEditPath(recipe)}>
+                    <Button variant="outline" size="sm">
+                      <Pencil className="h-4 w-4" aria-hidden="true" />
+                      Edit
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleDelete}
+                    isLoading={isDeleting}
+                  >
+                    {!isDeleting && <Trash2 className="h-4 w-4" aria-hidden="true" />}
+                    Delete
                   </Button>
-                </Link>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleDelete}
-                  isLoading={isDeleting}
-                >
-                  {!isDeleting && <Trash2 className="h-4 w-4" />}
-                  Delete
-                </Button>
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </div>
           {recipe.description && (
             <p className="text-lg text-muted-foreground max-w-2xl">
@@ -324,13 +303,24 @@ export function RecipeDetail({
                 {recipe.difficulty}
               </Badge>
             )}
-            {isOwner && recipe.isPublic && (
+            {isOwner && (
               <Badge variant="secondary">
-                <Share2 className="h-3 w-3 mr-1" />
-                Public
+                {recipe.isPublic ? (
+                  <>
+                    <Globe className="h-3 w-3 mr-1" aria-hidden="true" />
+                    Public
+                  </>
+                ) : (
+                  <>
+                    <Link2 className="h-3 w-3 mr-1" aria-hidden="true" />
+                    Anyone with the link
+                  </>
+                )}
               </Badge>
             )}
-            {isAuthenticated && (
+            {/* Favorites only list public recipes and your own, so an unlisted
+                recipe someone sent you can't be saved there. */}
+            {isAuthenticated && (recipe.isPublic || isOwner) && (
               <FavoriteButton
                 recipeId={recipe.id}
                 initialFavorited={initialFavorited ?? recipe.isFavorited ?? false}
@@ -547,50 +537,13 @@ export function RecipeDetail({
         </div>
       </div>
 
-      {/* Share Section */}
-      {isOwner && (
-        <Card className="mt-8 bg-secondary/30">
-          <CardContent className="p-6">
-            <h2 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-              <Share2 className="h-5 w-5 text-primary" />
-              Share this recipe
-            </h2>
-            {shareUrl ? (
-              <div className="flex gap-2">
-                <Input
-                  readOnly
-                  value={shareUrl}
-                  className="flex-1 bg-background"
-                />
-                <Button onClick={handleCopyLink} variant="outline">
-                  {copied ? (
-                    <>
-                      <Check className="h-4 w-4" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4" />
-                      Copy
-                    </>
-                  )}
-                </Button>
-              </div>
-            ) : (
-              <Button onClick={handleShare} isLoading={isSharing}>
-                {!isSharing && <Share2 className="h-4 w-4" />}
-                Generate Share Link
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
       {/* Ratings & Comments Section */}
-      {(recipe.isPublic || isOwner) && initialRatingStats && (
+      {/* Anyone viewing this page holds its link, so everyone can rate and
+          comment. The code proves that to the API for unlisted recipes. */}
+      {initialRatingStats && (
         <div className="mt-8">
           <RatingsCommentsSection
-            shareToken={shareToken}
+            code={recipe.code}
             recipeId={recipe.id}
             recipeOwnerId={recipe.userId}
             initialRatingStats={initialRatingStats}
@@ -599,13 +552,12 @@ export function RecipeDetail({
             initialCommentTotal={initialCommentTotal}
             currentUserId={currentUserId}
             isAuthenticated={isAuthenticated}
-            isPublicView={isPublicView}
           />
         </div>
       )}
 
-      {/* Author (public view) */}
-      {isPublicView && recipe.authorName && (
+      {/* Author, for everyone but the author */}
+      {!isOwner && recipe.authorName && (
         <div className="mt-8 border-t border-border pt-6">
           <p className="text-muted-foreground">
             Recipe by{" "}

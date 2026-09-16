@@ -18,8 +18,8 @@ interface RatingsCommentsSectionProps {
   initialCommentTotal?: number;
   currentUserId?: string;
   isAuthenticated?: boolean;
-  isPublicView?: boolean;
-  shareToken?: string;
+  /** The recipe's code, sent as proof of access for unlisted recipes. */
+  code?: string;
 }
 
 export function RatingsCommentsSection({
@@ -31,7 +31,7 @@ export function RatingsCommentsSection({
   initialCommentTotal = 0,
   currentUserId,
   isAuthenticated = false,
-  shareToken,
+  code,
 }: RatingsCommentsSectionProps) {
   const [ratingStats, setRatingStats] = useState<RatingStats>(initialRatingStats);
 
@@ -86,6 +86,7 @@ export function RatingsCommentsSection({
               <div className="flex items-center gap-3">
                 <span className="text-sm text-muted-foreground">Your rating:</span>
                 <RatingInput
+                  code={code}
                   recipeId={recipeId}
                   initialRating={initialUserRating}
                   onRatingChange={handleRatingChange}
@@ -108,7 +109,7 @@ export function RatingsCommentsSection({
       <Card>
         <CardContent className="p-6">
           <CommentList
-            shareToken={shareToken}
+            code={code}
             recipeId={recipeId}
             recipeOwnerId={recipeOwnerId}
             currentUserId={currentUserId}

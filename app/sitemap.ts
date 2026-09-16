@@ -1,6 +1,7 @@
 import { MetadataRoute } from "next";
 import { getPublicRecipesForSitemap } from "@/lib/db/queries/recipes";
 import { SITE_URL } from "./site-url";
+import { recipePath } from "@/lib/recipe-url";
 
 // The sitemap has no dynamic API of its own, so without this it would be
 // generated once per deploy and never pick up newly published recipes.
@@ -10,7 +11,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const publicRecipes = await getPublicRecipesForSitemap();
 
   const recipeUrls: MetadataRoute.Sitemap = publicRecipes.map((recipe) => ({
-    url: `${SITE_URL}/r/${recipe.slug}`,
+    url: `${SITE_URL}${recipePath(recipe)}`,
     lastModified: recipe.updatedAt || new Date(),
     changeFrequency: "weekly",
     priority: 0.8,

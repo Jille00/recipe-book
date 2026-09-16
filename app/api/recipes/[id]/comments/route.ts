@@ -8,7 +8,7 @@ import {
 } from "@/lib/db/queries/comments";
 import { getRecipeById } from "@/lib/db/queries/recipes";
 import {
-  canReadRecipe,
+  canAccessRecipe,
   invalidIdResponse,
   isUuid,
   parsePaginationParam,
@@ -36,12 +36,11 @@ export async function GET(
       return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
     }
 
-    // A share link is the only proof a non-owner holds for a private recipe,
-    // and the page itself is rendered from it, so accept it here too.
+    // The recipe's code is in its link, so presenting it proves the caller was
+    // given the address - the same access the page itself grants.
     const { searchParams } = new URL(request.url);
-    const presentedToken = searchParams.get("shareToken");
 
-    if (!canReadRecipe(recipe, session?.user?.id, presentedToken)) {
+    if (!canAccessRecipe(recipe, session?.user?.id, searchParams.get("code"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -91,10 +90,12 @@ export async function POST(
       return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
     }
 
-    // Users can comment on public recipes or their own recipes
-    if (!recipe.isPublic && recipe.userId !== session.user.id) {
+    // Anyone who can open the recipe can take part in it: public recipes, the
+    // owner, and anyone holding its link (proved by presenting the code).
+    const presentedCode = new URL(request.url).searchParams.get("code");
+    if (!canAccessRecipe(recipe, session.user.id, presentedCode)) {
       return NextResponse.json(
-        { error: "Cannot comment on private recipes" },
+        { error: "You don't have access to this recipe" },
         { status: 403 }
       );
     }

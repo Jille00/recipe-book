@@ -20,7 +20,7 @@ export async function getUserFavorites(userId: string) {
       imageUrl: recipe.imageUrl,
       nutrition: recipe.nutrition,
       isPublic: recipe.isPublic,
-      shareToken: recipe.shareToken,
+      code: recipe.code,
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
       authorName: user.name,
@@ -46,7 +46,6 @@ export async function getUserFavorites(userId: string) {
     difficulty: r.difficulty as Difficulty | null,
     nutrition: r.nutrition as NutritionInfo | null,
     // Never hand another user's share token to a viewer.
-    shareToken: r.userId === userId ? r.shareToken : null,
     isFavorited: true,
   }));
 }

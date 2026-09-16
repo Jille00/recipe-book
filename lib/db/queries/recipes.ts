@@ -1,7 +1,6 @@
-import { eq, and, desc, sql, isNull } from "drizzle-orm";
+import { eq, and, asc, desc, sql, or } from "drizzle-orm";
 import { db, recipe, user, recipeTag, favorite } from "@/lib/db";
 import { generateUniqueSlug } from "@/lib/utils/slug";
-import { generateShareToken } from "@/lib/utils/share-token";
 import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
 import type { NutritionInfo } from "@/types/nutrition";
 
@@ -20,7 +19,7 @@ export interface RecipeWithDetails {
   imageUrl: string | null;
   nutrition: NutritionInfo | null;
   isPublic: boolean | null;
-  shareToken: string | null;
+  code: string;
   createdAt: Date | null;
   updatedAt: Date | null;
   authorName?: string | null;
@@ -44,7 +43,7 @@ export async function getRecipesByUserId(userId: string): Promise<RecipeWithDeta
       imageUrl: recipe.imageUrl,
       nutrition: recipe.nutrition,
       isPublic: recipe.isPublic,
-      shareToken: recipe.shareToken,
+      code: recipe.code,
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
       favoriteId: favorite.id,
@@ -84,7 +83,7 @@ export async function getRecipeBySlug(
       imageUrl: recipe.imageUrl,
       nutrition: recipe.nutrition,
       isPublic: recipe.isPublic,
-      shareToken: recipe.shareToken,
+      code: recipe.code,
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
       authorName: user.name,
@@ -126,7 +125,7 @@ export async function getRecipeById(id: string, userId?: string): Promise<Recipe
       imageUrl: recipe.imageUrl,
       nutrition: recipe.nutrition,
       isPublic: recipe.isPublic,
-      shareToken: recipe.shareToken,
+      code: recipe.code,
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
       authorName: user.name,
@@ -152,9 +151,16 @@ export async function getRecipeById(id: string, userId?: string): Promise<Recipe
   };
 }
 
-export async function getRecipeByShareToken(
-  shareToken: string,
-  userId?: string
+/**
+ * The recipe behind a /r/{code}/{slug} address.
+ *
+ * Deliberately NOT filtered by visibility: holding the code is the permission.
+ * A recipe that is not listed publicly is still viewable by anyone with its
+ * link, so the code must stay unguessable (see generate_recipe_code).
+ */
+export async function getRecipeByCode(
+  code: string,
+  viewerId?: string
 ): Promise<RecipeWithDetails | null> {
   const results = await db
     .select({
@@ -172,7 +178,7 @@ export async function getRecipeByShareToken(
       imageUrl: recipe.imageUrl,
       nutrition: recipe.nutrition,
       isPublic: recipe.isPublic,
-      shareToken: recipe.shareToken,
+      code: recipe.code,
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
       authorName: user.name,
@@ -180,8 +186,13 @@ export async function getRecipeByShareToken(
     })
     .from(recipe)
     .leftJoin(user, eq(recipe.userId, user.id))
-    .leftJoin(favorite, userId ? and(eq(favorite.recipeId, recipe.id), eq(favorite.userId, userId)) : sql`false`)
-    .where(eq(recipe.shareToken, shareToken))
+    .leftJoin(
+      favorite,
+      viewerId
+        ? and(eq(favorite.recipeId, recipe.id), eq(favorite.userId, viewerId))
+        : sql`false`
+    )
+    .where(eq(recipe.code, code))
     .limit(1);
 
   if (results.length === 0) return null;
@@ -198,53 +209,37 @@ export async function getRecipeByShareToken(
   };
 }
 
-export async function getPublicRecipeBySlug(
-  slug: string,
-  userId?: string
-): Promise<RecipeWithDetails | null> {
-  const results = await db
-    .select({
-      id: recipe.id,
-      recipeUserId: recipe.userId,
-      title: recipe.title,
-      slug: recipe.slug,
-      description: recipe.description,
-      ingredients: recipe.ingredients,
-      instructions: recipe.instructions,
-      prepTimeMinutes: recipe.prepTimeMinutes,
-      cookTimeMinutes: recipe.cookTimeMinutes,
-      servings: recipe.servings,
-      difficulty: recipe.difficulty,
-      imageUrl: recipe.imageUrl,
-      nutrition: recipe.nutrition,
-      isPublic: recipe.isPublic,
-      shareToken: recipe.shareToken,
-      createdAt: recipe.createdAt,
-      updatedAt: recipe.updatedAt,
-      authorName: user.name,
-      favoriteId: favorite.id,
-    })
+/**
+ * Resolves whatever was put after /r/ to a recipe's current address.
+ *
+ * Accepts, in order of precedence:
+ *  - a code, which is what every link is built from now;
+ *  - a legacy share token, from before codes existed;
+ *  - a legacy public slug, which is what /r/{slug} links and the old sitemap
+ *    used. Only public recipes resolve this way, so an unlisted recipe can
+ *    never be reached by guessing its title. Slugs are only unique per author,
+ *    so the oldest match wins - the one that existed when the link was made.
+ */
+export async function resolveRecipeAddress(
+  key: string
+): Promise<{ code: string; slug: string } | null> {
+  const rows = await db
+    .select({ code: recipe.code, slug: recipe.slug })
     .from(recipe)
-    .leftJoin(user, eq(recipe.userId, user.id))
-    .leftJoin(favorite, userId ? and(eq(favorite.recipeId, recipe.id), eq(favorite.userId, userId)) : sql`false`)
-    .where(and(eq(recipe.slug, slug), eq(recipe.isPublic, true)))
+    .where(
+      or(
+        eq(recipe.code, key),
+        eq(recipe.shareToken, key),
+        and(eq(recipe.slug, key), eq(recipe.isPublic, true))
+      )
+    )
+    .orderBy(
+      sql`case when ${recipe.code} = ${key} then 0 when ${recipe.shareToken} = ${key} then 1 else 2 end`,
+      asc(recipe.createdAt)
+    )
     .limit(1);
 
-  if (results.length === 0) return null;
-
-  const r = results[0];
-  return {
-    ...r,
-    userId: r.recipeUserId,
-    ingredients: r.ingredients as Ingredient[],
-    instructions: r.instructions as Instruction[],
-    difficulty: r.difficulty as Difficulty | null,
-    nutrition: r.nutrition as NutritionInfo | null,
-    // The share token still works after a recipe is made private again, so it
-    // must never be handed to anyone but the owner.
-    shareToken: r.recipeUserId === userId ? r.shareToken : null,
-    isFavorited: r.favoriteId !== null,
-  };
+  return rows[0] ?? null;
 }
 
 interface CreateRecipeInput {
@@ -392,73 +387,6 @@ export async function deleteRecipe(id: string, userId: string): Promise<boolean>
   return result.length > 0;
 }
 
-/**
- * Get the recipe's share token, creating one on first use.
- *
- * This is deliberately get-or-create: regenerating on every call would
- * silently invalidate links that have already been handed out. Use
- * `revokeRecipeShareToken` to explicitly invalidate a link (the next call here
- * then mints a fresh one).
- */
-export async function generateRecipeShareToken(
-  id: string,
-  userId: string
-): Promise<string | null> {
-  const existing = await db
-    .select({ shareToken: recipe.shareToken })
-    .from(recipe)
-    .where(and(eq(recipe.id, id), eq(recipe.userId, userId)))
-    .limit(1);
-
-  if (existing.length === 0) {
-    return null;
-  }
-
-  if (existing[0].shareToken) {
-    return existing[0].shareToken;
-  }
-
-  const token = generateShareToken();
-
-  const result = await db
-    .update(recipe)
-    .set({ shareToken: token })
-    .where(
-      and(
-        eq(recipe.id, id),
-        eq(recipe.userId, userId),
-        isNull(recipe.shareToken)
-      )
-    )
-    .returning({ shareToken: recipe.shareToken });
-
-  if (result[0]?.shareToken) {
-    return result[0].shareToken;
-  }
-
-  // A concurrent request created one first - return that token.
-  const current = await db
-    .select({ shareToken: recipe.shareToken })
-    .from(recipe)
-    .where(and(eq(recipe.id, id), eq(recipe.userId, userId)))
-    .limit(1);
-
-  return current[0]?.shareToken || null;
-}
-
-export async function revokeRecipeShareToken(
-  id: string,
-  userId: string
-): Promise<boolean> {
-  const result = await db
-    .update(recipe)
-    .set({ shareToken: null })
-    .where(and(eq(recipe.id, id), eq(recipe.userId, userId)))
-    .returning({ id: recipe.id });
-
-  return result.length > 0;
-}
-
 export async function getUserRecipeStats(userId: string) {
   const result = await db
     .select({
@@ -472,10 +400,11 @@ export async function getUserRecipeStats(userId: string) {
 }
 
 export async function getPublicRecipesForSitemap(): Promise<
-  { slug: string; updatedAt: Date | null }[]
+  { code: string; slug: string; updatedAt: Date | null }[]
 > {
   const recipes = await db
     .select({
+      code: recipe.code,
       slug: recipe.slug,
       updatedAt: recipe.updatedAt,
     })

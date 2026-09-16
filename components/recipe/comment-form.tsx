@@ -1,5 +1,6 @@
 "use client";
 
+import { withRecipeCode } from "./recipe-api";
 import { useId, useState } from "react";
 import { Button, Label, Textarea } from "@/components/ui";
 import { Send } from "lucide-react";
@@ -8,10 +9,11 @@ import type { CommentWithUser } from "@/lib/db/queries/comments";
 
 interface CommentFormProps {
   recipeId: string;
+  code?: string;
   onCommentAdded?: (comment: CommentWithUser) => void;
 }
 
-export function CommentForm({ recipeId, onCommentAdded }: CommentFormProps) {
+export function CommentForm({ recipeId, code, onCommentAdded }: CommentFormProps) {
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -31,7 +33,7 @@ export function CommentForm({ recipeId, onCommentAdded }: CommentFormProps) {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/recipes/${recipeId}/comments`, {
+      const res = await fetch(withRecipeCode(`/api/recipes/${recipeId}/comments`, code), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: trimmedContent }),

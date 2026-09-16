@@ -34,11 +34,9 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // The share token is a capability that keeps working after a recipe goes
-    // private - only its owner ever gets to see it.
-    return NextResponse.json(
-      isOwner ? recipe : { ...recipe, shareToken: null }
-    );
+    // Only the owner or, for a public recipe, anyone reaches this point, so the
+    // recipe's code (its address) is safe to return to both.
+    return NextResponse.json(recipe);
   } catch (error) {
     console.error("Error fetching recipe:", error);
     return NextResponse.json(

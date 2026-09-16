@@ -67,7 +67,7 @@ export async function getPublicRecipesByTag(
       imageUrl: recipe.imageUrl,
       nutrition: recipe.nutrition,
       isPublic: recipe.isPublic,
-      shareToken: recipe.shareToken,
+      code: recipe.code,
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
       authorName: user.name,

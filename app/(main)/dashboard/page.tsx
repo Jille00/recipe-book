@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { getRecipesByUserId, getUserRecipeStats } from "@/lib/db/queries/recipes";
 import { getFavoriteCount } from "@/lib/db/queries/favorites";
 import { getUserTagCount } from "@/lib/db/queries/tags";
+import { recipePath } from "@/lib/recipe-url";
 import { Button, Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
 import {
   Plus,
@@ -202,7 +203,7 @@ export default async function DashboardPage() {
                 {recentRecipes.map((recipe) => (
                   <Link
                     key={recipe.id}
-                    href={`/recipes/${recipe.slug}`}
+                    href={recipePath(recipe)}
                     className="group flex items-center gap-4 rounded-lg border border-border p-3 transition-all hover:border-primary/50 hover:bg-muted/50"
                   >
                     <div className="relative h-12 w-12 flex-shrink-0 rounded-lg bg-muted overflow-hidden">

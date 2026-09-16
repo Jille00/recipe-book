@@ -7,7 +7,7 @@ import {
   deleteRating,
 } from "@/lib/db/queries/ratings";
 import { getRecipeById } from "@/lib/db/queries/recipes";
-import { canReadRecipe, invalidIdResponse, isUuid } from "@/lib/api-utils";
+import { canAccessRecipe, invalidIdResponse, isUuid } from "@/lib/api-utils";
 
 export async function GET(
   request: NextRequest,
@@ -29,9 +29,11 @@ export async function GET(
       return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
     }
 
-    const presentedToken = new URL(request.url).searchParams.get("shareToken");
+    // The recipe's code is in its link, so presenting it proves the caller was
+    // given the address - the same access the page itself grants.
+    const presentedCode = new URL(request.url).searchParams.get("code");
 
-    if (!canReadRecipe(recipe, session?.user?.id, presentedToken)) {
+    if (!canAccessRecipe(recipe, session?.user?.id, presentedCode)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -80,10 +82,12 @@ export async function POST(
       return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
     }
 
-    // Users can rate public recipes or their own recipes
-    if (!recipe.isPublic && recipe.userId !== session.user.id) {
+    // Anyone who can open the recipe can take part in it: public recipes, the
+    // owner, and anyone holding its link (proved by presenting the code).
+    const presentedCode = new URL(request.url).searchParams.get("code");
+    if (!canAccessRecipe(recipe, session.user.id, presentedCode)) {
       return NextResponse.json(
-        { error: "Cannot rate private recipes" },
+        { error: "You don't have access to this recipe" },
         { status: 403 }
       );
     }

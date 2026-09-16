@@ -55,29 +55,23 @@ export function getRequestOrigin(request: Request): string {
 }
 
 /**
- * Decides whether a caller may READ a recipe's public-facing data (its
- * ratings and comments).
+ * Decides whether a caller may view a recipe and take part in it (read and
+ * post comments and ratings).
  *
- * A recipe is readable when it is public, when the caller owns it, or when the
- * caller presents the recipe's current share token. The token case exists
- * because a share link is the only proof a non-owner has for a private recipe:
- * the page itself is server-rendered from the token, so the client fetches it
- * makes afterwards have to be able to prove the same thing. Possession of the
- * token is exactly the access the owner granted, and revoking it revokes this.
+ * A recipe is open to anyone holding its link. That covers public recipes, the
+ * owner, and anyone presenting the recipe's code - which is exactly what an
+ * unlisted recipe's link contains. Listing publicly only changes whether the
+ * recipe can be *found*, never whether a person with the link can use it.
  *
- * Writes are deliberately NOT covered by this - posting a comment or a rating
- * still requires the recipe to be public or owned.
+ * The code is unguessable, so presenting it is real proof: nobody can reach an
+ * unlisted recipe without having been sent its address.
  */
-export function canReadRecipe(
-  recipe: { isPublic: boolean | null; userId: string; shareToken?: string | null },
+export function canAccessRecipe(
+  recipe: { isPublic: boolean | null; userId: string; code: string },
   viewerId: string | undefined | null,
-  presentedShareToken?: string | null
+  presentedCode?: string | null
 ): boolean {
   if (recipe.isPublic) return true;
   if (viewerId && recipe.userId === viewerId) return true;
-  return Boolean(
-    presentedShareToken &&
-      recipe.shareToken &&
-      presentedShareToken === recipe.shareToken
-  );
+  return Boolean(presentedCode && presentedCode === recipe.code);
 }

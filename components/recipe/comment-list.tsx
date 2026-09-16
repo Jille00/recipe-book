@@ -15,8 +15,8 @@ interface CommentListProps {
   initialComments?: CommentWithUser[];
   initialTotal?: number;
   isAuthenticated?: boolean;
-  /** Present when the recipe is being viewed through a share link. */
-  shareToken?: string;
+  /** The recipe's code, sent as proof of access for unlisted recipes. */
+  code?: string;
 }
 
 export function CommentList({
@@ -26,7 +26,7 @@ export function CommentList({
   initialComments = [],
   initialTotal = 0,
   isAuthenticated = false,
-  shareToken,
+  code,
 }: CommentListProps) {
   const [comments, setComments] = useState<CommentWithUser[]>(initialComments);
   const [total, setTotal] = useState(initialTotal);
@@ -46,8 +46,8 @@ export function CommentList({
         offset: String(serverOffset),
         limit: "10",
       });
-      // Proves read access when a private recipe is open via its share link.
-      if (shareToken) query.set("shareToken", shareToken);
+      // Proves access when an unlisted recipe was opened from its link.
+      if (code) query.set("code", code);
 
       const res = await fetch(`/api/recipes/${recipeId}/comments?${query}`);
       if (!res.ok) throw new Error("Failed to load comments");
@@ -68,7 +68,7 @@ export function CommentList({
     } finally {
       setIsLoading(false);
     }
-  }, [recipeId, serverOffset, isLoading, hasMore, shareToken]);
+  }, [recipeId, serverOffset, isLoading, hasMore, code]);
 
   const handleCommentAdded = useCallback((comment: CommentWithUser) => {
     setComments((prev) => [comment, ...prev]);
@@ -99,7 +99,11 @@ export function CommentList({
 
       {/* Comment Form */}
       {isAuthenticated ? (
-        <CommentForm recipeId={recipeId} onCommentAdded={handleCommentAdded} />
+        <CommentForm
+          recipeId={recipeId}
+          code={code}
+          onCommentAdded={handleCommentAdded}
+        />
       ) : (
         <div className="rounded-lg border border-border bg-muted/30 p-4 text-center">
           <p className="text-sm text-muted-foreground">

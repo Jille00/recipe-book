@@ -29,8 +29,11 @@ export interface Recipe {
   difficulty: Difficulty | null;
   imageUrl: string | null;
   nutrition: NutritionInfo | null;
+  /** Listed on Browse and in search engines. Unlisted recipes are still
+   *  viewable by anyone who has the link. */
   isPublic: boolean | null;
-  shareToken: string | null;
+  /** The unguessable part of the recipe's address, /r/{code}/{slug}. */
+  code: string;
   createdAt: Date | null;
   updatedAt: Date | null;
 }

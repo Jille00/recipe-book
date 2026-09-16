@@ -1,5 +1,6 @@
 "use client";
 
+import { withRecipeCode } from "./recipe-api";
 import { useCallback, useRef, useState } from "react";
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -7,6 +8,7 @@ import { toast } from "sonner";
 
 interface RatingInputProps {
   recipeId: string;
+  code?: string;
   initialRating?: number | null;
   disabled?: boolean;
   size?: "sm" | "md" | "lg";
@@ -27,6 +29,7 @@ const VALUES = [1, 2, 3, 4, 5];
 
 export function RatingInput({
   recipeId,
+  code,
   initialRating = null,
   disabled = false,
   size = "md",
@@ -52,7 +55,7 @@ export function RatingInput({
 
       setIsSubmitting(true);
       try {
-        const res = await fetch(`/api/recipes/${recipeId}/rating`, {
+        const res = await fetch(withRecipeCode(`/api/recipes/${recipeId}/rating`, code), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ value }),
@@ -81,7 +84,7 @@ export function RatingInput({
         setIsSubmitting(false);
       }
     },
-    [recipeId, disabled, isSubmitting, onRatingChange]
+    [recipeId, code, disabled, isSubmitting, onRatingChange]
   );
 
   const moveFocus = (nextIndex: number) => {

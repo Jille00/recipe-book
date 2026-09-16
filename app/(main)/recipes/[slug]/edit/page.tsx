@@ -7,6 +7,7 @@ import { getRecipeBySlug } from "@/lib/db/queries/recipes";
 import { getAllTags, getTagsForRecipe } from "@/lib/db/queries/tags";
 import { RecipeForm } from "@/components/recipe/recipe-form";
 import { ArrowLeft } from "lucide-react";
+import { recipePath } from "@/lib/recipe-url";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -89,7 +90,7 @@ export default async function EditRecipePage({ params }: Props) {
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8">
         <Link
-          href={`/recipes/${recipe.slug}`}
+          href={recipePath(recipe)}
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-4"
         >
           <ArrowLeft className="h-4 w-4" />

@@ -236,7 +236,6 @@ export default async function BrowsePage({ searchParams }: Props) {
               <RecipeCard
                 key={recipe.id}
                 recipe={recipe}
-                href={`/r/${recipe.slug}`}
                 showAuthor
                 showFavorite
                 initialFavorited={recipe.isFavorited}

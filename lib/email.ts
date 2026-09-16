@@ -1,10 +1,13 @@
 /**
- * Transactional email sending.
+ * Transactional email sending via Amazon SES.
  *
- * Uses the Resend REST API when RESEND_API_KEY is set. When it is not set
- * (e.g. local development), the email is logged to the server console instead
- * so the flow can still be exercised end-to-end.
+ * Uses ACCESS_KEY_AWS / SECRET_ACCESS_KEY_AWS (named this way because Vercel
+ * reserves the standard AWS_* names) and AWS_SES_REGION. When credentials are
+ * missing (e.g. local development), the email is logged to the server console
+ * instead so the flow can still be exercised end-to-end.
  */
+
+import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 
 interface SendEmailOptions {
   to: string;
@@ -16,29 +19,47 @@ interface SendEmailOptions {
 const FROM_ADDRESS =
   process.env.EMAIL_FROM || "Kookboek <no-reply@kookboek.app>";
 
-export async function sendEmail({ to, subject, html, text }: SendEmailOptions) {
-  const apiKey = process.env.RESEND_API_KEY;
+let sesClient: SESv2Client | null = null;
 
-  if (!apiKey) {
+function getSesClient(): SESv2Client | null {
+  if (sesClient) return sesClient;
+
+  const accessKeyId = process.env.ACCESS_KEY_AWS;
+  const secretAccessKey = process.env.SECRET_ACCESS_KEY_AWS;
+  if (!accessKeyId || !secretAccessKey) return null;
+
+  sesClient = new SESv2Client({
+    region: process.env.AWS_SES_REGION || "eu-central-1",
+    credentials: { accessKeyId, secretAccessKey },
+  });
+  return sesClient;
+}
+
+export async function sendEmail({ to, subject, html, text }: SendEmailOptions) {
+  const client = getSesClient();
+
+  if (!client) {
     console.warn(
-      `[email] RESEND_API_KEY not set. Email to ${to} was not sent.\nSubject: ${subject}\n\n${text}`
+      `[email] AWS credentials not set. Email to ${to} was not sent.\nSubject: ${subject}\n\n${text}`
     );
     return;
   }
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ from: FROM_ADDRESS, to, subject, html, text }),
-  });
-
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`Failed to send email (${response.status}): ${body}`);
-  }
+  await client.send(
+    new SendEmailCommand({
+      FromEmailAddress: FROM_ADDRESS,
+      Destination: { ToAddresses: [to] },
+      Content: {
+        Simple: {
+          Subject: { Data: subject, Charset: "UTF-8" },
+          Body: {
+            Html: { Data: html, Charset: "UTF-8" },
+            Text: { Data: text, Charset: "UTF-8" },
+          },
+        },
+      },
+    })
+  );
 }
 
 function escapeHtml(value: string) {

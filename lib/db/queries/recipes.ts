@@ -1,5 +1,5 @@
 import { eq, and, asc, desc, sql, or } from "drizzle-orm";
-import { db, recipe, user, recipeTag, favorite } from "@/lib/db";
+import { db, recipe, user, recipeTag, favorite, profile } from "@/lib/db";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils/slug";
 import type { Ingredient, Instruction, Difficulty, RecipeCardData } from "@/types/recipe";
 import type { NutritionInfo } from "@/types/nutrition";
@@ -23,6 +23,7 @@ export interface RecipeWithDetails {
   createdAt: Date | null;
   updatedAt: Date | null;
   authorName?: string | null;
+  authorHandle?: string | null;
   isFavorited?: boolean;
 }
 
@@ -181,10 +182,12 @@ export async function getRecipeByCode(
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
       authorName: user.name,
+      authorHandle: profile.handle,
       favoriteId: favorite.id,
     })
     .from(recipe)
     .leftJoin(user, eq(recipe.userId, user.id))
+    .leftJoin(profile, eq(profile.userId, recipe.userId))
     .leftJoin(
       favorite,
       viewerId

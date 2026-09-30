@@ -1,5 +1,7 @@
 import type { RecipeWithDetails } from "@/lib/db/queries/recipes";
 import type { RatingStats } from "@/lib/db/queries/ratings";
+import { absoluteUrl } from "@/app/site-url";
+import { profilePath } from "@/lib/handle";
 
 interface RecipeJsonLdProps {
   recipe: RecipeWithDetails;
@@ -31,6 +33,10 @@ export function RecipeJsonLd({ recipe, url, ratingStats }: RecipeJsonLdProps) {
       ? {
           "@type": "Person",
           name: recipe.authorName,
+          // The public profile, when the author has one (undefined is dropped).
+          url: recipe.authorHandle
+            ? absoluteUrl(profilePath(recipe.authorHandle))
+            : undefined,
         }
       : undefined,
     datePublished: recipe.createdAt?.toISOString(),

@@ -45,6 +45,8 @@ export interface RatingStats {
 
 export interface RecipeWithDetails extends Recipe {
   authorName?: string | null;
+  /** The author's public profile handle (/u/{handle}), when they chose one. */
+  authorHandle?: string | null;
   tags?: string[];
   isFavorited?: boolean;
   ratingStats?: RatingStats;

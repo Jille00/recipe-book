@@ -92,6 +92,11 @@
      Both clear 4.5:1 on their own 10-15% tint over cream and parchment. */
   --color-amber-700: #7a5c16;
   --color-paprika-700: #a8352a;
+  /* Dark-mode text/icon shades (STYLE_GUIDE 07 "amber (lighter)", "paprika
+     (lighter)"): amber-300 is 7.27:1 and paprika-300 5.58:1 on their own
+     15-20% tint over the dark card (#242220). */
+  --color-amber-300: #e8c677;
+  --color-paprika-300: #f4897a;
 }
 
 /* Non-inline so the variables are emitted and usable in plain CSS too */
@@ -165,29 +170,40 @@
 }
 
 .dark {
-  /* Dark Mode - Kitchen at Night */
+  /* Dark Mode - Kitchen at Night (STYLE_GUIDE 07). Contrast is checked by
+     lib/color-contrast.test.ts; ratios below are against the page (#1a1816),
+     card/popover (#242220) and muted/accent (#2d2a26) surfaces. */
   --background: #1a1816;
-  --foreground: #f5f2ed;
+  --foreground: #f5f2ed; /* 15.85 / 14.20 / 12.79 */
   --card: #242220;
   --card-foreground: #f5f2ed;
   --popover: #242220;
   --popover-foreground: #f5f2ed;
-  --primary: #e8785a;
-  --primary-hover: #c75d3a;
-  --primary-foreground: #1a1816;
+  --primary: #e8785a; /* terracotta-400: 6.13 / 5.48 / 4.94 as text */
+  /* The guide maps hover to terracotta-500, but ink text on it is 4.26:1.
+     Lighten instead: terracotta-300, ink on it 9.18:1. */
+  --primary-hover: #f4a98a;
+  --primary-foreground: #1a1816; /* ink on terracotta-400: 6.13 */
   --secondary: #2d2a26;
-  --secondary-foreground: #b5c9a8;
+  --secondary-foreground: #b5c9a8; /* 8.08 on secondary */
   --muted: #2d2a26;
+  /* taupe, not the guide's stone: stone is 3.74 / 3.35 / 3.02 and fails AA.
+     taupe: 6.68 / 5.98 / 5.39. */
   --muted-foreground: #a69e91;
   --accent: #2d2a26;
   --accent-foreground: #f5f2ed;
-  --destructive: #e85a4a;
-  --destructive-hover: #c23d2e;
+  /* "Paprika (lighter)": ink on it 5.99, as text 5.99 / 5.36 / 4.83 and
+     4.65 on its own 10% tint over the card (#e85a4a was 4.07 on muted). */
+  --destructive: #ef6f5e;
+  --destructive-hover: #f4897a; /* paprika-300, ink on it 7.34 (was 3.37) */
+  /* Card and divider lines stay the guide's #3d3935; they are decorative. */
   --border: #3d3935;
-  --input: #3d3935;
-  --ring: #e8785a;
+  /* Form-control boundary needs 3:1 (WCAG 1.4.11): taupe-600 is
+     4.67 / 4.18 / 3.76 (#3d3935 was 1.55 on the page). */
+  --input: #8a8276;
+  --ring: #e8785a; /* 6.13 / 5.48 */
 
-  /* Charts */
+  /* Charts - all >= 5.48:1 on the card */
   --chart-1: #e8785a;
   --chart-2: #8fb07a;
   --chart-3: #d4a43a;
@@ -266,12 +282,26 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Dark glass badge: ink at 85% keeps the light text >= 10:1 even over a
+   pure-white photo. */
+.dark .glass-badge {
+  background: rgba(26, 24, 22, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  color: var(--foreground);
+}
+
 /* Decorative Divider */
 .divider {
   display: flex;
   align-items: center;
   gap: 1rem;
   color: var(--color-sand);
+}
+
+/* STYLE_GUIDE 07 dividers: #4a4640 (charcoal) in the dark */
+.dark .divider {
+  color: var(--color-charcoal);
 }
 
 .divider::before,

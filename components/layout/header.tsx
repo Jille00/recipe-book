@@ -20,6 +20,7 @@ import {
   Skeleton,
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { ThemeSegmentedControl, ThemeToggle } from "./theme-toggle";
 import {
   Home,
   UtensilsCrossed,
@@ -220,6 +221,7 @@ export function Header({ initialUser }: HeaderProps) {
 
         {/* Desktop Auth */}
         <div className="hidden md:flex md:items-center md:gap-3">
+          <ThemeToggle />
           {!sessionResolved ? (
             <div className="flex items-center gap-2">
               <Skeleton className="h-9 w-24 rounded-lg" />
@@ -348,6 +350,10 @@ export function Header({ initialUser }: HeaderProps) {
                   <Skeleton key={index} className="h-11 w-full rounded-lg" />
                 ))}
           </nav>
+
+          <Separator />
+
+          <ThemeSegmentedControl className="px-7 py-3" />
 
           <Separator />
 

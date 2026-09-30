@@ -18,7 +18,7 @@ const buttonVariants = cva(
           "bg-primary text-primary-foreground uppercase hover:bg-primary-hover hover:scale-[1.02]",
         // Danger: paprika, cream text, darker paprika on hover
         destructive:
-          "bg-destructive text-primary-foreground hover:bg-destructive-hover focus-visible:ring-destructive dark:bg-destructive/60",
+          "bg-destructive text-primary-foreground hover:bg-destructive-hover focus-visible:ring-destructive",
         // Guide "Secondary": transparent, charcoal text, 1.5px linen border;
         // hover fills parchment and darkens the border to sand.
         outline:

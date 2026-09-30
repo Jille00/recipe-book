@@ -444,9 +444,12 @@ export function formatAmount(amount: number): string {
     return `${sign}${whole}`;
   }
 
-  // Round to 1 decimal place for cleaner display
-  const oneDecimal = rounded.toFixed(1).replace(/\.0$/, "");
-  return `${sign}${oneDecimal}`;
+  // Round to 1 decimal place for cleaner display. Not toFixed(1): 1.95 is stored
+  // as 1.9499999..., so toFixed rounds it down to "1.9". Rounding from whole
+  // thousandths keeps halfway points exact (19.5 is exact in binary) so they
+  // round up as expected.
+  const tenths = Math.round(Math.round(magnitude * 1000) / 100);
+  return `${sign}${tenths / 10}`;
 }
 
 /**
@@ -675,22 +678,19 @@ const TEMPERATURE_CONTEXT_WORDS = new Set([
   "hits",
 ]);
 
-// Number (or a range of two: "180-200", "350 to 375"), an optional degree
-// sign / "degrees" filler, then the scale marker. The filler is captured so we
-// can tell "180°C" / "180 degrees C" (explicit) from a bare "2 c" (ambiguous:
-// "c" is also the abbreviation for cup).
+// A temperature or a range of them, an optional degree sign / "degrees" filler,
+// then the scale marker. The filler is captured so we can tell "180°C" /
+// "180 degrees C" (explicit) from a bare "2 c" (ambiguous: "c" is also the
+// abbreviation for cup).
+//
+// Groups: 1 the (first) number, 2 a range separator, 3 the second number,
+// 4 the filler, 5 the scale marker. A range ("350-375°F", "180 to 200 C",
+// "180°-200°C", "180°C-200°C") is matched as a whole so both ends are
+// converted; matching each number separately converted only the second
+// ("350-191°C (375°F)"). It has to be one pattern, not a second pass, or the
+// original temperature kept in brackets would be converted again.
 const TEMPERATURE_PATTERN =
-  /(-?\d+(?:\.\d+)?)(?:(\s*[-‐‑‒–—―]\s*|\s+to\s+)(-?\d+(?:\.\d+)?))?((?:\s*°)?\s*(?:degrees?|deg\.?)?\s*)(celsius|centigrade|fahrenheit|c|f)\b/gi;
-
-// A temperature in parentheses right after the match ("180°C (350°F)"), or a
-// temperature followed by an opening parenthesis right before it
-// ("350°F (180°C)"): the text already gives both scales.
-const TEMPERATURE_MARKER = String.raw`\d\s*°?\s*(?:degrees?\s*)?(?:celsius|centigrade|fahrenheit|c|f)\b`;
-const PAIRED_AFTER_PATTERN = new RegExp(
-  String.raw`^\s*\([^()]*?` + TEMPERATURE_MARKER + String.raw`[^()]*\)`,
-  "i"
-);
-const PAIRED_BEFORE_PATTERN = new RegExp(TEMPERATURE_MARKER + String.raw`\s*\(\s*$`, "i");
+  /(-?\d+(?:\.\d+)?)(?:(\s*(?:°\s*(?:[cf]\s*)?)?(?:-|–|—|to)\s*)(\d+(?:\.\d+)?))?((?:\s*°)?\s*(?:degrees?|deg\.?)?\s*)(celsius|centigrade|fahrenheit|c|f)\b/gi;
 
 // Plausible magnitudes. The strict range is used when the scale marker is a
 // bare letter and we are relying on context, so quantities are never rewritten.
@@ -726,9 +726,9 @@ export function convertTemperatureInText(
     TEMPERATURE_PATTERN,
     (
       match: string,
-      lowPart: string,
+      firstPart: string,
       separator: string | undefined,
-      highPart: string | undefined,
+      secondPart: string | undefined,
       filler: string,
       marker: string,
       offset: number
@@ -741,61 +741,61 @@ export function convertTemperatureInText(
 
       if (scale !== wantScale) return match;
 
-      // Already written in both scales — don't convert it a second time
-      if (
-        PAIRED_AFTER_PATTERN.test(text.slice(offset + match.length)) ||
-        PAIRED_BEFORE_PATTERN.test(text.slice(0, offset))
-      ) {
-        return match;
+      // A leading "-" that follows a digit is a range separator ("180-200 C"),
+      // not a negative sign. Keep it and convert the number after it.
+      let numberText = firstPart;
+      let prefix = "";
+      const charBefore = offset > 0 ? text[offset - 1] : "";
+      if (numberText.startsWith("-") && /[\d.,]/.test(charBefore)) {
+        prefix = "-";
+        numberText = numberText.slice(1);
       }
 
+      const values = [parseFloat(numberText)];
+      if (secondPart !== undefined) values.push(parseFloat(secondPart));
+      if (!values.every(Number.isFinite)) return match;
+
       const gap = filler ?? "";
-      const hasDegreeSign = gap.includes("°");
+      const hasDegreeSign = gap.includes("°") || (separator ?? "").includes("°");
       const hasDegreesWord = /deg/i.test(gap);
       const isSpelledOut = lowerMarker.length > 1;
-      const isAttached = gap.length === 0; // "350F"
+      const isAttached = gap.length === 0; // "350F", "350-375F"
       const hasContext = TEMPERATURE_CONTEXT_WORDS.has(
         precedingWord(text, offset)
       );
 
       const ranges = TEMPERATURE_RANGES[scale];
       const explicit = hasDegreeSign || hasDegreesWord || isSpelledOut;
-      const isPlausible = (value: number) =>
-        Number.isFinite(value) &&
-        (explicit
+      const isTemperature = (value: number) =>
+        explicit
           ? inRange(value, ranges.wide)
-          : (isAttached || hasContext) && inRange(value, ranges.strict));
+          : (isAttached || hasContext) && inRange(value, ranges.strict);
 
-      const low = parseFloat(lowPart);
-      const high = highPart !== undefined ? parseFloat(highPart) : NaN;
+      // Anything else is a quantity (e.g. "2 c flour", "2-3 c rice") — leave
+      // it untouched. In a range both ends must look like temperatures.
+      if (!values.every(isTemperature)) return match;
 
-      // For a range both ends must look like temperatures; if only the end
-      // next to the marker does, convert that and keep the rest verbatim.
-      let prefix = "";
-      let values: number[];
-      if (highPart !== undefined && isPlausible(low) && isPlausible(high)) {
-        values = [low, high];
-      } else if (highPart !== undefined) {
-        prefix = `${lowPart}${separator ?? ""}`;
-        values = [high];
-      } else {
-        values = [low];
-      }
+      const originals = values.map((value) => Math.round(value));
+      const convert =
+        scale === "fahrenheit" ? fahrenheitToCelsius : celsiusToFahrenheit;
+      const converted = originals.map(convert);
+      const [toSymbol, fromSymbol] =
+        scale === "fahrenheit" ? ["°C", "°F"] : ["°F", "°C"];
 
-      // Anything else is a quantity (e.g. "2 c flour") — leave it untouched.
-      if (!values.every(isPlausible)) return match;
+      // Keep the way the range was written: "to", an en/em dash, or a hyphen.
+      const joiner =
+        separator === undefined
+          ? ""
+          : /to/i.test(separator)
+            ? " to "
+            : (separator.match(/[–—]/)?.[0] ?? "-");
+      const join = (numbers: number[]) => numbers.join(joiner);
 
-      const join = (parts: number[]) => parts.join(separator ?? "");
-      const original = values.map((value) => Math.round(value));
-
-      if (scale === "fahrenheit") {
-        return `${prefix}${join(original.map(fahrenheitToCelsius))}°C (${join(original)}°F)`;
-      }
-
-      return `${prefix}${join(original.map(celsiusToFahrenheit))}°F (${join(original)}°C)`;
+      return `${prefix}${join(converted)}${toSymbol} (${join(originals)}${fromSymbol})`;
     }
   );
 }
+
 
 /**
  * Get the display name for a unit system

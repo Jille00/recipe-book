@@ -1,27 +1,75 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { Ingredient } from "@/types/recipe";
+import type { NutritionInfo } from "@/types/nutrition";
 import {
+  calculateScaleFactor,
   isDiscreteUnit,
-  roundDiscreteAmount,
   isScalableAmount,
+  roundDiscreteAmount,
   scaleIngredientAmount,
   scaleIngredients,
   scaleNutrition,
-  calculateScaleFactor,
 } from "./recipe-scaling";
-import type { Ingredient } from "@/types/recipe";
-import type { NutritionInfo } from "@/types/nutrition";
 
-describe("isDiscreteUnit", () => {
-  it("treats the empty unit and countable units as discrete", () => {
-    for (const unit of ["", "  ", "piece", "Cloves", " EGGS ", "can", "whole", "bunch"]) {
-      expect(isDiscreteUnit(unit)).toBe(true);
-    }
+const display = (amount: string | undefined, factor: number, unit?: string | null) =>
+  scaleIngredientAmount(amount, factor, unit).displayAmount;
+
+describe("calculateScaleFactor", () => {
+  it.each([
+    [4, 8, 2],
+    [4, 2, 0.5],
+    [4, 4, 1],
+    [2, 3, 1.5],
+  ])("from %d to %d servings scales by %d", (from, to, factor) => {
+    expect(calculateScaleFactor(from, to)).toBe(factor);
   });
 
-  it("treats measured units and missing units as non-discrete", () => {
-    for (const unit of ["cup", "g", "ml", "tbsp", "lb"]) {
-      expect(isDiscreteUnit(unit)).toBe(false);
+  it("scales to thirds without rounding", () => {
+    expect(calculateScaleFactor(3, 1)).toBeCloseTo(1 / 3, 10);
+  });
+
+  it.each([
+    [0, 4],
+    [4, 0],
+    [-2, 4],
+    [4, -1],
+  ])("falls back to 1 for invalid servings (%d → %d)", (from, to) => {
+    expect(calculateScaleFactor(from, to)).toBe(1);
+  });
+});
+
+describe("isScalableAmount", () => {
+  it.each(["to taste", "To Taste", " as needed ", "pinch", "some", "few", "handful", "dash", "splash", "drizzle"])(
+    "treats %j as not scalable",
+    (amount) => {
+      expect(isScalableAmount(amount)).toBe(false);
     }
+  );
+
+  it("treats missing or blank amounts as not scalable", () => {
+    expect(isScalableAmount(undefined)).toBe(false);
+    expect(isScalableAmount("")).toBe(false);
+    expect(isScalableAmount("   ")).toBe(false);
+  });
+
+  it.each(["2", "1/2", "1-2", "½"])("treats %j as scalable", (amount) => {
+    expect(isScalableAmount(amount)).toBe(true);
+  });
+});
+
+describe("isDiscreteUnit", () => {
+  it.each(["", "piece", "Pieces", " clove ", "CLOVES", "pinch", "egg", "eggs", "slice", "can", "sprig", "bunch", "whole"])(
+    "treats %j as countable",
+    (unit) => {
+      expect(isDiscreteUnit(unit)).toBe(true);
+    }
+  );
+
+  it.each(["cup", "g", "tbsp", "ml"])("treats the measure %j as continuous", (unit) => {
+    expect(isDiscreteUnit(unit)).toBe(false);
+  });
+
+  it("does not treat a missing unit as countable", () => {
     expect(isDiscreteUnit(null)).toBe(false);
     expect(isDiscreteUnit(undefined)).toBe(false);
   });
@@ -29,269 +77,222 @@ describe("isDiscreteUnit", () => {
 
 describe("roundDiscreteAmount", () => {
   it.each([
-    [0, 0],
-    [-1, 0],
     [0.1, 0.5],
     [0.49, 0.5],
     [0.5, 0.5],
-    [0.6, 0.5],
     [0.7, 1],
-    [1, 1],
     [1.45, 1.5],
-    [1.5, 1.5],
     [1.55, 1.5],
-    [1.3, 1],
-    [1.7, 2],
+    [1.35, 1],
+    [1.9, 2],
     [2.5, 3],
     [2.4, 2],
     [7.5, 8],
-    [12.2, 12],
   ])("rounds %d to %d", (input, expected) => {
     expect(roundDiscreteAmount(input)).toBe(expected);
   });
 
-  // The "within 0.1 of a half" window is inclusive: 0.6 -> 0.5, so 1.4 and 1.6
-  // (where floating point gives 0.10000000000000009) -> 1.5.
-  it("treats the ±0.1 half-window boundary consistently", () => {
-    expect(roundDiscreteAmount(1.4)).toBe(1.5);
-    expect(roundDiscreteAmount(1.6)).toBe(1.5);
+  it("never rounds a positive amount down to 0", () => {
+    for (const value of [0.0001, 0.01, 0.2, 0.4999]) {
+      expect(roundDiscreteAmount(value)).toBeGreaterThan(0);
+    }
   });
 
-  it("passes non-finite values through", () => {
+  it("only uses halves for counts below 2", () => {
+    expect(roundDiscreteAmount(2.5) % 1).toBe(0);
+    expect(roundDiscreteAmount(5.5) % 1).toBe(0);
+  });
+
+  it("returns 0 for zero or negative input and passes non-finite values through", () => {
+    expect(roundDiscreteAmount(0)).toBe(0);
+    expect(roundDiscreteAmount(-3)).toBe(0);
     expect(roundDiscreteAmount(NaN)).toBeNaN();
     expect(roundDiscreteAmount(Infinity)).toBe(Infinity);
   });
 });
 
-describe("isScalableAmount", () => {
-  it.each(["to taste", "To Taste", "pinch", "some", "few", "handful", "as needed", "dash", "splash", "drizzle", "  pinch  "])(
-    "%j is not scalable",
-    (amount) => {
-      expect(isScalableAmount(amount)).toBe(false);
-    }
-  );
-
-  it("empty and missing amounts are not scalable", () => {
-    expect(isScalableAmount(undefined)).toBe(false);
-    expect(isScalableAmount("")).toBe(false);
-    expect(isScalableAmount("   ")).toBe(false);
-  });
-
-  it("numbers and free text are considered scalable", () => {
-    expect(isScalableAmount("2")).toBe(true);
-    expect(isScalableAmount("1/2")).toBe(true);
-    // Only exact matches are excluded
-    expect(isScalableAmount("a pinch")).toBe(true);
-  });
-});
-
 describe("scaleIngredientAmount", () => {
-  it("scales whole numbers, decimals and fractions", () => {
-    expect(scaleIngredientAmount("2", 2, "cup")).toEqual({ scaledValue: 4, displayAmount: "4" });
-    expect(scaleIngredientAmount("1.5", 2, "cup").displayAmount).toBe("3");
-    expect(scaleIngredientAmount("1/2", 3, "cup").displayAmount).toBe("1½");
-    expect(scaleIngredientAmount("1 1/2", 2, "cup").displayAmount).toBe("3");
-    expect(scaleIngredientAmount("½", 0.5, "cup").displayAmount).toBe("¼");
-    expect(scaleIngredientAmount("1½", 2, "tbsp").displayAmount).toBe("3");
-    expect(scaleIngredientAmount("1/3", 2, "cup").displayAmount).toBe("⅔");
-  });
+  describe("plain amounts", () => {
+    it.each([
+      ["2", 2, "cup", "4"],
+      ["1", 1 / 3, "cup", "⅓"],
+      ["250", 1.5, "g", "375"],
+      ["1/2", 2, "cup", "1"],
+      ["1 1/2", 2, "tbsp", "3"],
+      ["1½", 0.5, "cup", "¾"],
+      ["0.75", 2, "tsp", "1½"],
+    ])("scales %j × %d %s to %j", (amount, factor, unit, expected) => {
+      expect(display(amount, factor, unit)).toBe(expected);
+    });
 
-  it("returns the value unchanged at factor 1", () => {
-    expect(scaleIngredientAmount("250", 1, "g")).toEqual({
-      scaledValue: 250,
-      displayAmount: "250",
+    it("returns the numeric scaled value alongside the display string", () => {
+      expect(scaleIngredientAmount("1/2", 3, "cup")).toEqual({
+        scaledValue: 1.5,
+        displayAmount: "1½",
+      });
     });
   });
 
-  it("scales down by fractional factors", () => {
-    expect(scaleIngredientAmount("3", 1 / 3, "cup").displayAmount).toBe("1");
-    expect(scaleIngredientAmount("1", 0.25, "cup").displayAmount).toBe("¼");
-    expect(scaleIngredientAmount("100", 1.5, "g").displayAmount).toBe("150");
-  });
+  describe("ranges", () => {
+    it.each([
+      ["1-2", 2, "2-4"],
+      ["1.5-2", 2, "3-4"],
+      ["1 1/2–2", 2, "3-4"],
+      ["1 1/2—2", 2, "3-4"],
+      ["1½-2", 2, "3-4"],
+      ["½—¾", 2, "1-1½"],
+      ["2 - 3", 1.5, "3-4½"],
+      ["2–3", 0.5, "1-1½"],
+    ])("scales the range %j × %d to %j", (amount, factor, expected) => {
+      expect(display(amount, factor, "cup")).toBe(expected);
+    });
 
-  it("handles a zero factor", () => {
-    expect(scaleIngredientAmount("2", 0, "cup")).toEqual({ scaledValue: 0, displayAmount: "0" });
-  });
+    it("scales unitless ranges too", () => {
+      expect(display("1.5-2", 2)).toBe("3-4");
+      expect(display("1-2", 2, "")).toBe("2-4");
+    });
 
-  it("handles negative factors without throwing", () => {
-    expect(scaleIngredientAmount("2", -1, "cup").displayAmount).toBe("-2");
-  });
+    it("reports the low end of a range as the scaled value", () => {
+      expect(scaleIngredientAmount("1-2", 2, "cup").scaledValue).toBe(2);
+    });
 
-  it("scales ranges with every supported dash", () => {
-    expect(scaleIngredientAmount("1-2", 2, "cup")).toEqual({ scaledValue: 2, displayAmount: "2-4" });
-    expect(scaleIngredientAmount("1.5 - 2", 2, "cup").displayAmount).toBe("3-4");
-    expect(scaleIngredientAmount("1 1/2–2", 2, "cup").displayAmount).toBe("3-4");
-    expect(scaleIngredientAmount("½—¾", 2, "cup").displayAmount).toBe("1-1½");
-    expect(scaleIngredientAmount("2‒3", 0.5, "cup").displayAmount).toBe("1-1½");
-  });
-
-  it("rounds ranges of countable items", () => {
-    expect(scaleIngredientAmount("2-3", 1.5, "cloves").displayAmount).toBe("3-5");
-    expect(scaleIngredientAmount("1-2", 0.25, "")).toEqual({
-      scaledValue: 0.5,
-      displayAmount: "½-½",
+    it("rounds both ends of a range of countable items", () => {
+      expect(display("2-3", 1.3, "cloves")).toBe("3-4");
     });
   });
 
-  it("returns nulls for non-scalable and unparseable amounts", () => {
-    const empty = { scaledValue: null, displayAmount: null };
-    expect(scaleIngredientAmount(undefined, 2)).toEqual(empty);
-    expect(scaleIngredientAmount("", 2)).toEqual(empty);
-    expect(scaleIngredientAmount("to taste", 2)).toEqual(empty);
-    expect(scaleIngredientAmount("pinch", 2)).toEqual(empty);
-    expect(scaleIngredientAmount("a few", 2)).toEqual(empty);
-    expect(scaleIngredientAmount("abc", 2)).toEqual(empty);
-  });
-
-  describe("countable items", () => {
-    it("rounds named countable units to whole items", () => {
-      expect(scaleIngredientAmount("3", 0.5, "cloves").displayAmount).toBe("1½");
-      expect(scaleIngredientAmount("5", 0.5, "cloves").displayAmount).toBe("3");
-      expect(scaleIngredientAmount("1", 1.25, "bay leaf".split(" ")[1]).displayAmount).toBe("1");
-      expect(scaleIngredientAmount("2", 0.1, "slices").displayAmount).toBe("½");
+  describe("countable ingredients", () => {
+    it.each([
+      ["3", 0.5, "clove", "1½"],
+      ["5", 1.5, "cloves", "8"],
+      ["2", 1.3, "egg", "3"],
+      ["2", 1.25, "pieces", "3"],
+      ["1", 3, "pinch", "3"],
+      ["1", 1.3, "Slice", "1"],
+    ])("rounds %j × %d %s to %j", (amount, factor, unit, expected) => {
+      expect(display(amount, factor, unit)).toBe(expected);
     });
 
-    it("rounds unit-less whole counts (eggs) but never to zero", () => {
-      expect(scaleIngredientAmount("3", 1.5, "").displayAmount).toBe("5");
-      expect(scaleIngredientAmount("1", 0.25, "").displayAmount).toBe("½");
+    it("never scales a countable ingredient down to 0", () => {
+      expect(display("1", 0.1, "clove")).toBe("½");
+      expect(display("1", 0.25, "pinch")).toBe("½");
+      expect(display("1", 0.01, "piece")).toBe("½");
     });
 
-    it("keeps the precision of unit-less fractional amounts", () => {
-      expect(scaleIngredientAmount("1/2", 1.5, "").displayAmount).toBe("¾");
+    it("rounds a whole count without a unit (e.g. 1 onion)", () => {
+      expect(display("1", 1.3, "")).toBe("1");
+      expect(display("7", 0.5, "")).toBe("4");
+      expect(display("2", 0.1, "")).toBe("½");
     });
 
-    it("does not round when the unit is undefined (not a known count)", () => {
-      expect(scaleIngredientAmount("3", 1.5).displayAmount).toBe("4½");
+    it("keeps the precision of a fractional amount without a unit", () => {
+      expect(display("1/2", 0.5, "")).toBe("¼");
+      expect(display("1/3", 2, "")).toBe("⅔");
+      expect(display("1.5", 1.5, "")).toBe("2¼");
+      expect(scaleIngredientAmount("1/2", 0.5, "").scaledValue).toBe(0.25);
     });
 
-    it("does not round measured units", () => {
-      expect(scaleIngredientAmount("3", 1.5, "cup").displayAmount).toBe("4½");
+    it("does not round when the unit is unknown (null or undefined)", () => {
+      expect(display("1", 1.3)).toBe("1.3");
+      expect(display("1", 1.3, null)).toBe("1.3");
     });
-  });
 
-  it("scales a worded range ('1 to 2')", () => {
-    expect(scaleIngredientAmount("1 to 2", 2, "cup").displayAmount).toBe("2-4");
-    expect(scaleIngredientAmount("1 To 2", 2, "cup").displayAmount).toBe("2-4");
-  });
-
-  it("scales decimal-comma amounts and ranges", () => {
-    expect(scaleIngredientAmount("1,5", 2, "cup").displayAmount).toBe("3");
-    expect(scaleIngredientAmount("1,5-2", 2, "cup").displayAmount).toBe("3-4");
-  });
-
-  it("keeps a trailing descriptor ('2 large')", () => {
-    expect(scaleIngredientAmount("2 large", 2, "")).toEqual({
-      scaledValue: 4,
-      displayAmount: "4 large",
+    it("does not round continuous measures", () => {
+      expect(display("1", 1.3, "cup")).toBe("1.3");
+      expect(display("1", 0.1, "tsp")).toBe("0.1");
     });
   });
 
-  it("drops a trailing unit, which is shown separately", () => {
-    expect(scaleIngredientAmount("2 cups", 2, "cups").displayAmount).toBe("4");
-    expect(scaleIngredientAmount("2 cloves", 2, "cloves").displayAmount).toBe("4");
+  describe("amounts that cannot be scaled", () => {
+    it.each(["to taste", "as needed", "pinch", "some"])("leaves %j untouched", (amount) => {
+      expect(scaleIngredientAmount(amount, 2, "")).toEqual({ scaledValue: null, displayAmount: null });
+    });
+
+    it("returns null for missing or unparseable amounts", () => {
+      expect(scaleIngredientAmount(undefined, 2)).toEqual({ scaledValue: null, displayAmount: null });
+      expect(scaleIngredientAmount("", 2)).toEqual({ scaledValue: null, displayAmount: null });
+      expect(scaleIngredientAmount("a little", 2)).toEqual({ scaledValue: null, displayAmount: null });
+    });
   });
 });
 
 describe("scaleIngredients", () => {
   const ingredients: Ingredient[] = [
-    { id: "1", text: "flour", amount: "2", unit: "cups" },
-    { id: "2", text: "eggs", amount: "3" },
+    { id: "1", text: "flour", amount: "2", unit: "cup" },
+    { id: "2", text: "onion", amount: "1" },
     { id: "3", text: "salt", amount: "to taste" },
-    { id: "4", text: "garlic", amount: "2-3", unit: "cloves" },
-    { id: "5", text: "water" },
+    { id: "4", text: "garlic", amount: "3", unit: "cloves" },
   ];
 
-  it("scales each ingredient and keeps the original fields", () => {
-    const result = scaleIngredients(ingredients, 2);
-    expect(result).toHaveLength(5);
-    expect(result[0]).toEqual({
-      id: "1",
-      text: "flour",
-      amount: "2",
-      unit: "cups",
-      scaledAmount: "4",
-      originalAmount: "2",
-      wasScaled: true,
-    });
-    expect(result[1].scaledAmount).toBe("6");
-    expect(result[2]).toMatchObject({ scaledAmount: null, wasScaled: false, originalAmount: "to taste" });
-    expect(result[3].scaledAmount).toBe("4-6");
-    expect(result[4]).toMatchObject({ scaledAmount: null, wasScaled: false, originalAmount: undefined });
+  it("scales every ingredient and keeps the original fields", () => {
+    const scaled = scaleIngredients(ingredients, 1.5);
+    expect(scaled).toEqual([
+      { id: "1", text: "flour", amount: "2", unit: "cup", scaledAmount: "3", originalAmount: "2", wasScaled: true },
+      { id: "2", text: "onion", amount: "1", scaledAmount: "1½", originalAmount: "1", wasScaled: true },
+      { id: "3", text: "salt", amount: "to taste", scaledAmount: null, originalAmount: "to taste", wasScaled: false },
+      { id: "4", text: "garlic", amount: "3", unit: "cloves", scaledAmount: "5", originalAmount: "3", wasScaled: true },
+    ]);
   });
 
-  it("treats a missing unit as a count (rounds eggs)", () => {
-    const [eggs] = scaleIngredients([{ id: "e", text: "eggs", amount: "3" }], 1.5);
-    expect(eggs.scaledAmount).toBe("5");
+  it("treats an ingredient without a unit as a count", () => {
+    expect(scaleIngredients([{ id: "1", text: "egg", amount: "3" }], 0.4)[0].scaledAmount).toBe("1");
   });
 
   it("marks nothing as scaled at factor 1", () => {
-    const result = scaleIngredients(ingredients, 1);
-    expect(result.every((i) => !i.wasScaled)).toBe(true);
-    expect(result[0].scaledAmount).toBe("2");
-  });
-
-  it("returns an empty array for no ingredients", () => {
-    expect(scaleIngredients([], 3)).toEqual([]);
+    for (const ingredient of scaleIngredients(ingredients, 1)) {
+      expect(ingredient.wasScaled).toBe(false);
+    }
   });
 
   it("does not mutate the input", () => {
     const copy = structuredClone(ingredients);
-    scaleIngredients(ingredients, 3);
+    scaleIngredients(ingredients, 2);
     expect(ingredients).toEqual(copy);
   });
 });
 
 describe("scaleNutrition", () => {
   const nutrition: NutritionInfo = {
-    calories: 250,
-    protein: 10.25,
+    calories: 500,
+    protein: 12.34,
     carbs: null,
-    fat: 3,
+    fat: 7,
     fiber: 0,
-    sugar: 1.11,
+    sugar: 3.33,
     confidence: "medium",
-    warnings: ["estimate"],
+    warnings: ["estimated"],
   };
 
-  it("returns null for missing nutrition", () => {
-    expect(scaleNutrition(null, 2)).toBeNull();
-    expect(scaleNutrition(undefined, 2)).toBeNull();
-  });
-
-  it("scales numeric values to one decimal and keeps nulls and metadata", () => {
-    expect(scaleNutrition(nutrition, 2)).toEqual({
-      calories: 500,
-      protein: 20.5,
+  it("scales every value and rounds to one decimal", () => {
+    expect(scaleNutrition(nutrition, 1.5)).toEqual({
+      calories: 750,
+      protein: 18.5,
       carbs: null,
-      fat: 6,
+      fat: 10.5,
       fiber: 0,
-      sugar: 2.2,
+      sugar: 5,
       confidence: "medium",
-      warnings: ["estimate"],
+      warnings: ["estimated"],
     });
   });
 
-  it("scales by fractional factors", () => {
-    expect(scaleNutrition(nutrition, 1 / 3)?.calories).toBe(83.3);
+  it("returns null without nutrition", () => {
+    expect(scaleNutrition(null, 2)).toBeNull();
+    expect(scaleNutrition(undefined, 2)).toBeNull();
   });
 });
 
-describe("calculateScaleFactor", () => {
-  it.each([
-    [4, 8, 2],
-    [4, 2, 0.5],
-    [4, 4, 1],
-    [3, 1, 1 / 3],
-    [2, 3, 1.5],
-    [0.5, 1, 2],
-  ])("%d -> %d servings = x%d", (from, to, factor) => {
-    expect(calculateScaleFactor(from, to)).toBeCloseTo(factor, 10);
+describe("audit fixes", () => {
+  it("scales worded and en-dash ranges", () => {
+    expect(display("1 to 2", 2, "cup")).toBe("2-4");
+    expect(display("1–2", 2, "cup")).toBe("2-4");
   });
 
-  it("falls back to 1 for zero or negative servings", () => {
-    expect(calculateScaleFactor(0, 4)).toBe(1);
-    expect(calculateScaleFactor(4, 0)).toBe(1);
-    expect(calculateScaleFactor(-2, 4)).toBe(1);
-    expect(calculateScaleFactor(4, -2)).toBe(1);
+  it("scales a decimal comma amount", () => {
+    expect(display("1,5", 2, "kg")).toBe("3");
+  });
+
+  it("keeps a trailing descriptor", () => {
+    expect(display("2 large", 2, "")).toBe("4 large");
   });
 });

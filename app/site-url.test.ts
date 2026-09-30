@@ -1,57 +1,75 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-// SITE_URL is computed once at import time, so each case re-imports the module
-// with a stubbed NEXT_PUBLIC_APP_URL.
-async function load(appUrl: string | undefined) {
+// SITE_URL is computed once when the module loads, so each case sets the
+// environment first and then imports a fresh copy of the module.
+async function loadWithAppUrl(value: string | undefined) {
+  vi.stubEnv("NEXT_PUBLIC_APP_URL", value);
   vi.resetModules();
-  vi.stubEnv("NEXT_PUBLIC_APP_URL", appUrl as string);
-  return import("@/app/site-url");
+  return import("./site-url");
 }
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.resetModules();
 });
 
 describe("SITE_URL", () => {
-  it("defaults to the www origin when unset or empty", async () => {
-    expect((await load(undefined)).SITE_URL).toBe("https://www.kookboek.app");
-    expect((await load("")).SITE_URL).toBe("https://www.kookboek.app");
+  it.each([
+    ["https://kookboek.app", "https://www.kookboek.app"],
+    ["https://kookboek.app/", "https://www.kookboek.app"],
+    ["https://kookboek.app///", "https://www.kookboek.app"],
+    ["https://www.kookboek.app", "https://www.kookboek.app"],
+    ["https://www.kookboek.app/", "https://www.kookboek.app"],
+    ["https://www.kookboek.app/recipes?x=1#top", "https://www.kookboek.app"],
+    ["https://KOOKBOEK.app", "https://www.kookboek.app"],
+  ])("normalises %j to %j", async (configured, expected) => {
+    const { SITE_URL } = await loadWithAppUrl(configured);
+    expect(SITE_URL).toBe(expected);
   });
 
-  it("normalises the apex domain to www", async () => {
-    expect((await load("https://kookboek.app")).SITE_URL).toBe("https://www.kookboek.app");
-    expect((await load("https://kookboek.app/")).SITE_URL).toBe("https://www.kookboek.app");
+  it("leaves localhost alone", async () => {
+    expect((await loadWithAppUrl("http://localhost:3000/")).SITE_URL).toBe("http://localhost:3000");
   });
 
-  it("reduces a configured URL to its origin", async () => {
-    expect((await load("https://www.kookboek.app/some/path/?q=1")).SITE_URL).toBe("https://www.kookboek.app");
-    expect((await load("http://localhost:3000/")).SITE_URL).toBe("http://localhost:3000");
+  it("leaves other hosts alone, including preview subdomains", async () => {
+    expect((await loadWithAppUrl("https://preview.kookboek.app")).SITE_URL).toBe("https://preview.kookboek.app");
+    expect((await loadWithAppUrl("https://example.com/")).SITE_URL).toBe("https://example.com");
   });
 
-  it("keeps other hosts (e.g. preview deployments) as-is", async () => {
-    expect((await load("https://preview-123.vercel.app")).SITE_URL).toBe("https://preview-123.vercel.app");
-    expect((await load("https://sub.kookboek.app")).SITE_URL).toBe("https://sub.kookboek.app");
-  });
-
-  it("falls back to the default for an invalid URL", async () => {
-    expect((await load("kookboek.app")).SITE_URL).toBe("https://www.kookboek.app");
-    expect((await load("not a url")).SITE_URL).toBe("https://www.kookboek.app");
-  });
+  it.each([[undefined], [""], ["not a url"], ["kookboek.app"]])(
+    "falls back to the www origin for %j",
+    async (configured) => {
+      const { SITE_URL } = await loadWithAppUrl(configured);
+      expect(SITE_URL).toBe("https://www.kookboek.app");
+    }
+  );
 });
 
 describe("absoluteUrl", () => {
-  it("joins paths with exactly one slash", async () => {
-    const { absoluteUrl } = await load("https://kookboek.app");
-    expect(absoluteUrl("/recipes")).toBe("https://www.kookboek.app/recipes");
+  it("joins a site-relative path to the canonical origin", async () => {
+    const { absoluteUrl } = await loadWithAppUrl("https://kookboek.app/");
+    expect(absoluteUrl("/r/aB3xK9pQ/pancakes")).toBe("https://www.kookboek.app/r/aB3xK9pQ/pancakes");
+  });
+
+  it("adds a missing leading slash", async () => {
+    const { absoluteUrl } = await loadWithAppUrl("https://www.kookboek.app");
     expect(absoluteUrl("recipes")).toBe("https://www.kookboek.app/recipes");
+  });
+
+  it("defaults to the home page", async () => {
+    const { absoluteUrl } = await loadWithAppUrl("https://www.kookboek.app");
     expect(absoluteUrl()).toBe("https://www.kookboek.app/");
-    expect(absoluteUrl("/r/abc/pasta?x=1")).toBe("https://www.kookboek.app/r/abc/pasta?x=1");
+  });
+
+  it("never produces a double slash after the origin", async () => {
+    const { absoluteUrl } = await loadWithAppUrl("http://localhost:3000/");
+    expect(absoluteUrl("/sitemap.xml")).toBe("http://localhost:3000/sitemap.xml");
   });
 });
 
 describe("SITE_OG_IMAGE", () => {
-  it("describes a 1200x630 image", async () => {
-    const { SITE_OG_IMAGE } = await load(undefined);
+  it("is a site-relative 1200x630 image", async () => {
+    const { SITE_OG_IMAGE } = await loadWithAppUrl(undefined);
     expect(SITE_OG_IMAGE).toMatchObject({ url: "/og-image.png", width: 1200, height: 630 });
   });
 });

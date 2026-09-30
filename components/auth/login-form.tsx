@@ -4,17 +4,20 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "@/lib/auth-client";
-import { safeRelativePath } from "@/lib/safe-path";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 import { Button, Input, Label } from "@/components/ui";
 import { Loader2, Mail, Lock, MailCheck } from "lucide-react";
+
+// Where to go after signing in. Validated so a crafted link can't send someone
+// to another site right after they sign in.
+function getSafeCallbackUrl(url: string | null): string {
+  return safeRedirectPath(url, "/dashboard");
+}
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = safeRelativePath(
-    searchParams.get("callbackUrl"),
-    "/dashboard"
-  );
+  const callbackUrl = getSafeCallbackUrl(searchParams.get("callbackUrl"));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

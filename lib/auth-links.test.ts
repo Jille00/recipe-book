@@ -1,58 +1,90 @@
-import { describe, it, expect } from "vitest";
-import { withConfirmationLanding, CONFIRM_EMAIL_PATH } from "@/lib/auth-links";
+import { describe, expect, it } from "vitest";
+import { CONFIRM_EMAIL_PATH, withConfirmationLanding } from "./auth-links";
 
-const BASE = "https://www.kookboek.app/api/auth/verify-email?token=abc123";
+const BASE = "https://www.kookboek.app/api/auth/verify-email";
 
-function callbackOf(url: string) {
-  return new URL(url).searchParams.get("callbackURL");
-}
+const link = (callbackURL?: string) => {
+  const url = new URL(BASE);
+  url.searchParams.set("token", "tok.en-123_abc");
+  if (callbackURL !== undefined) url.searchParams.set("callbackURL", callbackURL);
+  return url.toString();
+};
 
-function withCallback(callbackURL: string) {
-  return `${BASE}&callbackURL=${encodeURIComponent(callbackURL)}`;
-}
+const callbackOf = (result: string) => new URL(result).searchParams.get("callbackURL");
+
+/** The `next` carried inside the rewritten callback, if any. */
+const nextOf = (result: string) => {
+  const callback = callbackOf(result);
+  return callback ? new URL(callback, "https://www.kookboek.app").searchParams.get("next") : null;
+};
 
 describe("withConfirmationLanding", () => {
-  it("adds the confirmation landing when no callbackURL is present", () => {
-    const out = withConfirmationLanding(BASE);
-    expect(callbackOf(out)).toBe(CONFIRM_EMAIL_PATH);
-    expect(new URL(out).searchParams.get("token")).toBe("abc123");
+  it("lands the default / callback on the confirmation page", () => {
+    const result = withConfirmationLanding(link("/"));
+    expect(callbackOf(result)).toBe(CONFIRM_EMAIL_PATH);
+    expect(nextOf(result)).toBeNull();
   });
 
-  it("replaces the default '/' callback with the landing page", () => {
-    expect(callbackOf(withConfirmationLanding(withCallback("/")))).toBe("/confirm-email");
+  it("lands a link without a callback on the confirmation page", () => {
+    const result = withConfirmationLanding(link());
+    expect(callbackOf(result)).toBe("/confirm-email");
   });
 
-  it("carries a same-site destination forward as `next`", () => {
-    const out = withConfirmationLanding(withCallback("/recipes/new?x=1&y=2"));
-    const landing = callbackOf(out)!;
-    expect(landing.startsWith("/confirm-email?next=")).toBe(true);
-    const next = new URL(landing, "https://x.test").searchParams.get("next");
-    expect(next).toBe("/recipes/new?x=1&y=2");
+  // Regression: these bypassed a "doesn't start with //" check, because
+  // browsers treat a backslash as a slash and strip tabs and newlines, so each
+  // one really points at another site.
+  it.each([
+    ["backslash after the slash", "/\\evil.com"],
+    ["slash and backslash", "/\\/evil.com"],
+    ["tab between slashes", "/\t/evil.com"],
+    ["newline between slashes", "/\n/evil.com"],
+  ])("drops a destination on another site disguised with a %s", (_label, destination) => {
+    const result = withConfirmationLanding(link(destination));
+    expect(callbackOf(result)).toBe(CONFIRM_EMAIL_PATH);
+    expect(nextOf(result)).toBeNull();
   });
 
-  it("drops absolute and protocol-relative destinations", () => {
-    expect(callbackOf(withConfirmationLanding(withCallback("https://evil.example/")))).toBe(CONFIRM_EMAIL_PATH);
-    expect(callbackOf(withConfirmationLanding(withCallback("//evil.example/")))).toBe(CONFIRM_EMAIL_PATH);
-    expect(callbackOf(withConfirmationLanding(withCallback("javascript:alert(1)")))).toBe(CONFIRM_EMAIL_PATH);
-    expect(callbackOf(withConfirmationLanding(withCallback("recipes")))).toBe(CONFIRM_EMAIL_PATH);
+  it("keeps a same-site destination as next", () => {
+    const result = withConfirmationLanding(link("/r/aB3xK9pQ/pancakes"));
+    expect(new URL(callbackOf(result)!, "https://x.test").pathname).toBe(CONFIRM_EMAIL_PATH);
+    expect(nextOf(result)).toBe("/r/aB3xK9pQ/pancakes");
   });
 
-  it("leaves a callback that already lands on the confirmation page untouched", () => {
-    const input = withCallback("/confirm-email?next=%2Fbrowse");
-    expect(withConfirmationLanding(input)).toBe(new URL(input).toString());
+  it("keeps the query string of a same-site destination intact", () => {
+    const result = withConfirmationLanding(link("/recipes?tab=mine&page=2"));
+    expect(nextOf(result)).toBe("/recipes?tab=mine&page=2");
   });
 
-  it("preserves other query parameters and the path", () => {
-    const out = new URL(withConfirmationLanding(`${BASE}&foo=bar`));
-    expect(out.pathname).toBe("/api/auth/verify-email");
-    expect(out.searchParams.get("foo")).toBe("bar");
+  it("leaves an existing confirmation callback untouched", () => {
+    const original = link("/confirm-email?next=%2Frecipes");
+    const result = withConfirmationLanding(original);
+    expect(callbackOf(result)).toBe("/confirm-email?next=%2Frecipes");
+    expect(result).toBe(original);
   });
 
-  it("throws on a non-absolute verification URL", () => {
-    expect(() => withConfirmationLanding("/api/auth/verify-email")).toThrow();
+  it.each([
+    "//evil.com",
+    "//evil.com/r/abc",
+    "https://evil.com/phish",
+    "http://www.kookboek.app.evil.com/",
+    "javascript:alert(1)",
+    "evil.com",
+  ])("drops the external or unsafe destination %j", (callback) => {
+    const result = withConfirmationLanding(link(callback));
+    expect(callbackOf(result)).toBe(CONFIRM_EMAIL_PATH);
+    expect(result).not.toContain("evil");
+    expect(result).not.toContain("javascript");
   });
 
-  it("drops backslash-prefixed destinations", () => {
-    expect(callbackOf(withConfirmationLanding(withCallback("/\\evil.example")))).toBe(CONFIRM_EMAIL_PATH);
+  it("preserves the token and the rest of the link", () => {
+    const result = new URL(withConfirmationLanding(link("/recipes")));
+    expect(result.origin).toBe("https://www.kookboek.app");
+    expect(result.pathname).toBe("/api/auth/verify-email");
+    expect(result.searchParams.get("token")).toBe("tok.en-123_abc");
+  });
+
+  it("does not duplicate the callbackURL parameter", () => {
+    const result = new URL(withConfirmationLanding(link("/recipes")));
+    expect(result.searchParams.getAll("callbackURL")).toHaveLength(1);
   });
 });

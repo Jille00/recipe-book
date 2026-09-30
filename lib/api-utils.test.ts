@@ -1,144 +1,206 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  isUuid,
-  invalidIdResponse,
-  parsePaginationParam,
-  getRequestOrigin,
   canAccessRecipe,
-} from "@/lib/api-utils";
-
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
+  getRequestOrigin,
+  invalidIdResponse,
+  isUuid,
+  parsePaginationParam,
+} from "./api-utils";
 
 describe("isUuid", () => {
-  it("accepts uuids in either case", () => {
-    expect(isUuid("3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e")).toBe(true);
-    expect(isUuid("3F2B8C1E-4D5A-4B6C-8D7E-9F0A1B2C3D4E")).toBe(true);
-    expect(isUuid("00000000-0000-0000-0000-000000000000")).toBe(true);
+  it.each([
+    "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
+    "3F2504E0-4F89-41D3-9A0C-0305E82C3301",
+    "00000000-0000-0000-0000-000000000000",
+  ])("accepts %s", (value) => {
+    expect(isUuid(value)).toBe(true);
   });
 
   it.each([
     "",
-    "abc",
-    "3f2b8c1e4d5a4b6c8d7e9f0a1b2c3d4e",
-    "3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4",
-    "3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4ef",
-    " 3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e",
-    "3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e\n",
-    "gggggggg-4d5a-4b6c-8d7e-9f0a1b2c3d4e",
-    "{3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e}",
+    "not-a-uuid",
+    "3f2504e04f8941d39a0c0305e82c3301",
+    "3f2504e0-4f89-41d3-9a0c-0305e82c330",
+    "3f2504e0-4f89-41d3-9a0c-0305e82c33011",
+    " 3f2504e0-4f89-41d3-9a0c-0305e82c3301",
+    "3f2504e0-4f89-41d3-9a0c-0305e82c3301\n",
+    "g f2504e0-4f89-41d3-9a0c-0305e82c3301",
+    "3f2504e0-4f89-41d3-9a0c-0305e82c3301' OR 1=1",
   ])("rejects %j", (value) => {
     expect(isUuid(value)).toBe(false);
   });
 
-  it("rejects null, undefined and non-strings", () => {
+  it("rejects null and undefined", () => {
     expect(isUuid(null)).toBe(false);
     expect(isUuid(undefined)).toBe(false);
-    expect(isUuid(123 as unknown as string)).toBe(false);
   });
 });
 
 describe("invalidIdResponse", () => {
-  it("returns a 400 JSON error naming the resource", async () => {
-    const res = invalidIdResponse("recipe");
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "Invalid recipe id" });
+  it("returns a 400 naming the resource", async () => {
+    const response = invalidIdResponse("recipe");
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "Invalid recipe id" });
   });
 
-  it("defaults the resource name", async () => {
-    expect(await invalidIdResponse().json()).toEqual({ error: "Invalid resource id" });
+  it("uses a generic name by default", async () => {
+    const response = invalidIdResponse();
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "Invalid resource id" });
   });
 });
 
 describe("parsePaginationParam", () => {
-  const opts = { fallback: 20, min: 1, max: 50 };
+  const range = { fallback: 20, min: 1, max: 100 };
 
   it.each([
     [null, 20],
     ["", 20],
     ["   ", 20],
     ["abc", 20],
-    ["Infinity", 20],
     ["NaN", 20],
-    ["10", 10],
-    [" 10 ", 10],
-    ["10.9", 10],
-    ["0", 1],
-    ["-5", 1],
-    ["1000", 50],
-    ["50", 50],
-    ["1e1", 10],
-  ])("parses %j as %d", (raw, expected) => {
-    expect(parsePaginationParam(raw, opts)).toBe(expected);
+    ["Infinity", 20],
+    ["-Infinity", 20],
+    ["10abc", 20],
+  ])("falls back for %j", (raw, expected) => {
+    expect(parsePaginationParam(raw, range)).toBe(expected);
   });
 
-  it("supports a zero minimum (offsets)", () => {
-    expect(parsePaginationParam("0", { fallback: 0, min: 0, max: 10_000 })).toBe(0);
-    expect(parsePaginationParam("-1", { fallback: 0, min: 0, max: 10_000 })).toBe(0);
+  it.each([
+    ["1", 1],
+    ["50", 50],
+    ["100", 100],
+    ["2.9", 2],
+    ["1e1", 10],
+  ])("parses %j as %d", (raw, expected) => {
+    expect(parsePaginationParam(raw, range)).toBe(expected);
+  });
+
+  it.each([
+    ["0", 1],
+    ["-5", 1],
+    ["101", 100],
+    ["999999", 100],
+    ["0.5", 1],
+  ])("clamps out-of-range %j to %d", (raw, expected) => {
+    expect(parsePaginationParam(raw, range)).toBe(expected);
+  });
+
+  it("allows an offset of 0 when min is 0", () => {
+    expect(parsePaginationParam("0", { fallback: 0, min: 0, max: 1000 })).toBe(0);
+    expect(parsePaginationParam("-1", { fallback: 0, min: 0, max: 1000 })).toBe(0);
   });
 });
 
 describe("getRequestOrigin", () => {
-  it("prefers NEXT_PUBLIC_APP_URL and strips trailing slashes", () => {
-    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://www.kookboek.app///");
-    const req = new Request("http://internal:3000/api/x", { headers: { "x-forwarded-host": "other.example" } });
-    expect(getRequestOrigin(req)).toBe("https://www.kookboek.app");
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
-  it("falls back to forwarded headers", () => {
-    vi.stubEnv("NEXT_PUBLIC_APP_URL", "");
-    const req = new Request("http://internal:3000/api/x", {
-      headers: { "x-forwarded-host": "kookboek.app", "x-forwarded-proto": "http" },
+  it("prefers the configured public URL and strips trailing slashes", () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://www.kookboek.app///");
+    const request = new Request("http://internal:3000/api/x", {
+      headers: { "x-forwarded-host": "other.example", "x-forwarded-proto": "http" },
     });
-    expect(getRequestOrigin(req)).toBe("http://kookboek.app");
+    expect(getRequestOrigin(request)).toBe("https://www.kookboek.app");
+  });
+
+  it("uses the forwarded host and protocol without a configured URL", () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "");
+    const request = new Request("http://internal:3000/api/x", {
+      headers: { "x-forwarded-host": "preview.example.com", "x-forwarded-proto": "http" },
+    });
+    expect(getRequestOrigin(request)).toBe("http://preview.example.com");
   });
 
   it("assumes https when only the forwarded host is present", () => {
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "");
-    const req = new Request("http://internal:3000/api/x", { headers: { "x-forwarded-host": "kookboek.app" } });
-    expect(getRequestOrigin(req)).toBe("https://kookboek.app");
+    const request = new Request("http://internal:3000/api/x", {
+      headers: { "x-forwarded-host": "preview.example.com" },
+    });
+    expect(getRequestOrigin(request)).toBe("https://preview.example.com");
   });
 
-  it("falls back to the request URL origin", () => {
+  it("falls back to the request URL's origin", () => {
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "");
-    expect(getRequestOrigin(new Request("http://localhost:3000/api/x?y=1"))).toBe("http://localhost:3000");
+    const request = new Request("http://localhost:3000/api/recipes?page=2");
+    expect(getRequestOrigin(request)).toBe("http://localhost:3000");
+  });
+
+  it("never returns an undefined origin", () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", undefined);
+    const origin = getRequestOrigin(new Request("https://example.com/a"));
+    expect(origin).toBe("https://example.com");
+    expect(origin).not.toContain("undefined");
   });
 });
 
 describe("canAccessRecipe", () => {
-  const privateRecipe = { isPublic: false, userId: "owner", code: "secret" };
+  const OWNER = "owner-1";
+  const OTHER = "user-2";
+  const CODE = "aB3xK9pQ";
 
-  it("allows anyone on a public recipe", () => {
-    expect(canAccessRecipe({ ...privateRecipe, isPublic: true }, undefined)).toBe(true);
+  const unlisted = { isPublic: false, userId: OWNER, code: CODE };
+  const unlistedNull = { isPublic: null, userId: OWNER, code: CODE };
+  const published = { isPublic: true, userId: OWNER, code: CODE };
+
+  describe("public recipes", () => {
+    it("are open to anonymous visitors without a code", () => {
+      expect(canAccessRecipe(published, null)).toBe(true);
+      expect(canAccessRecipe(published, undefined)).toBe(true);
+    });
+
+    it("are open to signed-in non-owners, even with a wrong code", () => {
+      expect(canAccessRecipe(published, OTHER)).toBe(true);
+      expect(canAccessRecipe(published, OTHER, "wrong")).toBe(true);
+    });
   });
 
-  it("allows the owner", () => {
-    expect(canAccessRecipe(privateRecipe, "owner")).toBe(true);
+  describe("the owner", () => {
+    it("can always open their unlisted recipe", () => {
+      expect(canAccessRecipe(unlisted, OWNER)).toBe(true);
+      expect(canAccessRecipe(unlisted, OWNER, "wrong")).toBe(true);
+      expect(canAccessRecipe(unlistedNull, OWNER, null)).toBe(true);
+    });
   });
 
-  it("allows anyone presenting the correct code", () => {
-    expect(canAccessRecipe(privateRecipe, undefined, "secret")).toBe(true);
-    expect(canAccessRecipe(privateRecipe, "stranger", "secret")).toBe(true);
+  describe("unlisted recipes with the correct code", () => {
+    it("open for anonymous visitors", () => {
+      expect(canAccessRecipe(unlisted, null, CODE)).toBe(true);
+      expect(canAccessRecipe(unlisted, undefined, CODE)).toBe(true);
+    });
+
+    it("open for signed-in non-owners", () => {
+      expect(canAccessRecipe(unlisted, OTHER, CODE)).toBe(true);
+    });
+
+    it("treat a null isPublic as unlisted", () => {
+      expect(canAccessRecipe(unlistedNull, null, CODE)).toBe(true);
+      expect(canAccessRecipe(unlistedNull, null)).toBe(false);
+    });
   });
 
-  it("denies others on an unlisted recipe", () => {
-    expect(canAccessRecipe(privateRecipe, "stranger")).toBe(false);
-    expect(canAccessRecipe(privateRecipe, null)).toBe(false);
-    expect(canAccessRecipe(privateRecipe, "stranger", "wrong")).toBe(false);
-    expect(canAccessRecipe(privateRecipe, "stranger", "SECRET")).toBe(false);
-    expect(canAccessRecipe(privateRecipe, "", "")).toBe(false);
-  });
+  describe("unlisted recipes are refused", () => {
+    it.each([
+      ["a missing code", undefined],
+      ["a null code", null],
+      ["an empty code", ""],
+      ["a wrong code", "zZ9yY8xX"],
+      ["a differently-cased code", CODE.toLowerCase()],
+      ["an upper-cased code", CODE.toUpperCase()],
+      ["a code with whitespace", ` ${CODE} `],
+      ["a prefix of the code", CODE.slice(0, 4)],
+    ])("with %s for anonymous visitors and non-owners", (_label, code) => {
+      expect(canAccessRecipe(unlisted, null, code)).toBe(false);
+      expect(canAccessRecipe(unlisted, OTHER, code)).toBe(false);
+    });
 
-  it("treats isPublic null as unlisted", () => {
-    expect(canAccessRecipe({ ...privateRecipe, isPublic: null }, "stranger")).toBe(false);
-  });
+    it("for an empty viewer id, which is not the owner", () => {
+      expect(canAccessRecipe({ ...unlisted, userId: "" }, "")).toBe(false);
+    });
 
-  it("never matches an empty code, even if the recipe's code is empty", () => {
-    expect(canAccessRecipe({ ...privateRecipe, code: "" }, "stranger", "")).toBe(false);
-  });
-
-  it("does not treat an empty viewer id as the owner of a recipe with an empty user id", () => {
-    expect(canAccessRecipe({ ...privateRecipe, userId: "" }, "")).toBe(false);
+    it("when the recipe itself has an empty code and none is presented", () => {
+      expect(canAccessRecipe({ ...unlisted, code: "" }, OTHER, "")).toBe(false);
+    });
   });
 });

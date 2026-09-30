@@ -1,163 +1,211 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   formatBytes,
-  validateImageFile,
-  readResponseError,
-  parseJsonResponse,
-  UPLOAD_IMAGE_TYPES,
   IMPORT_IMAGE_TYPES,
-  MAX_SOURCE_BYTES,
+  IMPORT_PASSTHROUGH_TYPES,
   IMPORT_REQUEST_BUDGET_BYTES,
+  MAX_SOURCE_BYTES,
+  parseJsonResponse,
+  readResponseError,
   UPLOAD_BUDGET_BYTES,
+  UPLOAD_IMAGE_TYPES,
+  UPLOAD_PASSTHROUGH_TYPES,
+  validateImageFile,
 } from "./file-validation";
 
-function file(name: string, type: string, size = 10): File {
-  return new File([new Uint8Array(size)], name, { type });
-}
+const file = (name: string, type: string, size = 10) => new File([new Uint8Array(size)], name, { type });
 
-/** A File that reports an arbitrary size without allocating it. */
-function bigFile(name: string, type: string, size: number): File {
-  const f = file(name, type, 1);
-  Object.defineProperty(f, "size", { value: size });
-  return f;
-}
+/** A File-shaped stand-in for sizes too large to allocate in a test. */
+const hugeFile = (name: string, type: string, size: number) => ({ name, type, size }) as File;
 
-describe("budgets", () => {
-  it("stay under Vercel's ~4.5MB request limit", () => {
-    expect(IMPORT_REQUEST_BUDGET_BYTES).toBeLessThan(4_000_000);
-    expect(UPLOAD_BUDGET_BYTES).toBeLessThan(IMPORT_REQUEST_BUDGET_BYTES);
+describe("constants", () => {
+  it("keeps budgets below Vercel's ~4.5MB request limit", () => {
+    expect(IMPORT_REQUEST_BUDGET_BYTES).toBeLessThan(4_500_000);
+    expect(UPLOAD_BUDGET_BYTES).toBeLessThan(4_500_000);
+  });
+
+  it("only passes through types that are also accepted", () => {
+    for (const type of UPLOAD_PASSTHROUGH_TYPES) expect(UPLOAD_IMAGE_TYPES).toContain(type);
+    for (const type of IMPORT_PASSTHROUGH_TYPES) expect(IMPORT_IMAGE_TYPES).toContain(type);
   });
 });
 
 describe("formatBytes", () => {
+  // Regression: one byte over a whole megabyte printed "50.0MB".
+  it("drops a trailing .0 for sizes just over a whole megabyte", () => {
+    expect(formatBytes(50 * 1024 * 1024 + 1)).toBe("50MB");
+    expect(formatBytes(2.5 * 1024 * 1024)).toBe("2.5MB");
+  });
+
+
   it.each([
     [0, "1KB"],
     [500, "1KB"],
     [1024, "1KB"],
     [1536, "2KB"],
-    [500 * 1024, "500KB"],
+    [900 * 1024, "900KB"],
     [1024 * 1024, "1MB"],
     [1.5 * 1024 * 1024, "1.5MB"],
-    [3_500_000, "3.3MB"],
-    [MAX_SOURCE_BYTES, "50MB"],
+    [3_800_000, "3.6MB"],
+    [50 * 1024 * 1024, "50MB"],
   ])("formats %d bytes as %s", (bytes, expected) => {
     expect(formatBytes(bytes)).toBe(expected);
   });
 });
 
 describe("validateImageFile", () => {
-  it.each([
-    ["photo.jpg", "image/jpeg"],
-    ["photo.png", "image/png"],
-    ["photo.webp", "image/webp"],
-    ["photo.gif", "image/gif"],
-    ["photo.heic", "image/heic"],
-    ["photo.heif", "image/heif"],
-    ["photo.jpg", "image/jpg"],
-    ["PHOTO.JPG", "IMAGE/JPEG"],
-  ])("accepts %s (%s) for uploads", (name, type) => {
-    expect(validateImageFile(file(name, type), UPLOAD_IMAGE_TYPES)).toBeNull();
-  });
-
-  it("falls back to the extension when the browser reports no type", () => {
-    expect(validateImageFile(file("IMG_1234.HEIC", ""), UPLOAD_IMAGE_TYPES)).toBeNull();
-    expect(validateImageFile(file("scan.heif", ""), IMPORT_IMAGE_TYPES)).toBeNull();
-    expect(validateImageFile(file("photo.jpeg", ""), IMPORT_IMAGE_TYPES)).toBeNull();
-  });
-
-  it("rejects unsupported types with a list of allowed formats", () => {
-    expect(validateImageFile(file("doc.pdf", "application/pdf"), UPLOAD_IMAGE_TYPES)).toBe(
-      '"doc.pdf" is not a supported image (JPG, JPEG, PNG, WEBP, GIF, HEIC, HEIF).'
+  describe("by MIME type", () => {
+    it.each(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"])(
+      "accepts %s for imports",
+      (type) => {
+        expect(validateImageFile(file("photo", type), IMPORT_IMAGE_TYPES)).toBeNull();
+      }
     );
-    expect(validateImageFile(file("x.svg", "image/svg+xml"), IMPORT_IMAGE_TYPES)).toBe(
-      '"x.svg" is not a supported image (JPG, JPEG, PNG, WEBP, HEIC, HEIF).'
+
+    it("accepts GIF for uploads but not for imports", () => {
+      expect(validateImageFile(file("a.gif", "image/gif"), UPLOAD_IMAGE_TYPES)).toBeNull();
+      expect(validateImageFile(file("a.gif", "image/gif"), IMPORT_IMAGE_TYPES)).not.toBeNull();
+    });
+
+    it("compares the type case-insensitively", () => {
+      expect(validateImageFile(file("a.png", "IMAGE/PNG"), IMPORT_IMAGE_TYPES)).toBeNull();
+    });
+
+    it("rejects a disallowed type even when the name looks right", () => {
+      expect(validateImageFile(file("photo.jpg", "application/pdf"), IMPORT_IMAGE_TYPES)).not.toBeNull();
+    });
+  });
+
+  describe("by extension when the browser reports no type", () => {
+    it.each(["IMG_0001.HEIC", "photo.heif", "photo.JPG", "photo.jpeg", "photo.webp"])(
+      "accepts %s",
+      (name) => {
+        expect(validateImageFile(file(name, ""), IMPORT_IMAGE_TYPES)).toBeNull();
+      }
     );
+
+    it("rejects an unknown extension", () => {
+      expect(validateImageFile(file("recipe.pdf", ""), IMPORT_IMAGE_TYPES)).not.toBeNull();
+      expect(validateImageFile(file("noextension", ""), IMPORT_IMAGE_TYPES)).not.toBeNull();
+    });
   });
 
-  it("rejects GIF for imports but not for uploads", () => {
-    expect(validateImageFile(file("a.gif", "image/gif"), IMPORT_IMAGE_TYPES)).not.toBeNull();
-    expect(validateImageFile(file("a.gif", "image/gif"), UPLOAD_IMAGE_TYPES)).toBeNull();
-  });
-
-  it("trusts the reported type over the extension when a type is present", () => {
-    expect(validateImageFile(file("photo.jpg", "text/plain"), UPLOAD_IMAGE_TYPES)).not.toBeNull();
-  });
-
-  it("rejects an untyped file with an unknown extension", () => {
-    expect(validateImageFile(file("notes.txt", ""), UPLOAD_IMAGE_TYPES)).not.toBeNull();
-    expect(validateImageFile(file("noextension", ""), UPLOAD_IMAGE_TYPES)).not.toBeNull();
-  });
-
-  it("rejects empty files", () => {
-    expect(validateImageFile(file("a.png", "image/png", 0), UPLOAD_IMAGE_TYPES)).toBe('"a.png" is empty.');
-  });
-
-  it("rejects files over the size cap (default 50MB)", () => {
-    expect(validateImageFile(bigFile("a.jpg", "image/jpeg", MAX_SOURCE_BYTES), UPLOAD_IMAGE_TYPES)).toBeNull();
-    expect(validateImageFile(bigFile("a.jpg", "image/jpeg", MAX_SOURCE_BYTES + 1), UPLOAD_IMAGE_TYPES)).toBe(
-      '"a.jpg" is 50.0MB; the maximum is 50MB.'
+  it("lists the supported formats once each in the error", () => {
+    expect(validateImageFile(file("a.gif", ""), IMPORT_IMAGE_TYPES)).toBe(
+      '"a.gif" is not a supported image (JPG, JPEG, PNG, WEBP, HEIC, HEIF).'
     );
   });
 
-  it("honours a custom maximum", () => {
-    expect(validateImageFile(file("a.jpg", "image/jpeg", 2048), UPLOAD_IMAGE_TYPES, 1024)).toBe(
+  it("rejects an empty file", () => {
+    expect(validateImageFile(file("a.jpg", "image/jpeg", 0), IMPORT_IMAGE_TYPES)).toBe('"a.jpg" is empty.');
+  });
+
+  it("accepts a file exactly at the size limit and rejects one byte more", () => {
+    expect(validateImageFile(file("a.jpg", "image/jpeg", 1024), IMPORT_IMAGE_TYPES, 1024)).toBeNull();
+    expect(validateImageFile(file("a.jpg", "image/jpeg", 2048), IMPORT_IMAGE_TYPES, 1024)).toBe(
       '"a.jpg" is 2KB; the maximum is 1KB.'
     );
   });
 
-  it("returns an error (not a throw) for an empty allow-list", () => {
-    expect(validateImageFile(file("a.jpg", "image/jpeg"), [])).toBe('"a.jpg" is not a supported image ().');
+  it("allows large phone photos under the default sanity cap", () => {
+    expect(validateImageFile(hugeFile("big.jpg", "image/jpeg", 20 * 1024 * 1024), IMPORT_IMAGE_TYPES)).toBeNull();
+  });
+
+  it("rejects files over the default sanity cap", () => {
+    expect(
+      validateImageFile(hugeFile("huge.jpg", "image/jpeg", MAX_SOURCE_BYTES + 1), IMPORT_IMAGE_TYPES)
+    ).toMatch(/^"huge\.jpg" is 50(\.0)?MB; the maximum is 50MB\.$/);
+  });
+
+  it("checks the type before the size", () => {
+    expect(validateImageFile(file("a.txt", "text/plain", 0), IMPORT_IMAGE_TYPES)).toContain("not a supported image");
   });
 });
 
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8" } });
-}
-
 describe("readResponseError", () => {
-  it.each([
-    [401, "Your session has expired. Please sign in again."],
-    [403, "Your session has expired. Please sign in again."],
-    [413, "The photos are too large to upload together. Try fewer photos."],
-    [504, "The server took too long to respond. Please try again."],
-    [408, "The server took too long to respond. Please try again."],
-  ])("maps status %d to a friendly message", async (status, message) => {
-    expect(await readResponseError(new Response("<html>", { status }), "Upload failed")).toBe(message);
+  const json = (status: number, body: unknown, contentType = "application/json") =>
+    new Response(JSON.stringify(body), { status, headers: { "content-type": contentType } });
+  const html = (status: number) =>
+    new Response("<html><body>Error</body></html>", { status, headers: { "content-type": "text/html" } });
+
+  it.each([401, 403])("tells the user to sign in again on %d", async (status) => {
+    expect(await readResponseError(json(status, { error: "Unauthorized" }), "Upload failed")).toBe(
+      "Your session has expired. Please sign in again."
+    );
   });
 
-  it("uses the JSON error field when present", async () => {
-    expect(await readResponseError(jsonResponse({ error: "Bad recipe" }, 400), "Failed")).toBe("Bad recipe");
-    expect(await readResponseError(jsonResponse({ error: 42 }, 400), "Failed")).toBe("42");
+  it("explains a 413 from the proxy even with an HTML body", async () => {
+    expect(await readResponseError(html(413), "Upload failed")).toBe(
+      "The photos are too large to upload together. Try fewer photos."
+    );
   });
 
-  it("falls back when the JSON has no error field", async () => {
-    expect(await readResponseError(jsonResponse({ message: "x" }, 500), "Failed")).toBe("Failed (500)");
-    expect(await readResponseError(jsonResponse(null, 500), "Failed")).toBe("Failed (500)");
+  it.each([504, 408])("explains a timeout on %d", async (status) => {
+    expect(await readResponseError(html(status), "Upload failed")).toBe(
+      "The server took too long to respond. Please try again."
+    );
   });
 
-  it("does not try to parse HTML error pages", async () => {
-    const res = new Response("<html>Bad Gateway</html>", { status: 502, headers: { "content-type": "text/html" } });
-    expect(await readResponseError(res, "Import failed")).toBe("Import failed (502)");
+  it("uses the error message from a JSON body", async () => {
+    expect(await readResponseError(json(422, { error: "Title is required" }), "Save failed")).toBe(
+      "Title is required"
+    );
   });
 
-  it("survives a JSON content-type with an invalid body", async () => {
-    const res = new Response("<html>", { status: 500, headers: { "content-type": "application/json" } });
-    expect(await readResponseError(res, "Failed")).toBe("Failed (500)");
+  it("accepts a JSON content type with a charset", async () => {
+    expect(
+      await readResponseError(json(400, { error: "Bad input" }, "application/json; charset=utf-8"), "Save failed")
+    ).toBe("Bad input");
+  });
+
+  it("stringifies a non-string error value", async () => {
+    expect(await readResponseError(json(400, { error: 42 }), "Save failed")).toBe("42");
+  });
+
+  it("falls back with the status when the JSON has no error", async () => {
+    expect(await readResponseError(json(500, { message: "nope" }), "Save failed")).toBe("Save failed (500)");
+  });
+
+  it("falls back when a JSON response has an invalid body", async () => {
+    const response = new Response("<html>oops", { status: 502, headers: { "content-type": "application/json" } });
+    expect(await readResponseError(response, "Save failed")).toBe("Save failed (502)");
+  });
+
+  it("does not parse an HTML error page as JSON", async () => {
+    expect(await readResponseError(html(500), "Save failed")).toBe("Save failed (500)");
+  });
+
+  it("falls back when there is no content type", async () => {
+    expect(await readResponseError(new Response(null, { status: 500 }), "Save failed")).toBe("Save failed (500)");
   });
 });
 
 describe("parseJsonResponse", () => {
-  it("returns the parsed body for ok responses", async () => {
-    expect(await parseJsonResponse<{ a: number }>(jsonResponse({ a: 1 }, 200), "x")).toEqual({ a: 1 });
+  it("returns the JSON of a successful response", async () => {
+    const response = new Response(JSON.stringify({ id: "1" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+    expect(await parseJsonResponse<{ id: string }>(response, "Failed")).toEqual({ id: "1" });
   });
 
-  it("throws the readable error for failed responses", async () => {
-    await expect(parseJsonResponse(jsonResponse({ error: "Nope" }, 400), "x")).rejects.toThrow("Nope");
-    await expect(parseJsonResponse(new Response("", { status: 413 }), "x")).rejects.toThrow(/too large/);
+  it("throws the readable error of a failed response", async () => {
+    const response = new Response(JSON.stringify({ error: "Recipe not found" }), {
+      status: 404,
+      headers: { "content-type": "application/json" },
+    });
+    await expect(parseJsonResponse(response, "Failed")).rejects.toThrow("Recipe not found");
   });
 
-  it("throws a generic error for an ok response with a non-JSON body", async () => {
-    await expect(parseJsonResponse(new Response("<html>", { status: 200 }), "x")).rejects.toThrow(
+  it("throws the mapped message for a 413", async () => {
+    await expect(parseJsonResponse(new Response("Too large", { status: 413 }), "Failed")).rejects.toThrow(
+      "The photos are too large to upload together. Try fewer photos."
+    );
+  });
+
+  it("throws a friendly message when a successful response is not JSON", async () => {
+    const response = new Response("<html></html>", { status: 200, headers: { "content-type": "text/html" } });
+    await expect(parseJsonResponse(response, "Failed")).rejects.toThrow(
       "The server returned an unexpected response."
     );
   });

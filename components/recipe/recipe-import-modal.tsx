@@ -11,7 +11,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Button, Spinner } from "@/components/ui";
+import { Button, Input, Label, Spinner } from "@/components/ui";
 import {
   Camera,
   Upload,
@@ -24,9 +24,11 @@ import {
   Plus,
   FileText,
   ImageOff,
+  Link2,
 } from "lucide-react";
 import type { ExtractedRecipe, ExtractionResponse } from "@/types/extraction";
 import { isHeicFile } from "@/lib/image/decode-heic";
+import { normalizeRecipeLink } from "@/lib/recipe-import/link-input";
 import {
   compressImage,
   fitsRequestBudget,
@@ -55,7 +57,14 @@ interface RecipeImportModalProps {
 }
 
 type ModalState = "idle" | "preparing" | "extracting" | "preview" | "error";
-type ImportMethod = "photo" | "url";
+type ImportMethod = "photo" | "link" | "text";
+
+const METHOD_DESCRIPTIONS: Record<ImportMethod, string> = {
+  photo:
+    "Upload a photo of a recipe (cookbook page, handwritten card, or screenshot) and we'll extract the details automatically.",
+  link: "Paste a link to a recipe on a website and we'll import the details and photo automatically.",
+  text: "Paste recipe text from a website or document and we'll extract the details automatically.",
+};
 
 interface SelectedFile {
   /** Stable identity so removing a tile does not re-key every later tile. */
@@ -81,6 +90,11 @@ export function RecipeImportModal({
   const [importMethod, setImportMethod] = useState<ImportMethod>("photo");
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
   const [textInput, setTextInput] = useState("");
+  const [linkInput, setLinkInput] = useState("");
+  // Only complain about an invalid link once the field has been left.
+  const [linkTouched, setLinkTouched] = useState(false);
+  const normalizedLink = normalizeRecipeLink(linkInput);
+  const showLinkHint = linkTouched && linkInput.trim() !== "" && !normalizedLink;
   const [extractedData, setExtractedData] = useState<ExtractedRecipe | null>(
     null
   );
@@ -132,14 +146,16 @@ export function RecipeImportModal({
     releaseAllPreviewUrls();
     setSelectedFiles([]);
     setTextInput("");
+    setLinkInput("");
+    setLinkTouched(false);
     setExtractedData(null);
     setConfidence(null);
     setWarnings([]);
     setError(null);
   }, [releaseAllPreviewUrls]);
 
-  // After a failed extraction, go back with the photos (or pasted text) still
-  // selected. A failure is often temporary, or caused by one bad photo that can
+  // After a failed extraction, go back with the photos (or pasted text, or the
+  // entered link) still selected. A failure is often temporary, or caused by one bad photo that can
   // be removed, so making someone pick every photo again helps nobody.
   const backToInput = useCallback(() => {
     setError(null);
@@ -408,6 +424,52 @@ export function RecipeImportModal({
     }
   };
 
+  const handleLinkImport = async () => {
+    const link = normalizeRecipeLink(linkInput);
+    if (extractingRef.current || !link) return;
+    extractingRef.current = true;
+    const runId = runIdRef.current;
+
+    setError(null);
+    setState("extracting");
+
+    try {
+      const response = await fetch("/api/import-recipe-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: link }),
+      });
+
+      // The generic 504 message talks about "the server"; here it is almost
+      // always the recipe website that was slow.
+      if (response.status === 504) {
+        throw new Error(
+          "The recipe website took too long to respond. Please try again later."
+        );
+      }
+
+      const extractionData = await parseJsonResponse<ExtractionResponse>(
+        response,
+        "Import failed"
+      );
+      // The dialog was closed (or reset) while the import ran.
+      if (runId !== runIdRef.current) return;
+
+      setExtractedData(extractionData.recipe);
+      setConfidence(extractionData.confidence);
+      setWarnings(extractionData.warnings || []);
+      setState("preview");
+    } catch (err) {
+      if (runId !== runIdRef.current) return;
+      setError(
+        err instanceof Error ? err.message : "Failed to import recipe from link"
+      );
+      setState("error");
+    } finally {
+      extractingRef.current = false;
+    }
+  };
+
   const handleApply = () => {
     if (extractedData) {
       onImport(extractedData);
@@ -436,45 +498,42 @@ export function RecipeImportModal({
           <DialogTitle className="flex items-center gap-2">
             {importMethod === "photo" ? (
               <Camera className="h-5 w-5" />
+            ) : importMethod === "link" ? (
+              <Link2 className="h-5 w-5" />
             ) : (
               <FileText className="h-5 w-5" />
             )}
             Import Recipe
           </DialogTitle>
-          <DialogDescription>
-            {importMethod === "photo"
-              ? "Upload a photo of a recipe (cookbook page, handwritten card, or screenshot) and we'll extract the details automatically."
-              : "Paste recipe text from a website or document and we'll extract the details automatically."}
-          </DialogDescription>
+          <DialogDescription>{METHOD_DESCRIPTIONS[importMethod]}</DialogDescription>
         </DialogHeader>
 
         {/* Tab Switcher - only show in idle state */}
         {state === "idle" && (
           <div className="flex gap-1 p-1 bg-muted rounded-lg">
-            <button
-              type="button"
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                importMethod === "photo"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              onClick={() => setImportMethod("photo")}
-            >
-              <Camera className="h-4 w-4" />
-              From Photos
-            </button>
-            <button
-              type="button"
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                importMethod === "url"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              onClick={() => setImportMethod("url")}
-            >
-              <FileText className="h-4 w-4" />
-              From Text
-            </button>
+            {(
+              [
+                { method: "photo", label: "From Photos", Icon: Camera },
+                { method: "link", label: "From Link", Icon: Link2 },
+                { method: "text", label: "From Text", Icon: FileText },
+              ] as const
+            ).map(({ method, label, Icon }) => (
+              <button
+                key={method}
+                type="button"
+                aria-pressed={importMethod === method}
+                className={`flex-1 flex items-center justify-center gap-2 px-2 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  importMethod === method
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setImportMethod(method)}
+              >
+                {/* Three tabs with icons do not fit a phone-width dialog. */}
+                <Icon className="hidden h-4 w-4 sm:block" aria-hidden="true" />
+                {label}
+              </button>
+            ))}
           </div>
         )}
 
@@ -646,7 +705,60 @@ export function RecipeImportModal({
           </div>
         )}
 
-        {state === "idle" && importMethod === "url" && (
+        {state === "idle" && importMethod === "link" && (
+          <form
+            className="space-y-4"
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              // React events bubble through the portal: without this the
+              // recipe form around the dialog would be submitted too.
+              e.stopPropagation();
+              void handleLinkImport();
+            }}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="recipe-link" className="text-sm font-medium">
+                Recipe Link
+              </Label>
+              <Input
+                id="recipe-link"
+                type="url"
+                inputMode="url"
+                autoComplete="url"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                value={linkInput}
+                onChange={(e) => setLinkInput(e.target.value)}
+                onBlur={() => setLinkTouched(true)}
+                placeholder="https://www.example.com/recipes/…"
+                aria-invalid={showLinkHint || undefined}
+                aria-describedby="recipe-link-help"
+                className="h-12 rounded-lg border-border bg-background px-4 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+              />
+              <p
+                id="recipe-link-help"
+                className={`text-xs ${showLinkHint ? "text-destructive" : "text-muted-foreground"}`}
+              >
+                {showLinkHint
+                  ? "Enter a full web address, like https://www.example.com/recipe"
+                  : "Works with many recipe websites and food blogs. Some sites block importing; for those, copy the recipe into From Text"}
+              </p>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={state !== "idle" || !normalizedLink}
+              className="w-full"
+            >
+              <ChefHat className="h-4 w-4" aria-hidden="true" />
+              Import Recipe from Link
+            </Button>
+          </form>
+        )}
+
+        {state === "idle" && importMethod === "text" && (
           <div className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="recipe-text" className="text-sm font-medium">
@@ -688,7 +800,9 @@ export function RecipeImportModal({
                 ? `Preparing ${selectedFiles.length === 1 ? "photo" : "photos"} for upload...`
                 : importMethod === "photo"
                   ? "Extracting recipe from image..."
-                  : "Extracting recipe from text..."}
+                  : importMethod === "link"
+                    ? "Importing recipe from link..."
+                    : "Extracting recipe from text..."}
             </p>
             <p className="text-xs text-muted-foreground">
               This may take a few seconds
@@ -698,11 +812,16 @@ export function RecipeImportModal({
 
         {state === "error" && (
           <div className="space-y-4">
-            <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div
+              role="alert"
+              className="flex flex-col items-center justify-center py-8 text-center"
+            >
               <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
-                <AlertTriangle className="h-7 w-7 text-destructive" />
+                <AlertTriangle className="h-7 w-7 text-destructive" aria-hidden="true" />
               </div>
-              <p className="font-medium text-foreground">Extraction Failed</p>
+              <p className="font-medium text-foreground">
+                {importMethod === "link" ? "Import Failed" : "Extraction Failed"}
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">{error}</p>
             </div>
             <DialogFooter>
@@ -718,14 +837,19 @@ export function RecipeImportModal({
 
         {state === "preview" && extractedData && (
           <div className="space-y-4">
-            {confidence && confidence !== "high" && (
+            {confidence &&
+              (confidence !== "high" || warnings.length > 0) && (
               <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm">
                 <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
                 <div>
                   <p className="font-medium text-amber-700 dark:text-amber-400">
-                    {confidence === "medium"
-                      ? "Some parts were unclear"
-                      : "Image quality was limited"}
+                    {confidence === "high"
+                      ? "Please check before saving"
+                      : confidence === "medium"
+                        ? "Some parts were unclear"
+                        : importMethod === "photo"
+                          ? "Image quality was limited"
+                          : "The recipe may be incomplete"}
                   </p>
                   {warnings.length > 0 && (
                     <ul className="mt-1 text-amber-600 dark:text-amber-300">
@@ -739,13 +863,26 @@ export function RecipeImportModal({
             )}
 
             <div className="space-y-3">
-              <div>
-                <h3 className="text-lg font-semibold">{extractedData.title}</h3>
-                {extractedData.description && (
-                  <p className="text-sm text-muted-foreground">
-                    {extractedData.description}
-                  </p>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                {extractedData.imageUrl && (
+                  <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-xl border border-border bg-muted sm:w-48">
+                    <Image
+                      src={extractedData.imageUrl}
+                      alt={`Photo of ${extractedData.title}`}
+                      fill
+                      sizes="(min-width: 640px) 12rem, 100vw"
+                      className="object-cover"
+                    />
+                  </div>
                 )}
+                <div>
+                  <h3 className="text-lg font-semibold">{extractedData.title}</h3>
+                  {extractedData.description && (
+                    <p className="text-sm text-muted-foreground">
+                      {extractedData.description}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-3 text-sm">
@@ -815,7 +952,11 @@ export function RecipeImportModal({
 
             <DialogFooter>
               <Button variant="outline" onClick={resetState}>
-                {importMethod === "photo" ? "Try Different Image" : "Try Different Text"}
+                {importMethod === "photo"
+                  ? "Try Different Image"
+                  : importMethod === "link"
+                    ? "Try Different Link"
+                    : "Try Different Text"}
               </Button>
               <Button onClick={handleApply}>
                 <Check className="h-4 w-4" />

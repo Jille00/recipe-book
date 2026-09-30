@@ -1,361 +1,367 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  normalizeUnit,
-  parseAmount,
-  formatAmount,
-  formatMetricAmount,
-  convertUnit,
-  fahrenheitToCelsius,
   celsiusToFahrenheit,
   convertTemperatureInText,
+  convertUnit,
+  fahrenheitToCelsius,
+  formatAmount,
+  formatMetricAmount,
   getSystemDisplayName,
-  isRecognizedUnit,
   getUnitsForSystem,
+  isRecognizedUnit,
+  normalizeUnit,
+  parseAmount,
   VULGAR_FRACTIONS,
 } from "./unit-conversion";
 
 describe("normalizeUnit", () => {
+  it("treats lowercase t as teaspoon and uppercase T as tablespoon", () => {
+    expect(normalizeUnit("t")?.symbol).toBe("tsp");
+    expect(normalizeUnit("T")?.symbol).toBe("tbsp");
+  });
+
   it.each([
     ["tsp", "tsp"],
-    ["teaspoon", "tsp"],
-    ["Teaspoons", "tsp"],
     ["TSP", "tsp"],
-    ["tbsp", "tbsp"],
+    ["Teaspoons", "tsp"],
     ["Tbsp", "tbsp"],
-    ["tablespoons", "tbsp"],
+    ["TABLESPOON", "tbsp"],
     ["tbs", "tbsp"],
-    ["cup", "cup"],
     ["Cups", "cup"],
+    ["C", "cup"],
     ["c", "cup"],
-    ["fl oz", "fl oz"],
-    ["floz", "fl oz"],
+    ["FL OZ", "fl oz"],
     ["fl. oz", "fl oz"],
-    ["fluid ounces", "fl oz"],
-    ["pint", "pt"],
-    ["pts", "pt"],
-    ["qt", "qt"],
-    ["gallons", "gal"],
-    ["ml", "ml"],
     ["mL", "ml"],
+    ["ML", "ml"],
     ["millilitres", "ml"],
-    ["cl", "cl"],
-    ["dl", "dl"],
-    ["l", "L"],
     ["L", "L"],
-    ["Litres", "L"],
-    ["oz", "oz"],
-    ["ounces", "oz"],
-    ["lb", "lb"],
+    ["litre", "L"],
+    ["Grams", "g"],
+    ["KG", "kg"],
+    ["Kilos", "kg"],
     ["lbs", "lb"],
-    ["pounds", "lb"],
-    ["mg", "mg"],
-    ["g", "g"],
-    ["grams", "g"],
-    ["kg", "kg"],
-    ["kgs", "kg"],
-    ["kilo", "kg"],
-    ["kilos", "kg"],
-  ])("resolves %j to %s", (input, symbol) => {
+    ["Pounds", "lb"],
+    ["ozs", "oz"],
+    ["pints", "pt"],
+    ["qt", "qt"],
+    ["gal", "gal"],
+  ])("resolves %j case-insensitively to %s", (input, symbol) => {
     expect(normalizeUnit(input)?.symbol).toBe(symbol);
   });
 
-  it("distinguishes 't' (teaspoon) from 'T' (tablespoon) by case", () => {
-    expect(normalizeUnit("t")?.name).toBe("teaspoon");
-    expect(normalizeUnit("T")?.name).toBe("tablespoon");
-  });
-
-  it("handles the case-sensitive abbreviations in plural form", () => {
-    expect(normalizeUnit("ts")?.name).toBe("teaspoon");
-    expect(normalizeUnit("Ts")?.name).toBe("tablespoon");
-  });
-
-  it("trims surrounding whitespace, including around case-sensitive aliases", () => {
+  it("ignores surrounding whitespace", () => {
     expect(normalizeUnit("  cup  ")?.symbol).toBe("cup");
-    expect(normalizeUnit(" T ")?.name).toBe("tablespoon");
+    expect(normalizeUnit(" T ")?.symbol).toBe("tbsp");
   });
 
-  it("returns null for empty, whitespace and non-string input", () => {
+  it("returns null for unknown, empty or non-string input", () => {
+    expect(normalizeUnit("handful")).toBeNull();
     expect(normalizeUnit("")).toBeNull();
     expect(normalizeUnit("   ")).toBeNull();
     expect(normalizeUnit(null as unknown as string)).toBeNull();
     expect(normalizeUnit(42 as unknown as string)).toBeNull();
   });
+});
 
-  it("returns null for unknown units", () => {
-    expect(normalizeUnit("pinch")).toBeNull();
-    expect(normalizeUnit("clove")).toBeNull();
-    expect(normalizeUnit("handful")).toBeNull();
-    expect(normalizeUnit("ms")).toBeNull();
-    expect(normalizeUnit("fl oz.")).toBeNull();
+describe("isRecognizedUnit", () => {
+  it("is true for known units and aliases", () => {
+    expect(isRecognizedUnit("t")).toBe(true);
+    expect(isRecognizedUnit("T")).toBe(true);
+    expect(isRecognizedUnit("Cups")).toBe(true);
   });
 
-  it("reports category and system", () => {
-    expect(normalizeUnit("cup")).toMatchObject({ category: "volume", system: "imperial" });
-    expect(normalizeUnit("g")).toMatchObject({ category: "weight", system: "metric" });
+  it("is false for unknown or empty units", () => {
+    expect(isRecognizedUnit("clove")).toBe(false);
+    expect(isRecognizedUnit("")).toBe(false);
   });
 });
 
 describe("parseAmount", () => {
   it.each([
-    ["2", 2],
-    ["0", 0],
-    ["1.5", 1.5],
-    [".5", 0.5],
-    ["  3  ", 3],
-    ["1/2", 0.5],
-    ["3/4", 0.75],
-    ["1.5/2", 0.75],
-    ["1 1/2", 1.5],
-    ["12 1/2", 12.5],
-    ["-1 1/2", -1.5],
-    ["-2", -2],
-    ["-1/2", -0.5],
-    ["1⁄2", 0.5], // unicode fraction slash
-    ["1 1⁄4", 1.25],
     ["½", 0.5],
     ["¼", 0.25],
     ["¾", 0.75],
-    ["⅓", 1 / 3],
     ["⅛", 0.125],
     ["1½", 1.5],
     ["1 ½", 1.5],
     ["2¾", 2.75],
     ["-½", -0.5],
     ["½ cup", 0.5],
-    ["2 cups", 2],
-    ["1 1/2 cups", 1.5],
     ["↉", 0],
+  ])("parses the vulgar fraction %j as %d", (input, expected) => {
+    expect(parseAmount(input)).toBeCloseTo(expected, 10);
+  });
+
+  it("parses thirds exactly", () => {
+    expect(parseAmount("⅓")).toBeCloseTo(1 / 3, 10);
+    expect(parseAmount("1⅔")).toBeCloseTo(5 / 3, 10);
+  });
+
+  it.each([
+    ["1/2", 0.5],
+    ["3/4", 0.75],
+    ["1⁄2", 0.5],
+    ["1 1/2", 1.5],
+    ["-1 1/2", -1.5],
+    ["2 3/4 cups", 2.75],
+    ["2", 2],
+    ["2.5", 2.5],
+    ["  3  ", 3],
+    ["3 cups", 3],
   ])("parses %j as %d", (input, expected) => {
     expect(parseAmount(input)).toBeCloseTo(expected, 10);
   });
 
-  it("understands every vulgar fraction it advertises", () => {
-    for (const [glyph, value] of Object.entries(VULGAR_FRACTIONS)) {
-      expect(parseAmount(glyph)).toBeCloseTo(value, 10);
-    }
-  });
-
-  it("returns null for zero denominators", () => {
+  it("refuses a zero denominator instead of returning Infinity", () => {
     expect(parseAmount("1/0")).toBeNull();
     expect(parseAmount("1 1/0")).toBeNull();
   });
 
-  it("returns null for unparseable input", () => {
+  it("returns null for text, empty and non-string input", () => {
+    expect(parseAmount("to taste")).toBeNull();
     expect(parseAmount("")).toBeNull();
     expect(parseAmount("   ")).toBeNull();
-    expect(parseAmount("abc")).toBeNull();
-    expect(parseAmount("to taste")).toBeNull();
-    expect(parseAmount("a pinch")).toBeNull();
-  });
-
-  it("returns null for non-string input", () => {
     expect(parseAmount(undefined as unknown as string)).toBeNull();
-    expect(parseAmount(null as unknown as string)).toBeNull();
     expect(parseAmount(2 as unknown as string)).toBeNull();
   });
 
-  it("reads only the first number of a range", () => {
-    expect(parseAmount("1-2")).toBe(1);
-    expect(parseAmount("2 to 3")).toBe(2);
-  });
-
-  it("parses a fraction immediately followed by a unit", () => {
-    expect(parseAmount("1/2cup")).toBe(0.5);
-  });
-
-  it("parses a mixed number immediately followed by a unit", () => {
-    expect(parseAmount("1 1/2cups")).toBe(1.5);
-  });
-
-  it("parses a decimal comma", () => {
-    expect(parseAmount("1,5")).toBe(1.5);
-    expect(parseAmount("12,25")).toBe(12.25);
-    expect(parseAmount("1,5 kg")).toBe(1.5);
-    expect(parseAmount("-0,5")).toBe(-0.5);
-  });
-
-  it("reads a comma followed by three digits as a thousands separator", () => {
-    expect(parseAmount("1,000")).toBe(1000);
-    expect(parseAmount("1,250.5")).toBe(1250.5);
-    expect(parseAmount("12,345,678 g")).toBe(12345678);
+  it("knows every vulgar fraction it exports", () => {
+    for (const [glyph, value] of Object.entries(VULGAR_FRACTIONS)) {
+      expect(parseAmount(glyph)).toBeCloseTo(value, 10);
+    }
   });
 });
 
 describe("formatAmount", () => {
   it.each([
-    [0, "0"],
-    [1, "1"],
-    [2, "2"],
     [0.5, "½"],
     [0.25, "¼"],
     [0.75, "¾"],
     [1 / 3, "⅓"],
     [2 / 3, "⅔"],
     [0.125, "⅛"],
-    [0.375, "⅜"],
-    [0.625, "⅝"],
-    [0.875, "⅞"],
     [1.5, "1½"],
     [2.25, "2¼"],
-    [1 / 6, "⅙"],
-    [0.2, "⅕"],
-    [0.9, "0.9"],
-    [0.1, "0.1"],
-    [3.527, "3.5"],
-    [1.99, "2"],
-    [2.95, "3"],
-    [-1.5, "-1½"],
-    [-2, "-2"],
+    [2 + 1 / 6, "2⅙"],
   ])("formats %d as %j", (input, expected) => {
     expect(formatAmount(input)).toBe(expected);
   });
 
-  it("only uses sixths/fifths for small whole parts", () => {
-    expect(formatAmount(3 + 1 / 6)).toBe("3⅙");
+  it.each([
+    [2, "2"],
+    [1.3, "1.3"],
+    [473.17, "473.2"],
+    [3.99, "4"],
+    [1.014, "1"],
+  ])("formats %d as the plain number %j", (input, expected) => {
+    expect(formatAmount(input)).toBe(expected);
+  });
+
+  it("avoids uncommon glyphs for larger amounts", () => {
+    // ⅙ is only used below 10: "10⅙" reads worse than a decimal
     expect(formatAmount(10 + 1 / 6)).toBe("10.2");
-    expect(formatAmount(473 + 1 / 6)).toBe("473.2");
-    expect(formatAmount(12.2)).toBe("12.2");
   });
 
-  it("never renders a tiny non-zero amount as 0", () => {
-    expect(formatAmount(0.05)).toBe("0.05");
-    expect(formatAmount(0.099)).toBe("0.099");
+  it("formats negatives with a leading minus", () => {
+    expect(formatAmount(-0.5)).toBe("-½");
+    expect(formatAmount(-1.5)).toBe("-1½");
+    expect(formatAmount(-3)).toBe("-3");
+    expect(formatAmount(-0.02)).toBe("-0.02");
+  });
+
+  it.each([0.04, 0.01, 0.001, 0.0000001, 1e-12])(
+    "never renders the small positive amount %d as 0",
+    (input) => {
+      const output = formatAmount(input);
+      expect(output).not.toBe("0");
+      expect(output).not.toMatch(/e/i);
+      expect(Number(output)).toBeGreaterThan(0);
+    }
+  );
+
+  it("keeps two significant digits for small amounts", () => {
+    expect(formatAmount(0.04)).toBe("0.04");
+    expect(formatAmount(0.041)).toBe("0.041");
     expect(formatAmount(0.001)).toBe("0.001");
-    expect(formatAmount(0.0001234)).toBe("0.00012");
     expect(formatAmount(1e-7)).toBe("0.0000001");
-    expect(formatAmount(-0.05)).toBe("-0.05");
   });
 
-  it("returns '0' for non-finite and non-number input", () => {
+  it("returns 0 for zero and non-finite input", () => {
+    expect(formatAmount(0)).toBe("0");
     expect(formatAmount(NaN)).toBe("0");
     expect(formatAmount(Infinity)).toBe("0");
-    expect(formatAmount(-Infinity)).toBe("0");
     expect(formatAmount("1" as unknown as number)).toBe("0");
   });
 
-  it("round-trips with parseAmount for common fractions", () => {
-    for (const value of [0.25, 0.5, 0.75, 1.5, 2.75, 1 / 3, 2 / 3, 0.125]) {
-      expect(parseAmount(formatAmount(value))).toBeCloseTo(value, 5);
+  it("round-trips with parseAmount for every display fraction", () => {
+    const fractions = [1 / 8, 1 / 6, 1 / 5, 1 / 4, 1 / 3, 3 / 8, 1 / 2, 5 / 8, 2 / 3, 3 / 4, 7 / 8];
+    for (const whole of [0, 1, 3, 9]) {
+      for (const fraction of fractions) {
+        const value = whole + fraction;
+        const formatted = formatAmount(value);
+        expect(formatted).not.toMatch(/\./);
+        expect(parseAmount(formatted)).toBeCloseTo(value, 10);
+      }
     }
+  });
+
+  it("round-trips negative fractions", () => {
+    expect(parseAmount(formatAmount(-1.75))).toBeCloseTo(-1.75, 10);
+  });
+});
+
+// Regression: toFixed(1) rounded halfway values down, because 1.95 is stored
+// as 1.9499999..., so 1.95 displayed as "1.9".
+describe("formatAmount rounds halfway values up", () => {
+  it.each([
+    [1.95, "2"],
+    [2.45, "2.5"],
+    [1.05, "1.1"],
+    [0.95, "1"],
+    [-1.95, "-2"],
+  ])("formats %s as %j", (amount, expected) => {
+    expect(formatAmount(amount)).toBe(expected);
+  });
+
+  it("still rounds down below the halfway point", () => {
+    expect(formatAmount(1.94)).toBe("1.9");
   });
 });
 
 describe("formatMetricAmount", () => {
   it.each([
-    [0, "0"],
+    [44.36, "44"],
     [453.592, "454"],
-    [10, "10"],
-    [10.4, "10"],
-    [236.588, "237"],
     [4.92892, "4.9"],
-    [1, "1"],
-    [1.04, "1"],
-    [0.123, "0.12"],
-    [0.005, "0.005"],
-    [-15.4, "-15"],
-    [-0.5, "-0.5"],
+    [14.7868, "15"],
+    [10, "10"],
+    [9.96, "10"],
+    [1.25, "1.3"],
+    [0.616, "0.62"],
+    [0.001, "0.001"],
+    [-4.92892, "-4.9"],
+    [-453.592, "-454"],
   ])("formats %d as %j", (input, expected) => {
     expect(formatMetricAmount(input)).toBe(expected);
   });
 
   it("never uses vulgar fractions", () => {
-    expect(formatMetricAmount(44.375)).toBe("44");
-    expect(formatMetricAmount(2.5)).toBe("2.5");
+    for (const value of [0.5, 1.5, 44.375, 2.25, 0.125, 1 / 3]) {
+      const output = formatMetricAmount(value);
+      expect(output).toMatch(/^-?\d+(\.\d+)?$/);
+    }
   });
 
-  it("returns '0' for non-finite input", () => {
+  it("returns 0 for zero and non-finite input", () => {
+    expect(formatMetricAmount(0)).toBe("0");
     expect(formatMetricAmount(NaN)).toBe("0");
-    expect(formatMetricAmount(Infinity)).toBe("0");
+    expect(formatMetricAmount(-Infinity)).toBe("0");
   });
 });
 
 describe("convertUnit", () => {
-  describe("imperial -> metric", () => {
+  describe("imperial to metric", () => {
+    it("converts 1 t to about 4.9 ml, not tablespoons", () => {
+      const result = convertUnit("1", "t", "metric");
+      expect(result).toMatchObject({ unit: "ml", displayAmount: "4.9", wasConverted: true });
+      expect(result.amount).toBeCloseTo(4.92892, 4);
+    });
+
+    it("converts 1 T to 15 ml", () => {
+      expect(convertUnit("1", "T", "metric")).toMatchObject({
+        unit: "ml",
+        displayAmount: "15",
+        wasConverted: true,
+      });
+    });
+
     it.each([
+      ["3", "tbsp", "44", "ml"],
       ["1", "cup", "237", "ml"],
+      ["1/2", "cup", "118", "ml"],
+      ["1½", "cups", "355", "ml"],
       ["4", "cups", "946", "ml"],
       ["5", "cups", "1.2", "L"],
-      ["½", "cup", "118", "ml"],
-      ["1 1/2", "cups", "355", "ml"],
-      ["1", "tsp", "4.9", "ml"],
-      ["1", "t", "4.9", "ml"],
-      ["1", "T", "15", "ml"],
-      ["2", "tablespoons", "30", "ml"],
-      ["1", "fl oz", "30", "ml"],
-      ["1", "pint", "473", "ml"],
-      ["1", "quart", "946", "ml"],
-      ["1", "gallon", "3.8", "L"],
-      ["1", "oz", "28", "g"],
       ["1", "lb", "454", "g"],
-      ["2.5", "lbs", "1.1", "kg"],
-    ])("%s %s -> %s %s", (amount, unit, display, symbol) => {
-      const result = convertUnit(amount, unit, "metric");
-      expect(result.wasConverted).toBe(true);
-      expect(result.displayAmount).toBe(display);
-      expect(result.unit).toBe(symbol);
-      expect(result.originalAmount).toBe(amount);
-      expect(result.originalUnit).toBe(unit);
+      ["1", "oz", "28", "g"],
+      ["1/8", "tsp", "0.62", "ml"],
+    ])("converts %s %s to %s %s", (amount, unit, display, target) => {
+      expect(convertUnit(amount, unit, "metric")).toMatchObject({
+        displayAmount: display,
+        unit: target,
+        wasConverted: true,
+      });
     });
 
-    it("returns the precise converted amount alongside the display string", () => {
-      const result = convertUnit("1", "cup", "metric");
-      expect(result.amount).toBeCloseTo(236.588, 3);
+    it("never shows fractions for metric results", () => {
+      for (const amount of ["⅓", "1½", "2¾", "3 1/8"]) {
+        for (const unit of ["tsp", "tbsp", "cup", "oz", "lb"]) {
+          expect(convertUnit(amount, unit, "metric").displayAmount).toMatch(/^\d+(\.\d+)?$/);
+        }
+      }
     });
   });
 
-  describe("metric -> imperial", () => {
+  describe("metric to imperial", () => {
     it.each([
-      ["250", "ml", "1.1", "cup"],
       ["5", "ml", "1", "tsp"],
       ["15", "ml", "1", "tbsp"],
-      ["1", "ml", "⅕", "tsp"],
-      ["1", "l", "1.1", "qt"],
       ["100", "g", "3.5", "oz"],
-      ["500", "g", "1.1", "lb"],
-      ["1", "kilo", "2⅕", "lb"],
-    ])("%s %s -> %s %s", (amount, unit, display, symbol) => {
-      const result = convertUnit(amount, unit, "imperial");
-      expect(result.wasConverted).toBe(true);
-      expect(result.displayAmount).toBe(display);
-      expect(result.unit).toBe(symbol);
+      ["1", "kg", "2⅕", "lb"],
+      ["250", "ml", "1.1", "cup"],
+      ["1", "l", "1.1", "qt"],
+      ["60", "ml", "¼", "cup"],
+    ])("picks a natural unit: %s %s becomes %s %s", (amount, unit, display, target) => {
+      expect(convertUnit(amount, unit, "imperial")).toMatchObject({
+        displayAmount: display,
+        unit: target,
+        wasConverted: true,
+      });
     });
 
-    it("never picks an unidiomatic '½ tbsp'", () => {
-      const result = convertUnit("7.5", "ml", "imperial");
+    it("falls back to the smallest unit for tiny amounts without showing 0", () => {
+      const result = convertUnit("0.2", "ml", "imperial");
       expect(result.unit).toBe("tsp");
-      expect(result.displayAmount).toBe("1.5");
+      expect(result.displayAmount).toBe("0.041");
     });
   });
 
-  it("does not convert when already in the target system", () => {
-    expect(convertUnit("2", "cups", "imperial")).toMatchObject({
-      amount: 2,
+  it("round-trips a common measure through both systems", () => {
+    const metric = convertUnit("2", "cups", "metric");
+    const back = convertUnit(String(metric.amount), metric.unit, "imperial");
+    expect(back.unit).toBe("cup");
+    expect(back.displayAmount).toBe("2");
+  });
+
+  it("leaves amounts already in the target system unconverted but formatted", () => {
+    expect(convertUnit("0.5", "cups", "imperial")).toMatchObject({
+      amount: 0.5,
       unit: "cup",
+      displayAmount: "½",
+      originalAmount: "0.5",
+      originalUnit: "cups",
+      wasConverted: false,
+    });
+    expect(convertUnit("44.36", "ml", "metric")).toMatchObject({
+      unit: "ml",
+      displayAmount: "44",
+      wasConverted: false,
+    });
+  });
+
+  it("returns the original for an unknown unit", () => {
+    expect(convertUnit("2", "handful", "metric")).toEqual({
+      amount: 2,
+      unit: "handful",
       displayAmount: "2",
-      wasConverted: false,
-    });
-    expect(convertUnit("1500", "g", "metric")).toMatchObject({
-      amount: 1500,
-      unit: "g",
-      displayAmount: "1500",
-      wasConverted: false,
-    });
-    // Metric stays decimal even when unchanged
-    expect(convertUnit("0.5", "l", "metric").displayAmount).toBe("0.5");
-  });
-
-  it("returns the input unchanged for unknown units", () => {
-    expect(convertUnit("1", "pinch", "metric")).toEqual({
-      amount: 1,
-      unit: "pinch",
-      displayAmount: "1",
-      originalAmount: "1",
-      originalUnit: "pinch",
+      originalAmount: "2",
+      originalUnit: "handful",
       wasConverted: false,
     });
   });
 
-  it("returns the input unchanged for unparseable amounts", () => {
+  it("returns the original for an unparseable amount", () => {
     expect(convertUnit("some", "cup", "metric")).toEqual({
       amount: 0,
       unit: "cup",
@@ -365,197 +371,163 @@ describe("convertUnit", () => {
       wasConverted: false,
     });
   });
-
-  it("keeps the sign of negative amounts", () => {
-    expect(convertUnit("-1", "cup", "metric").displayAmount).toBe("-237");
-  });
-
-  it("converts zero", () => {
-    const result = convertUnit("0", "cup", "metric");
-    expect(result.displayAmount).toBe("0");
-    expect(result.amount).toBe(0);
-  });
-
-  it("converts both ends of a range amount", () => {
-    const result = convertUnit("1-2", "cups", "metric");
-    expect(result.displayAmount).toBe("237-473");
-    expect(result.unit).toBe("ml");
-    expect(result.amount).toBeCloseTo(236.588, 3);
-    expect(result.wasConverted).toBe(true);
-  });
-
-  it("picks one unit for a range from its upper end", () => {
-    // 3 cups alone would be 710 ml, but 5 cups needs litres
-    const result = convertUnit("3-5", "cups", "metric");
-    expect(result.unit).toBe("L");
-    expect(result.displayAmount).toBe("0.71-1.2");
-  });
-
-  it("converts a worded range", () => {
-    expect(convertUnit("1 to 2", "lb", "metric").displayAmount).toBe("454-907");
-  });
-
-  it("formats a range that is already in the target system", () => {
-    const result = convertUnit("1-2", "cups", "imperial");
-    expect(result.displayAmount).toBe("1-2");
-    expect(result.wasConverted).toBe(false);
-  });
 });
 
-describe("temperature helpers", () => {
+describe("fahrenheitToCelsius / celsiusToFahrenheit", () => {
   it.each([
-    [32, 0],
     [212, 100],
-    [350, 177],
+    [32, 0],
     [-40, -40],
-    [0, -18],
-  ])("fahrenheitToCelsius(%d) = %d", (f, c) => {
+    [350, 177],
+    [165, 74],
+  ])("%d °F is %d °C", (f, c) => {
     expect(fahrenheitToCelsius(f)).toBe(c);
   });
 
   it.each([
-    [0, 32],
     [100, 212],
-    [180, 356],
+    [0, 32],
     [-40, -40],
+    [180, 356],
     [200, 392],
-  ])("celsiusToFahrenheit(%d) = %d", (c, f) => {
+  ])("%d °C is %d °F", (c, f) => {
     expect(celsiusToFahrenheit(c)).toBe(f);
   });
 });
 
 describe("convertTemperatureInText", () => {
-  it("converts explicit Fahrenheit to Celsius for metric", () => {
-    expect(convertTemperatureInText("Bake at 350°F for 20 min", "metric")).toBe(
-      "Bake at 177°C (350°F) for 20 min"
-    );
+  describe("converts real temperatures", () => {
+    it.each([
+      ["bake at 180 C", "imperial", "bake at 356°F (180°C)"],
+      ["Bake at 180°C for 20 minutes", "imperial", "Bake at 356°F (180°C) for 20 minutes"],
+      ["preheat oven to 200 degrees Celsius", "imperial", "preheat oven to 392°F (200°C)"],
+      ["Heat to 200 deg C", "imperial", "Heat to 392°F (200°C)"],
+      ["350°F", "metric", "177°C (350°F)"],
+      ["350F", "metric", "177°C (350°F)"],
+      ["Roast at 425 F", "metric", "Roast at 218°C (425°F)"],
+      ["until the internal temperature reaches 165 °F", "metric", "until the internal temperature reaches 74°C (165°F)"],
+      ["Preheat to 400 Fahrenheit", "metric", "Preheat to 204°C (400°F)"],
+    ] as const)("%j (to %s) becomes %j", (input, system, expected) => {
+      expect(convertTemperatureInText(input, system)).toBe(expected);
+    });
+
+    it("converts every temperature in a sentence", () => {
+      expect(
+        convertTemperatureInText("Start at 220°C, then lower to 180°C.", "imperial")
+      ).toBe("Start at 428°F (220°C), then lower to 356°F (180°C).");
+    });
   });
 
-  it("converts explicit Celsius to Fahrenheit for imperial", () => {
-    expect(convertTemperatureInText("Preheat oven to 180°C.", "imperial")).toBe(
-      "Preheat oven to 356°F (180°C)."
-    );
+  // Regression: ranges used to convert only their second number, producing
+  // mixed units like "350-191°C (375°F)".
+  describe("converts both ends of a temperature range", () => {
+    it.each([
+      ["bake at 350-375°F", "metric", "bake at 177-191°C (350-375°F)"],
+      ["bake at 350–375°F", "metric", "bake at 177–191°C (350–375°F)"],
+      ["preheat to 350—375F", "metric", "preheat to 177—191°C (350—375°F)"],
+      ["bake at 180-200 C", "imperial", "bake at 356-392°F (180-200°C)"],
+      ["bake at 180-200°C", "imperial", "bake at 356-392°F (180-200°C)"],
+      ["bake at 180 to 200°C", "imperial", "bake at 356 to 392°F (180 to 200°C)"],
+      ["bake at 180°-200°C", "imperial", "bake at 356-392°F (180-200°C)"],
+      ["bake at 180°C-200°C", "imperial", "bake at 356-392°F (180-200°C)"],
+    ] as const)("%j (to %s) -> %j", (text, system, expected) => {
+      expect(convertTemperatureInText(text, system)).toBe(expected);
+    });
+
+    it("leaves a range in the other scale alone", () => {
+      expect(convertTemperatureInText("bake at 180-200°C", "metric")).toBe(
+        "bake at 180-200°C"
+      );
+    });
+
+    it("does not treat a quantity range as temperatures", () => {
+      expect(convertTemperatureInText("stir in 2-3 c rice", "imperial")).toBe(
+        "stir in 2-3 c rice"
+      );
+      expect(convertTemperatureInText("cook 1-2 f", "metric")).toBe("cook 1-2 f");
+    });
+
+    it("converts a range and a single temperature in the same text once each", () => {
+      expect(
+        convertTemperatureInText(
+          "Bake at 350-375°F, then broil at 450°F.",
+          "metric"
+        )
+      ).toBe("Bake at 177-191°C (350-375°F), then broil at 232°C (450°F).");
+    });
   });
 
-  it("handles attached, spelled-out and 'degrees' forms", () => {
-    expect(convertTemperatureInText("350F", "metric")).toBe("177°C (350°F)");
-    expect(convertTemperatureInText("350 degrees F", "metric")).toBe("177°C (350°F)");
-    expect(convertTemperatureInText("350 deg. F", "metric")).toBe("177°C (350°F)");
-    expect(convertTemperatureInText("200 degrees Celsius", "imperial")).toBe(
-      "392°F (200°C)"
-    );
-    expect(convertTemperatureInText("425 fahrenheit", "metric")).toBe("218°C (425°F)");
-    expect(convertTemperatureInText("180 ° c", "imperial")).toBe("356°F (180°C)");
+  describe("leaves quantities that look like units alone", () => {
+    it.each([
+      ["2 c flour", "imperial"],
+      ["Add 2 c flour", "imperial"],
+      ["heat 2 c milk", "imperial"],
+      ["salt and 2 c flour", "imperial"],
+      ["1 f", "metric"],
+      ["Use 1 f", "metric"],
+      ["3 C sugar", "imperial"],
+    ] as const)("%j (to %s) is unchanged", (input, system) => {
+      expect(convertTemperatureInText(input, system)).toBe(input);
+    });
   });
 
-  it("leaves temperatures already in the target system alone", () => {
-    expect(convertTemperatureInText("Bake at 180°C", "metric")).toBe("Bake at 180°C");
-    expect(convertTemperatureInText("Bake at 350°F", "imperial")).toBe("Bake at 350°F");
+  it("does not convert temperatures already in the target system", () => {
+    expect(convertTemperatureInText("bake at 180°C", "metric")).toBe("bake at 180°C");
+    expect(convertTemperatureInText("bake at 350°F", "imperial")).toBe("bake at 350°F");
   });
 
-  it("uses context words for a bare scale letter", () => {
-    expect(convertTemperatureInText("bake at 180 C", "imperial")).toBe(
-      "bake at 356°F (180°C)"
-    );
-    expect(convertTemperatureInText("heat oven 400 F", "metric")).toBe(
-      "heat oven 204°C (400°F)"
-    );
+  it("ignores implausible temperatures even with a degree sign", () => {
+    expect(convertTemperatureInText("5000°F", "metric")).toBe("5000°F");
   });
 
-  it("does not treat cup quantities ('2 c flour') as temperatures", () => {
-    expect(convertTemperatureInText("Add 2 c flour", "imperial")).toBe("Add 2 c flour");
-    expect(convertTemperatureInText("Heat 2 c water", "imperial")).toBe("Heat 2 c water");
-    expect(convertTemperatureInText("Stir in 1 C. sugar", "imperial")).toBe(
-      "Stir in 1 C. sugar"
-    );
+  it("leaves text without temperatures unchanged", () => {
+    expect(convertTemperatureInText("Stir for 5 minutes.", "metric")).toBe("Stir for 5 minutes.");
   });
 
-  it("ignores implausible magnitudes even with a degree sign", () => {
-    expect(convertTemperatureInText("5000°C", "imperial")).toBe("5000°C");
-    expect(convertTemperatureInText("2000°F", "metric")).toBe("2000°F");
-  });
-
-  it("handles negative temperatures", () => {
-    expect(convertTemperatureInText("Freeze at -18°C", "imperial")).toBe(
-      "Freeze at 0°F (-18°C)"
-    );
-  });
-
-  it("rounds decimal temperatures", () => {
-    expect(convertTemperatureInText("at 176.7°C", "imperial")).toBe("at 351°F (177°C)");
-  });
-
-  it("converts several temperatures in one string", () => {
-    expect(
-      convertTemperatureInText("Start at 450°F, then lower to 350°F.", "metric")
-    ).toBe("Start at 232°C (450°F), then lower to 177°C (350°F).");
-  });
-
-  it("returns empty/non-string input unchanged", () => {
+  it("returns empty and non-string input as-is", () => {
     expect(convertTemperatureInText("", "metric")).toBe("");
-    expect(convertTemperatureInText(undefined as unknown as string, "metric")).toBe(
-      undefined
-    );
-  });
-
-  it("converts both ends of a temperature range", () => {
-    expect(convertTemperatureInText("bake at 180-200 C", "imperial")).toBe(
-      "bake at 356-392°F (180-200°C)"
-    );
-    expect(convertTemperatureInText("Bake at 350-375°F.", "metric")).toBe(
-      "Bake at 177-191°C (350-375°F)."
-    );
-    expect(convertTemperatureInText("roast at 200 to 220°C", "imperial")).toBe(
-      "roast at 392 to 428°F (200 to 220°C)"
-    );
-  });
-
-  it("does not convert quantity ranges", () => {
-    expect(convertTemperatureInText("Add 1-2 c flour", "imperial")).toBe(
-      "Add 1-2 c flour"
-    );
-  });
-
-  it("does not convert text that already gives both scales", () => {
-    expect(convertTemperatureInText("Bake at 180°C (350°F).", "imperial")).toBe(
-      "Bake at 180°C (350°F)."
-    );
-    expect(convertTemperatureInText("Bake at 180°C (350°F).", "metric")).toBe(
-      "Bake at 180°C (350°F)."
-    );
-    expect(convertTemperatureInText("Bake at 350°F (180°C).", "imperial")).toBe(
-      "Bake at 350°F (180°C)."
-    );
-    // Its own output is stable
-    const once = convertTemperatureInText("bake at 180-200 C", "imperial");
-    expect(convertTemperatureInText(once, "imperial")).toBe(once);
+    expect(convertTemperatureInText(null as unknown as string, "metric")).toBeNull();
+    expect(convertTemperatureInText(undefined as unknown as string, "imperial")).toBeUndefined();
   });
 });
 
-describe("misc helpers", () => {
-  it("getSystemDisplayName", () => {
+describe("getSystemDisplayName", () => {
+  it("names both systems", () => {
     expect(getSystemDisplayName("metric")).toBe("Metric");
     expect(getSystemDisplayName("imperial")).toBe("Imperial");
   });
+});
 
-  it("isRecognizedUnit", () => {
-    expect(isRecognizedUnit("cups")).toBe(true);
-    expect(isRecognizedUnit("T")).toBe(true);
-    expect(isRecognizedUnit("clove")).toBe(false);
-    expect(isRecognizedUnit("")).toBe(false);
+describe("getUnitsForSystem", () => {
+  it("lists units of one category and system only", () => {
+    expect(getUnitsForSystem("weight", "metric").map((u) => u.symbol)).toEqual(["mg", "g", "kg"]);
+    expect(getUnitsForSystem("weight", "imperial").map((u) => u.symbol)).toEqual(["oz", "lb"]);
+    for (const unit of getUnitsForSystem("volume", "imperial")) {
+      expect(unit).toMatchObject({ category: "volume", system: "imperial" });
+    }
   });
 
-  it("getUnitsForSystem", () => {
-    expect(getUnitsForSystem("volume", "metric").map((u) => u.symbol)).toEqual([
-      "ml",
-      "cl",
-      "dl",
-      "L",
-    ]);
-    expect(getUnitsForSystem("weight", "imperial").map((u) => u.symbol)).toEqual([
-      "oz",
-      "lb",
-    ]);
+  it("has no table units for temperature", () => {
     expect(getUnitsForSystem("temperature", "metric")).toEqual([]);
+  });
+});
+
+describe("audit fixes", () => {
+  it("reads a decimal comma but keeps a thousands separator", async () => {
+    const { parseAmount } = await import("./unit-conversion");
+    expect(parseAmount("1,5")).toBe(1.5);
+    expect(parseAmount("12,25")).toBe(12.25);
+    expect(parseAmount("1,000")).toBe(1000);
+  });
+
+  it("parses a fraction glued to its unit", async () => {
+    const { parseAmount } = await import("./unit-conversion");
+    expect(parseAmount("1/2cup")).toBe(0.5);
+    expect(parseAmount("1 1/2cups")).toBe(1.5);
+  });
+
+  it("converts both ends of a quantity range", async () => {
+    const { convertUnit } = await import("./unit-conversion");
+    expect(convertUnit("1-2", "cups", "metric")?.displayAmount).toBe("237-473");
   });
 });

@@ -47,9 +47,10 @@ export const MAX_INSTRUCTIONS = 100;
 export const MAX_TAGS = 20;
 
 export const ingredientSchema = z.object({
-  id: z.string(),
+  id: z.string().max(100),
   text: z
     .string()
+    .trim()
     .min(1, "Ingredient text is required")
     .max(MAX_INGREDIENT_TEXT, "Ingredient text is too long"),
   amount: z.string().max(50, "Ingredient amount is too long").optional(),
@@ -57,10 +58,11 @@ export const ingredientSchema = z.object({
 });
 
 export const instructionSchema = z.object({
-  id: z.string(),
+  id: z.string().max(100),
   step: z.number().int().positive(),
   text: z
     .string()
+    .trim()
     .min(1, "Instruction text is required")
     .max(MAX_INSTRUCTION_TEXT, "Instruction text is too long"),
 });
@@ -73,7 +75,7 @@ export const nutritionSchema = z.object({
   fiber: z.number().nonnegative().nullable(),
   sugar: z.number().nonnegative().nullable(),
   confidence: z.enum(["high", "medium", "low"]),
-  warnings: z.array(z.string()).optional(),
+  warnings: z.array(z.string().max(500)).max(20).optional(),
 });
 
 // Field definitions shared by the create and update schemas. Note that no
@@ -81,7 +83,7 @@ export const nutritionSchema = z.object({
 // parse, and a partial update would then overwrite a column the caller never
 // sent (e.g. silently unpublishing a recipe on a PUT without `is_public`).
 const recipeFields = {
-  title: z.string().min(1, "Title is required").max(200, "Title is too long"),
+  title: z.string().trim().min(1, "Title is required").max(200, "Title is too long"),
   description: z.string().max(1000, "Description is too long").optional(),
   ingredients: z
     .array(ingredientSchema)
@@ -91,16 +93,24 @@ const recipeFields = {
     .array(instructionSchema)
     .min(1, "At least one instruction is required")
     .max(MAX_INSTRUCTIONS, `A recipe can have at most ${MAX_INSTRUCTIONS} steps`),
-  prep_time_minutes: z.number().int().nonnegative().optional().nullable(),
-  cook_time_minutes: z.number().int().nonnegative().optional().nullable(),
-  servings: z.number().int().positive().optional().nullable(),
+  // Upper bounds keep values inside Postgres int4 (a larger one is a 500).
+  prep_time_minutes: z.number().int().nonnegative().max(100_000).optional().nullable(),
+  cook_time_minutes: z.number().int().nonnegative().max(100_000).optional().nullable(),
+  servings: z.number().int().positive().max(10_000).optional().nullable(),
   difficulty: z.enum(["easy", "medium", "hard"]).optional().nullable(),
-  image_url: z.string().url().optional().nullable().or(z.literal("")),
+  // http(s) only: z.url() on its own also accepts javascript:, data: and file:.
+  image_url: z
+    .url({ protocol: /^https?$/, message: "Image must be an http(s) URL" })
+    .optional()
+    .nullable()
+    .or(z.literal("")),
   nutrition: nutritionSchema.optional().nullable(),
   is_public: z.boolean().optional(),
   tag_ids: z
     .array(z.string().uuid())
     .max(MAX_TAGS, `A recipe can have at most ${MAX_TAGS} tags`)
+    // A repeated id would violate recipe_tag's primary key and fail the save.
+    .transform((ids) => [...new Set(ids)])
     .optional(),
 };
 

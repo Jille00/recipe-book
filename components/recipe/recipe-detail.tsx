@@ -88,6 +88,7 @@ export function RecipeDetail({
     increment,
     decrement,
     resetToOriginal,
+    maxServings,
   } = useRecipeScaling(recipe.servings || 1);
 
   const totalTime =
@@ -169,6 +170,7 @@ export function RecipeDetail({
   };
 
   const handleDelete = async () => {
+    if (isDeleting) return;
     if (!confirm("Are you sure you want to delete this recipe?")) return;
 
     setIsDeleting(true);
@@ -182,6 +184,8 @@ export function RecipeDetail({
       }
 
       toast.success("Recipe deleted");
+      // Stay "deleting" while the next page loads: the recipe is gone, and a
+      // second click would only report that it can't be found.
       router.push("/recipes");
       router.refresh();
     } catch (error) {
@@ -189,7 +193,6 @@ export function RecipeDetail({
       toast.error(
         error instanceof Error ? error.message : "Failed to delete recipe"
       );
-    } finally {
       setIsDeleting(false);
     }
   };
@@ -320,7 +323,10 @@ export function RecipeDetail({
             )}
             {/* Favorites only list public recipes and your own, so an unlisted
                 recipe someone sent you can't be saved there. */}
-            {isAuthenticated && (recipe.isPublic || isOwner) && (
+            {/* ...but a recipe favorited while it was public must stay
+                removable after it becomes link-only. */}
+            {isAuthenticated &&
+              (recipe.isPublic || isOwner || (initialFavorited ?? recipe.isFavorited)) && (
               <FavoriteButton
                 recipeId={recipe.id}
                 initialFavorited={initialFavorited ?? recipe.isFavorited ?? false}
@@ -403,6 +409,7 @@ export function RecipeDetail({
             onIncrement={increment}
             onDecrement={decrement}
             onReset={resetToOriginal}
+            maxServings={maxServings}
           />
         )}
       </div>
@@ -476,7 +483,12 @@ export function RecipeDetail({
                             {ingredient.converted.unit}
                           </span>{" "}
                           <span className="text-xs text-muted-foreground/70">
-                            ({ingredient.originalAmount || ingredient.amount} {ingredient.unit})
+                            {/* The same scaled amount in the recipe's own unit. */}
+                            (
+                            {(ingredient.wasScaled && ingredient.scaledAmount) ||
+                              ingredient.originalAmount ||
+                              ingredient.amount}{" "}
+                            {ingredient.unit})
                           </span>{" "}
                         </>
                       ) : ingredient.wasScaled && ingredient.scaledAmount ? (

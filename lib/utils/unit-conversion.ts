@@ -278,6 +278,34 @@ const VULGAR_AMOUNT_PATTERN = new RegExp(
   `^(-)?\\s*(\\d+(?:\\.\\d+)?)?\\s*([${VULGAR_FRACTION_CHARS}])`
 );
 
+// A single numeric token: mixed number ("1 1/2"), decimal/whole with a unicode
+// fraction ("1½"), fraction ("1/2"), thousands ("1,000"), decimal comma
+// ("1,5"), decimal/whole ("1.5") or a bare unicode fraction ("½").
+export const NUMBER_TOKEN =
+  `(?:\\d+\\s+\\d+\\/\\d+` +
+  `|\\d+\\s*[${VULGAR_FRACTION_CHARS}]` +
+  `|\\d+\\/\\d+` +
+  `|\\d{1,3}(?:,\\d{3})+(?![\\d,])` +
+  `|\\d+,\\d{1,2}(?![\\d,])` +
+  `|\\d+(?:\\.\\d+)?` +
+  `|[${VULGAR_FRACTION_CHARS}])`;
+
+// "1-2", "1.5 - 2", "1 1/2–2", "½—¾", "1 to 2"
+const RANGE_PATTERN = new RegExp(
+  `^(${NUMBER_TOKEN})(?:\\s*[-‐‑‒–—―]\\s*|\\s+to\\s+)(${NUMBER_TOKEN})$`,
+  "i"
+);
+
+/**
+ * Split a range amount ("1-2", "1 to 2") into its two ends, or null when the
+ * input is not a range
+ */
+export function splitRange(input: string): { low: string; high: string } | null {
+  if (typeof input !== "string") return null;
+  const match = input.trim().match(RANGE_PATTERN);
+  return match ? { low: match[1], high: match[2] } : null;
+}
+
 /**
  * Parse a numeric amount string, including fractions
  */
@@ -301,8 +329,9 @@ export function parseAmount(input: string): number | null {
     return sign * (whole + fraction);
   }
 
-  // Handle mixed numbers like "1 1/2"
-  const mixedMatch = normalized.match(/^(-?\d+)\s+(\d+)\/(\d+)\b/);
+  // Handle mixed numbers like "1 1/2". A unit may be glued on ("1 1/2cups"),
+  // so only a following digit or decimal point ends the match early.
+  const mixedMatch = normalized.match(/^(-?\d+)\s+(\d+)\/(\d+)(?![\d.])/);
   if (mixedMatch) {
     const whole = parseInt(mixedMatch[1], 10);
     const numerator = parseInt(mixedMatch[2], 10);
@@ -313,12 +342,27 @@ export function parseAmount(input: string): number | null {
   }
 
   // Handle simple fractions like "1/2"
-  const fractionMatch = normalized.match(/^(-?\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\b/);
+  const fractionMatch = normalized.match(
+    /^(-?\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)(?![\d.])/
+  );
   if (fractionMatch) {
     const numerator = parseFloat(fractionMatch[1]);
     const denominator = parseFloat(fractionMatch[2]);
     if (!denominator) return null;
     return numerator / denominator;
+  }
+
+  // Thousands separators ("1,000", "1,250.5"): a comma followed by exactly
+  // three digits
+  const thousandsMatch = normalized.match(/^-?\d{1,3}(?:,\d{3})+(?:\.\d+)?(?![\d,])/);
+  if (thousandsMatch) {
+    return parseFloat(thousandsMatch[0].replace(/,/g, ""));
+  }
+
+  // Decimal comma ("1,5", common in European recipes): one or two digits
+  const decimalCommaMatch = normalized.match(/^(-?\d+),(\d{1,2})(?![\d,])/);
+  if (decimalCommaMatch) {
+    return parseFloat(`${decimalCommaMatch[1]}.${decimalCommaMatch[2]}`);
   }
 
   // Handle decimal numbers
@@ -467,12 +511,22 @@ export function formatMetricAmount(amount: number): string {
   return sign + String(Number(value.toPrecision(2)));
 }
 
+function formatForSystem(amount: number, system: UnitSystem): string {
+  return system === "metric" ? formatMetricAmount(amount) : formatAmount(amount);
+}
+
 export function convertUnit(
   amountStr: string,
   fromUnit: string,
   toSystem: UnitSystem
 ): ConversionResult {
-  const amount = parseAmount(amountStr);
+  // A range ("1-2", as produced by scaling) converts both ends
+  const range = splitRange(amountStr);
+  const low = range ? parseAmount(range.low) : null;
+  const high = range ? parseAmount(range.high) : null;
+  const isRange = low !== null && high !== null;
+
+  const amount = isRange ? low : parseAmount(amountStr);
   const unitDef = normalizeUnit(fromUnit);
 
   // If we can't parse the amount or unit, return original
@@ -487,48 +541,54 @@ export function convertUnit(
     };
   }
 
+  const format = (system: UnitSystem, convert = (value: number) => value) =>
+    isRange
+      ? `${formatForSystem(convert(low), system)}-${formatForSystem(convert(high), system)}`
+      : formatForSystem(convert(amount), system);
+
   // If already in target system, return original
   if (unitDef.system === toSystem) {
     return {
       amount,
       unit: unitDef.symbol,
-      displayAmount:
-        unitDef.system === "metric"
-          ? formatMetricAmount(amount)
-          : formatAmount(amount),
+      displayAmount: format(unitDef.system),
       originalAmount: amountStr,
       originalUnit: fromUnit,
       wasConverted: false,
     };
   }
 
-  // Convert to base unit (ml or g)
-  const baseAmount = amount * unitDef.baseMultiplier;
-
-  // Find best target unit
-  const targetUnit = selectBestUnit(baseAmount, unitDef.category, toSystem);
+  // Find best target unit, from the larger end of a range so both ends share
+  // one unit ("237-473 ml", not "237 ml-2 cups")
+  const largest = isRange ? Math.max(Math.abs(low), Math.abs(high)) : amount;
+  const targetUnit = selectBestUnit(
+    largest * unitDef.baseMultiplier,
+    unitDef.category,
+    toSystem
+  );
 
   // No display unit available for this category (e.g. temperature) — leave as is
   if (!targetUnit) {
     return {
       amount,
       unit: unitDef.symbol,
-      displayAmount: formatAmount(amount),
+      displayAmount: isRange
+        ? `${formatAmount(low)}-${formatAmount(high)}`
+        : formatAmount(amount),
       originalAmount: amountStr,
       originalUnit: fromUnit,
       wasConverted: false,
     };
   }
 
-  const convertedAmount = baseAmount / targetUnit.baseMultiplier;
+  // Convert via the base unit (ml or g)
+  const convert = (value: number) =>
+    (value * unitDef.baseMultiplier) / targetUnit.baseMultiplier;
 
   return {
-    amount: convertedAmount,
+    amount: convert(amount),
     unit: targetUnit.symbol,
-    displayAmount:
-      targetUnit.system === "metric"
-        ? formatMetricAmount(convertedAmount)
-        : formatAmount(convertedAmount),
+    displayAmount: format(targetUnit.system, convert),
     originalAmount: amountStr,
     originalUnit: fromUnit,
     wasConverted: true,
@@ -615,11 +675,22 @@ const TEMPERATURE_CONTEXT_WORDS = new Set([
   "hits",
 ]);
 
-// Number, an optional degree sign / "degrees" filler, then the scale marker.
-// The filler is captured so we can tell "180°C" / "180 degrees C" (explicit)
-// from a bare "2 c" (ambiguous: "c" is also the abbreviation for cup).
+// Number (or a range of two: "180-200", "350 to 375"), an optional degree
+// sign / "degrees" filler, then the scale marker. The filler is captured so we
+// can tell "180°C" / "180 degrees C" (explicit) from a bare "2 c" (ambiguous:
+// "c" is also the abbreviation for cup).
 const TEMPERATURE_PATTERN =
-  /(-?\d+(?:\.\d+)?)((?:\s*°)?\s*(?:degrees?|deg\.?)?\s*)(celsius|centigrade|fahrenheit|c|f)\b/gi;
+  /(-?\d+(?:\.\d+)?)(?:(\s*[-‐‑‒–—―]\s*|\s+to\s+)(-?\d+(?:\.\d+)?))?((?:\s*°)?\s*(?:degrees?|deg\.?)?\s*)(celsius|centigrade|fahrenheit|c|f)\b/gi;
+
+// A temperature in parentheses right after the match ("180°C (350°F)"), or a
+// temperature followed by an opening parenthesis right before it
+// ("350°F (180°C)"): the text already gives both scales.
+const TEMPERATURE_MARKER = String.raw`\d\s*°?\s*(?:degrees?\s*)?(?:celsius|centigrade|fahrenheit|c|f)\b`;
+const PAIRED_AFTER_PATTERN = new RegExp(
+  String.raw`^\s*\([^()]*?` + TEMPERATURE_MARKER + String.raw`[^()]*\)`,
+  "i"
+);
+const PAIRED_BEFORE_PATTERN = new RegExp(TEMPERATURE_MARKER + String.raw`\s*\(\s*$`, "i");
 
 // Plausible magnitudes. The strict range is used when the scale marker is a
 // bare letter and we are relying on context, so quantities are never rewritten.
@@ -653,7 +724,15 @@ export function convertTemperatureInText(
 
   return text.replace(
     TEMPERATURE_PATTERN,
-    (match: string, numberPart: string, filler: string, marker: string, offset: number) => {
+    (
+      match: string,
+      lowPart: string,
+      separator: string | undefined,
+      highPart: string | undefined,
+      filler: string,
+      marker: string,
+      offset: number
+    ) => {
       const lowerMarker = marker.toLowerCase();
       const scale =
         lowerMarker === "f" || lowerMarker === "fahrenheit"
@@ -662,18 +741,13 @@ export function convertTemperatureInText(
 
       if (scale !== wantScale) return match;
 
-      // A leading "-" that follows a digit is a range separator ("180-200 C"),
-      // not a negative sign. Keep it and convert the number after it.
-      let numberText = numberPart;
-      let prefix = "";
-      const charBefore = offset > 0 ? text[offset - 1] : "";
-      if (numberText.startsWith("-") && /[\d.,]/.test(charBefore)) {
-        prefix = "-";
-        numberText = numberText.slice(1);
+      // Already written in both scales — don't convert it a second time
+      if (
+        PAIRED_AFTER_PATTERN.test(text.slice(offset + match.length)) ||
+        PAIRED_BEFORE_PATTERN.test(text.slice(0, offset))
+      ) {
+        return match;
       }
-
-      const value = parseFloat(numberText);
-      if (!Number.isFinite(value)) return match;
 
       const gap = filler ?? "";
       const hasDegreeSign = gap.includes("°");
@@ -686,21 +760,39 @@ export function convertTemperatureInText(
 
       const ranges = TEMPERATURE_RANGES[scale];
       const explicit = hasDegreeSign || hasDegreesWord || isSpelledOut;
+      const isPlausible = (value: number) =>
+        Number.isFinite(value) &&
+        (explicit
+          ? inRange(value, ranges.wide)
+          : (isAttached || hasContext) && inRange(value, ranges.strict));
 
-      const accepted = explicit
-        ? inRange(value, ranges.wide)
-        : (isAttached || hasContext) && inRange(value, ranges.strict);
+      const low = parseFloat(lowPart);
+      const high = highPart !== undefined ? parseFloat(highPart) : NaN;
 
-      // Anything else is a quantity (e.g. "2 c flour") — leave it untouched.
-      if (!accepted) return match;
-
-      if (scale === "fahrenheit") {
-        const f = Math.round(value);
-        return `${prefix}${fahrenheitToCelsius(f)}°C (${f}°F)`;
+      // For a range both ends must look like temperatures; if only the end
+      // next to the marker does, convert that and keep the rest verbatim.
+      let prefix = "";
+      let values: number[];
+      if (highPart !== undefined && isPlausible(low) && isPlausible(high)) {
+        values = [low, high];
+      } else if (highPart !== undefined) {
+        prefix = `${lowPart}${separator ?? ""}`;
+        values = [high];
+      } else {
+        values = [low];
       }
 
-      const c = Math.round(value);
-      return `${prefix}${celsiusToFahrenheit(c)}°F (${c}°C)`;
+      // Anything else is a quantity (e.g. "2 c flour") — leave it untouched.
+      if (!values.every(isPlausible)) return match;
+
+      const join = (parts: number[]) => parts.join(separator ?? "");
+      const original = values.map((value) => Math.round(value));
+
+      if (scale === "fahrenheit") {
+        return `${prefix}${join(original.map(fahrenheitToCelsius))}°C (${join(original)}°F)`;
+      }
+
+      return `${prefix}${join(original.map(celsiusToFahrenheit))}°F (${join(original)}°C)`;
     }
   );
 }

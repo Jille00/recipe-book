@@ -1,4 +1,4 @@
-import { notFound, permanentRedirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { resolveRecipeAddress } from "@/lib/db/queries/recipes";
 import { recipePath } from "@/lib/recipe-url";
 
@@ -22,5 +22,5 @@ export default async function ResolveRecipeAddress({ params }: Props) {
     notFound();
   }
 
-  permanentRedirect(recipePath(address));
+  redirect(recipePath(address));
 }

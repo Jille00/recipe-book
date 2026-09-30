@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getRecipeById, updateRecipe, deleteRecipe } from "@/lib/db/queries/recipes";
 import { recipeUpdateSchema } from "@/lib/utils/validation";
-import { invalidIdResponse, isUuid } from "@/lib/api-utils";
+import {
+  invalidBodyResponse,
+  invalidIdResponse,
+  isUuid,
+  readJsonObject,
+} from "@/lib/api-utils";
 
 export async function GET(
   request: NextRequest,
@@ -63,7 +68,8 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = await readJsonObject(request);
+    if (!body) return invalidBodyResponse();
 
     // Validate input against the partial update schema: fields that are not
     // sent must stay untouched (a full schema with defaults would, for

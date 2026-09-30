@@ -1,6 +1,6 @@
 import { cache } from "react";
 import type { Metadata } from "next";
-import { notFound, permanentRedirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { getRecipeByCode } from "@/lib/db/queries/recipes";
@@ -77,7 +77,7 @@ export default async function RecipePage({ params }: Props) {
   // The code identifies the recipe; the slug is cosmetic. A renamed recipe, or
   // a link typed without its slug, lands on the current address.
   if (slug !== recipe.slug) {
-    permanentRedirect(recipePath(recipe));
+    redirect(recipePath(recipe));
   }
 
   const isOwner = viewerId === recipe.userId;

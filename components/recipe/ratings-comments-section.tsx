@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui";
 import { RatingDisplay } from "./rating-display";
 import { RatingInput } from "./rating-input";
@@ -33,6 +35,8 @@ export function RatingsCommentsSection({
   isAuthenticated = false,
   code,
 }: RatingsCommentsSectionProps) {
+  // Come back to this recipe after signing in.
+  const loginHref = `/login?callbackUrl=${encodeURIComponent(usePathname())}`;
   const [ratingStats, setRatingStats] = useState<RatingStats>(initialRatingStats);
 
   const handleRatingChange = useCallback(
@@ -95,9 +99,10 @@ export function RatingsCommentsSection({
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                <a href="/login" className="text-primary hover:underline">
+                <Link
+                  href={loginHref} className="text-primary hover:underline">
                   Sign in
-                </a>{" "}
+                </Link>{" "}
                 to rate this recipe
               </p>
             )}

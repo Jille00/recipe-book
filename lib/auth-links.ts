@@ -1,3 +1,5 @@
+import { isSafeRelativePath } from "@/lib/safe-path";
+
 /** Where a verification link lands, whether it worked or not. */
 export const CONFIRM_EMAIL_PATH = "/confirm-email";
 
@@ -16,9 +18,8 @@ export function withConfirmationLanding(verificationUrl: string): string {
 
   if (!requested.startsWith(CONFIRM_EMAIL_PATH)) {
     // Only same-site relative paths may be carried forward.
-    const isSafePath = requested.startsWith("/") && !requested.startsWith("//");
     const landing =
-      isSafePath && requested !== "/"
+      isSafeRelativePath(requested) && requested !== "/"
         ? `${CONFIRM_EMAIL_PATH}?next=${encodeURIComponent(requested)}`
         : CONFIRM_EMAIL_PATH;
     url.searchParams.set("callbackURL", landing);

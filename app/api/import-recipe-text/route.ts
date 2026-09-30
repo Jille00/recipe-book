@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { invalidBodyResponse, readJsonObject } from "@/lib/api-utils";
 import { auth } from "@/lib/auth";
 import { generateObject } from "ai";
 import { z } from "zod";
@@ -102,7 +103,8 @@ export async function POST(request: NextRequest) {
     const limited = enforceRateLimit("ai:import-recipe-text", session.user.id);
     if (limited) return limited;
 
-    const body = await request.json();
+    const body = await readJsonObject(request);
+    if (!body) return invalidBodyResponse();
     const { text } = body;
 
     if (!text || typeof text !== "string") {

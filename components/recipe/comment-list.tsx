@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui";
 import { CommentItem } from "./comment-item";
@@ -28,6 +30,8 @@ export function CommentList({
   isAuthenticated = false,
   code,
 }: CommentListProps) {
+  // Come back to this recipe after signing in.
+  const loginHref = `/login?callbackUrl=${encodeURIComponent(usePathname())}`;
   const [comments, setComments] = useState<CommentWithUser[]>(initialComments);
   const [total, setTotal] = useState(initialTotal);
   const [isLoading, setIsLoading] = useState(false);
@@ -108,9 +112,10 @@ export function CommentList({
         <div className="rounded-lg border border-border bg-muted/30 p-4 text-center">
           <p className="text-sm text-muted-foreground">
             Please{" "}
-            <a href="/login" className="text-primary hover:underline">
+            <Link
+              href={loginHref} className="text-primary hover:underline">
               sign in
-            </a>{" "}
+            </Link>{" "}
             to leave a comment.
           </p>
         </div>

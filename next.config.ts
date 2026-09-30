@@ -18,8 +18,17 @@ const securityHeaders = [
     value: "nosniff",
   },
   {
+    // The legacy XSS auditor is gone from browsers and could itself be abused;
+    // "0" is the current recommendation.
     key: "X-XSS-Protection",
-    value: "1; mode=block",
+    value: "0",
+  },
+  {
+    // A baseline that can't break the app: no plugins, no <base> hijacking, no
+    // framing by other sites, forms only post here. Script sources are not
+    // restricted yet; that needs nonces for Next's inline scripts.
+    key: "Content-Security-Policy",
+    value: "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'",
   },
   {
     key: "Referrer-Policy",

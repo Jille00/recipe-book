@@ -4,23 +4,17 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "@/lib/auth-client";
+import { safeRelativePath } from "@/lib/safe-path";
 import { Button, Input, Label } from "@/components/ui";
 import { Loader2, Mail, Lock, MailCheck } from "lucide-react";
-
-// Validate callback URL to prevent open redirect attacks
-function getSafeCallbackUrl(url: string | null): string {
-  if (!url) return "/dashboard";
-  // Only allow relative URLs starting with /
-  if (url.startsWith("/") && !url.startsWith("//")) {
-    return url;
-  }
-  return "/dashboard";
-}
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = getSafeCallbackUrl(searchParams.get("callbackUrl"));
+  const callbackUrl = safeRelativePath(
+    searchParams.get("callbackUrl"),
+    "/dashboard"
+  );
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,9 +40,9 @@ export function LoginForm() {
       });
 
       if (result.error) {
-        const isUnconfirmed =
-          result.error.code === "EMAIL_NOT_VERIFIED" || result.error.status === 403;
-        if (isUnconfirmed) {
+        // better-auth also answers 403 for an untrusted origin or callback, where
+        // the password was never checked and no email went out.
+        if (result.error.code === "EMAIL_NOT_VERIFIED") {
           setUnconfirmedEmail(email);
         } else {
           setError(result.error.message || "Invalid email or password");

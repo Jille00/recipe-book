@@ -8,6 +8,12 @@ interface UserPreferences {
   unitSystem: UnitSystem;
 }
 
+// null means "never chosen": the client then falls back to the browser's
+// locale, which is metric for most of the world.
+interface PreferencesResponse {
+  unitSystem: UnitSystem | null;
+}
+
 // Safely parse and validate preferences from database
 function parsePreferences(rawPreferences: unknown): Partial<UserPreferences> {
   if (!rawPreferences || typeof rawPreferences !== "object") {
@@ -34,8 +40,8 @@ export async function GET(request: NextRequest) {
     });
 
     const storedPreferences = parsePreferences(userProfile?.preferences);
-    const preferences: UserPreferences = {
-      unitSystem: storedPreferences.unitSystem || "imperial",
+    const preferences: PreferencesResponse = {
+      unitSystem: storedPreferences.unitSystem ?? null,
     };
 
     return NextResponse.json(preferences);
@@ -66,10 +72,10 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const { unitSystem } = body;
+    const unitSystem = (body as { unitSystem?: unknown } | null)?.unitSystem;
 
-    // Validate unitSystem
-    if (unitSystem && unitSystem !== "metric" && unitSystem !== "imperial") {
+    // A choice is the only thing this endpoint stores, so it's required.
+    if (unitSystem !== "metric" && unitSystem !== "imperial") {
       return NextResponse.json(
         { error: "Invalid unit system" },
         { status: 400 }
@@ -81,9 +87,9 @@ export async function PUT(request: NextRequest) {
       where: eq(profile.userId, session.user.id),
     });
 
-    const currentPreferences = parsePreferences(userProfile?.preferences);
     const newPreferences: UserPreferences = {
-      unitSystem: unitSystem || currentPreferences.unitSystem || "imperial",
+      ...parsePreferences(userProfile?.preferences),
+      unitSystem,
     };
 
     // Use upsert to avoid race condition

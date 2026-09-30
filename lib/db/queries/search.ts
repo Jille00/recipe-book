@@ -52,7 +52,7 @@ export async function searchRecipes(
 
   // Text search across title, description, and ingredients
   if (filters.query && filters.query.trim()) {
-    const searchTerm = `%${filters.query.trim()}%`;
+    const searchTerm = containsPattern(filters.query.trim());
     conditions.push(
       or(
         ilike(recipe.title, searchTerm),
@@ -156,7 +156,7 @@ export async function getPublicRecipes(
 
   // Text search across title, description, and ingredients
   if (filters.query && filters.query.trim()) {
-    const searchTerm = `%${filters.query.trim()}%`;
+    const searchTerm = containsPattern(filters.query.trim());
     conditions.push(
       or(
         ilike(recipe.title, searchTerm),
@@ -260,4 +260,13 @@ export async function getPublicRecipes(
     })),
     total,
   };
+}
+
+/**
+ * ILIKE pattern matching `text` anywhere. %, _ and the escape character itself
+ * are escaped so a search for "100%" is taken literally instead of matching
+ * every recipe.
+ */
+export function containsPattern(text: string): string {
+  return `%${text.replace(/[\\%_]/g, "\\$&")}%`;
 }

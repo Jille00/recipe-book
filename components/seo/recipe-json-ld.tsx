@@ -45,7 +45,7 @@ export function RecipeJsonLd({ recipe, url }: RecipeJsonLdProps) {
       }
       return ing.text;
     }),
-    recipeInstructions: recipe.instructions
+    recipeInstructions: [...recipe.instructions]
       .sort((a, b) => a.step - b.step)
       .map((inst) => ({
         "@type": "HowToStep",
@@ -54,22 +54,22 @@ export function RecipeJsonLd({ recipe, url }: RecipeJsonLdProps) {
     nutrition: recipe.nutrition
       ? {
           "@type": "NutritionInformation",
-          calories: recipe.nutrition.calories
+          calories: recipe.nutrition.calories != null
             ? `${recipe.nutrition.calories} calories`
             : undefined,
-          proteinContent: recipe.nutrition.protein
+          proteinContent: recipe.nutrition.protein != null
             ? `${recipe.nutrition.protein} g`
             : undefined,
-          carbohydrateContent: recipe.nutrition.carbs
+          carbohydrateContent: recipe.nutrition.carbs != null
             ? `${recipe.nutrition.carbs} g`
             : undefined,
-          fatContent: recipe.nutrition.fat
+          fatContent: recipe.nutrition.fat != null
             ? `${recipe.nutrition.fat} g`
             : undefined,
-          fiberContent: recipe.nutrition.fiber
+          fiberContent: recipe.nutrition.fiber != null
             ? `${recipe.nutrition.fiber} g`
             : undefined,
-          sugarContent: recipe.nutrition.sugar
+          sugarContent: recipe.nutrition.sugar != null
             ? `${recipe.nutrition.sugar} g`
             : undefined,
         }
@@ -77,13 +77,26 @@ export function RecipeJsonLd({ recipe, url }: RecipeJsonLdProps) {
     url,
   };
 
-  // Remove undefined values
-  const cleanJsonLd = JSON.parse(JSON.stringify(jsonLd));
-
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(cleanJsonLd) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
     />
   );
+}
+
+/**
+ * JSON for inside a <script> tag. JSON.stringify leaves "<" alone, so a recipe
+ * titled "</script><img onerror=...>" would close the tag and run as HTML for
+ * every visitor. Escaping <, > and & as unicode keeps the JSON identical once
+ * parsed; U+2028/U+2029 are escaped because older parsers treat them as line
+ * breaks. Undefined values are dropped, as JSON.stringify always does.
+ */
+export function serializeJsonLd(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
 }

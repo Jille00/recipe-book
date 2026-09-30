@@ -200,6 +200,9 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const errorRef = useRef<HTMLDivElement>(null);
   const servingsInputRef = useRef<HTMLInputElement>(null);
+  // Set synchronously, unlike isSubmitting, so a fast second click can't slip
+  // in before the re-render and create the recipe twice.
+  const submittingRef = useRef(false);
 
   // Nutrition is calculated per serving, but the Servings field lives in a
   // different card from the Calculate button. The hint links straight to it.
@@ -376,6 +379,8 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setError("");
     setIsSubmitting(true);
 
@@ -384,12 +389,14 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
 
     if (filteredIngredients.length === 0) {
       setError("Please add at least one ingredient");
+      submittingRef.current = false;
       setIsSubmitting(false);
       return;
     }
 
     if (filteredInstructions.length === 0) {
       setError("Please add at least one instruction");
+      submittingRef.current = false;
       setIsSubmitting(false);
       return;
     }
@@ -423,17 +430,18 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to save recipe");
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || `Failed to save recipe (${response.status})`);
       }
 
       const data = await response.json();
-      // Land on the recipe's one address, which is also its share link.
+      // Land on the recipe's one address, which is also its share link. The
+      // form stays disabled while that page loads.
       router.push(recipePath(data));
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };

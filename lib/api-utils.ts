@@ -21,6 +21,29 @@ export function invalidIdResponse(resource = "resource"): NextResponse {
 }
 
 /**
+ * The request body as a JSON object, or null when it is missing, malformed or
+ * not an object (e.g. `null` or an array). Destructuring a field off anything
+ * else throws, turning a client mistake into a 500.
+ */
+export async function readJsonObject(
+  request: Request
+): Promise<Record<string, unknown> | null> {
+  try {
+    const body: unknown = await request.json();
+    return body !== null && typeof body === "object" && !Array.isArray(body)
+      ? (body as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Standard response for a body readJsonObject couldn't use. */
+export function invalidBodyResponse(): NextResponse {
+  return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+}
+
+/**
  * Parse a pagination query param, clamping it into a sane range and falling
  * back to `fallback` for missing / non-numeric values.
  */

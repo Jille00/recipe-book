@@ -9,9 +9,11 @@ import {
 import { getRecipeById } from "@/lib/db/queries/recipes";
 import {
   canAccessRecipe,
+  invalidBodyResponse,
   invalidIdResponse,
   isUuid,
   parsePaginationParam,
+  readJsonObject,
 } from "@/lib/api-utils";
 
 const MAX_COMMENT_PAGE_SIZE = 100;
@@ -100,7 +102,8 @@ export async function POST(
       );
     }
 
-    const body = await request.json();
+    const body = await readJsonObject(request);
+    if (!body) return invalidBodyResponse();
     const { content } = body;
 
     if (!content || typeof content !== "string" || content.trim().length === 0) {

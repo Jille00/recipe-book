@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { signOut } from "@/lib/auth-client";
@@ -61,6 +61,7 @@ interface HeaderProps {
 
 export function Header({ initialUser }: HeaderProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user: clientUser, isLoading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -74,8 +75,14 @@ export function Header({ initialUser }: HeaderProps) {
   const sessionResolved = !isLoading || hasServerValue;
   const isAuthenticated = !!user;
 
+  // Leave the page and drop the router cache: private server-rendered pages
+  // (dashboard, favorites, profile with the email) would otherwise stay on
+  // screen, and in Back navigation, after signing out.
   const handleSignOut = async () => {
     await signOut();
+    setMobileMenuOpen(false);
+    router.push("/");
+    router.refresh();
   };
 
   const closeMobileMenu = useCallback((returnFocus = false) => {

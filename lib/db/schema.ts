@@ -102,7 +102,8 @@ export const profile = pgTable("profile", {
   bio: text("bio"),
   website: text("website"),
   location: text("location"),
-  preferences: jsonb("preferences").default({ unitSystem: "imperial" }),
+  // Empty until the person picks a unit system; the app then follows their locale.
+  preferences: jsonb("preferences").default({}),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -7,7 +7,13 @@ import {
   deleteRating,
 } from "@/lib/db/queries/ratings";
 import { getRecipeById } from "@/lib/db/queries/recipes";
-import { canAccessRecipe, invalidIdResponse, isUuid } from "@/lib/api-utils";
+import {
+  canAccessRecipe,
+  invalidBodyResponse,
+  invalidIdResponse,
+  isUuid,
+  readJsonObject,
+} from "@/lib/api-utils";
 
 export async function GET(
   request: NextRequest,
@@ -92,12 +98,13 @@ export async function POST(
       );
     }
 
-    const body = await request.json();
+    const body = await readJsonObject(request);
+    if (!body) return invalidBodyResponse();
     const { value } = body;
 
-    if (typeof value !== "number" || value < 1 || value > 5) {
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > 5) {
       return NextResponse.json(
-        { error: "Rating must be between 1 and 5" },
+        { error: "Rating must be a whole number between 1 and 5" },
         { status: 400 }
       );
     }
@@ -136,13 +143,11 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Only ever removes the caller's own rating. No stats in the reply: they
+    // would reveal ratings on recipes the caller can't open.
     await deleteRating(session.user.id, recipeId);
-    const stats = await getRecipeRatingStats(recipeId);
 
-    return NextResponse.json({
-      success: true,
-      stats,
-    });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting rating:", error);
     return NextResponse.json(

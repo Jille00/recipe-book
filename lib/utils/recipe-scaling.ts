@@ -1,6 +1,12 @@
 import type { Ingredient } from "@/types/recipe";
 import type { NutritionInfo } from "@/types/nutrition";
-import { parseAmount, formatAmount, VULGAR_FRACTIONS } from "./unit-conversion";
+import {
+  parseAmount,
+  formatAmount,
+  normalizeUnit,
+  splitRange,
+  NUMBER_TOKEN,
+} from "./unit-conversion";
 
 // Patterns for amounts that should not be scaled
 const NON_SCALABLE_PATTERNS = [
@@ -15,21 +21,8 @@ const NON_SCALABLE_PATTERNS = [
   /^drizzle$/i,
 ];
 
-// A single numeric token: mixed number ("1 1/2"), fraction ("1/2"),
-// decimal/whole with an optional unicode fraction ("1.5", "1½"), or a bare
-// unicode fraction ("½").
-const VULGAR_FRACTION_CHARS = Object.keys(VULGAR_FRACTIONS).join("");
-const NUMBER_TOKEN =
-  `(?:\\d+\\s+\\d+\\/\\d+` +
-  `|\\d+\\s*[${VULGAR_FRACTION_CHARS}]` +
-  `|\\d+\\/\\d+` +
-  `|\\d+(?:\\.\\d+)?` +
-  `|[${VULGAR_FRACTION_CHARS}])`;
-
-// "1-2", "1.5 - 2", "1 1/2–2", "½—¾"
-const RANGE_PATTERN = new RegExp(
-  `^(${NUMBER_TOKEN})\\s*[-‐‑‒–—―]\\s*(${NUMBER_TOKEN})$`
-);
+// A number followed by a plain word descriptor ("2 large", "3 medium")
+const DESCRIPTOR_PATTERN = new RegExp(`^(${NUMBER_TOKEN})\\s+([A-Za-z][A-Za-z -]*)$`);
 
 /**
  * Units that describe countable/discrete things. Scaled amounts for these are
@@ -93,12 +86,32 @@ export function roundDiscreteAmount(value: number): number {
   const fraction = value - floor;
 
   // Halves only read naturally for very small counts ("1½ onions", not
-  // "2½ cloves" or "7½ cloves")
-  if (value < 2 && Math.abs(fraction - 0.5) <= 0.1) {
+  // "2½ cloves" or "7½ cloves"). The ±0.1 window is inclusive; the epsilon
+  // absorbs floating point error so 1.4 and 1.6 behave like 0.6.
+  if (value < 2 && Math.abs(fraction - 0.5) <= 0.1 + 1e-9) {
     return floor + 0.5;
   }
 
   return Math.max(1, Math.round(value));
+}
+
+/**
+ * The word after the number in an amount like "2 large", kept when scaling.
+ * Units are left out, since the unit is shown separately.
+ */
+function trailingDescriptor(amount: string, unit?: string | null): string {
+  const match = amount.trim().match(DESCRIPTOR_PATTERN);
+  if (!match) return "";
+  const descriptor = match[2].trim();
+  const lower = descriptor.toLowerCase();
+  if (
+    normalizeUnit(descriptor) ||
+    DISCRETE_UNITS.has(lower) ||
+    lower === unit?.trim().toLowerCase()
+  ) {
+    return "";
+  }
+  return descriptor;
 }
 
 /**
@@ -134,11 +147,11 @@ export function scaleIngredientAmount(
       ? roundDiscreteAmount(value)
       : value;
 
-  // Handle ranges like "2-3", "1.5-2", "1 1/2–2"
-  const rangeMatch = amount.trim().match(RANGE_PATTERN);
-  if (rangeMatch) {
-    const low = parseAmount(rangeMatch[1]);
-    const high = parseAmount(rangeMatch[2]);
+  // Handle ranges like "2-3", "1.5-2", "1 1/2–2", "1 to 2"
+  const range = splitRange(amount);
+  if (range) {
+    const low = parseAmount(range.low);
+    const high = parseAmount(range.high);
     if (low !== null && high !== null) {
       const scaledLow = applyRounding(low * scaleFactor, low);
       const scaledHigh = applyRounding(high * scaleFactor, high);
@@ -158,7 +171,9 @@ export function scaleIngredientAmount(
   const scaled = applyRounding(parsed * scaleFactor, parsed);
   return {
     scaledValue: scaled,
-    displayAmount: formatAmount(scaled),
+    displayAmount: [formatAmount(scaled), trailingDescriptor(amount, unit)]
+      .filter(Boolean)
+      .join(" "),
   };
 }
 

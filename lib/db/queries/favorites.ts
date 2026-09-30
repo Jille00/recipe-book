@@ -102,11 +102,18 @@ export async function isFavorited(
   return result.length > 0;
 }
 
+// Counts what getUserFavorites lists, so the dashboard and /favorites agree.
 export async function getFavoriteCount(userId: string): Promise<number> {
   const result = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(favorite)
-    .where(eq(favorite.userId, userId));
+    .innerJoin(recipe, eq(favorite.recipeId, recipe.id))
+    .where(
+      and(
+        eq(favorite.userId, userId),
+        or(eq(recipe.isPublic, true), eq(recipe.userId, userId))
+      )
+    );
 
   return result[0]?.count || 0;
 }

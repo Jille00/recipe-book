@@ -4,63 +4,37 @@ import { Card, CardContent, Pagination } from "@/components/ui";
 import { RecipeCard } from "@/components/recipe/recipe-card";
 import { BrowseFilters } from "@/components/browse/browse-filters";
 import { getAllTags } from "@/lib/db/queries/tags";
-import { getPublicRecipes, type SearchFilters } from "@/lib/db/queries/search";
+import { getPublicRecipes } from "@/lib/db/queries/search";
 import { auth } from "@/lib/auth";
-import { parsePaginationParam } from "@/lib/api-utils";
+import {
+  hasActiveBrowseFilters,
+  parseBrowseFilters,
+  parseBrowsePage,
+  type BrowseSearchParams,
+} from "@/lib/browse-params";
 import { SITE_OG_IMAGE } from "../../site-url";
 import type { Metadata } from "next";
 import type { RecipeWithDetails } from "@/types/recipe";
 
 const PAGE_SIZE = 12;
-const MAX_PAGE = 1000;
 
 const BROWSE_DESCRIPTION =
   "Browse and search through our collection of delicious recipes";
 
-interface BrowseSearchParams {
-  q?: string;
-  tags?: string | string[];
-  difficulty?: string;
-  prepTime?: string;
-  cookTime?: string;
-  minServings?: string;
-  maxServings?: string;
-  page?: string;
-}
-
 interface Props {
   searchParams: Promise<BrowseSearchParams>;
-}
-
-function parsePage(raw: string | undefined): number {
-  return parsePaginationParam(raw ?? null, {
-    fallback: 1,
-    min: 1,
-    max: MAX_PAGE,
-  });
-}
-
-function hasActiveFilters(params: BrowseSearchParams): boolean {
-  return Boolean(
-    params.q ||
-      params.tags ||
-      params.difficulty ||
-      params.prepTime ||
-      params.cookTime ||
-      params.minServings ||
-      params.maxServings
-  );
 }
 
 export async function generateMetadata({
   searchParams,
 }: Props): Promise<Metadata> {
   const params = await searchParams;
-  const page = parsePage(params.page);
-  const filtered = hasActiveFilters(params);
+  const page = parseBrowsePage(params.page);
+  const filtered = hasActiveBrowseFilters(params);
+  const { query } = parseBrowseFilters(params);
 
-  const title = params.q
-    ? `Search: ${params.q}`
+  const title = query
+    ? `Search: ${query}`
     : page > 1
       ? `Browse Recipes - Page ${page}`
       : "Browse Recipes";
@@ -97,50 +71,9 @@ export default async function BrowsePage({ searchParams }: Props) {
   const session = await auth.api.getSession({ headers: headersList });
 
   // Parse search params ("?page=abc" and "?page=-3" both fall back to 1)
-  const requestedPage = parsePage(params.page);
+  const requestedPage = parseBrowsePage(params.page);
 
-  // Build filters
-  const filters: SearchFilters = {};
-
-  if (params.q) {
-    filters.query = params.q;
-  }
-
-  if (params.tags) {
-    filters.tagIds = Array.isArray(params.tags) ? params.tags : [params.tags];
-  }
-
-  if (params.difficulty && ["easy", "medium", "hard"].includes(params.difficulty)) {
-    filters.difficulty = params.difficulty as "easy" | "medium" | "hard";
-  }
-
-  if (params.prepTime) {
-    const prepTime = parseInt(params.prepTime, 10);
-    if (!isNaN(prepTime) && prepTime > 0) {
-      filters.maxPrepTime = prepTime;
-    }
-  }
-
-  if (params.cookTime) {
-    const cookTime = parseInt(params.cookTime, 10);
-    if (!isNaN(cookTime) && cookTime > 0) {
-      filters.maxCookTime = cookTime;
-    }
-  }
-
-  if (params.minServings) {
-    const minServings = parseInt(params.minServings, 10);
-    if (!isNaN(minServings) && minServings > 0) {
-      filters.minServings = minServings;
-    }
-  }
-
-  if (params.maxServings) {
-    const maxServings = parseInt(params.maxServings, 10);
-    if (!isNaN(maxServings) && maxServings > 0) {
-      filters.maxServings = maxServings;
-    }
-  }
+  const filters = parseBrowseFilters(params);
 
   // Fetch tags and recipes in parallel
   const [tags, firstResult] = await Promise.all([
@@ -237,7 +170,7 @@ export default async function BrowsePage({ searchParams }: Props) {
                 key={recipe.id}
                 recipe={recipe}
                 showAuthor
-                showFavorite
+                showFavorite={!!session?.user}
                 initialFavorited={recipe.isFavorited}
               />
             ))}

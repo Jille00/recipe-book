@@ -22,7 +22,11 @@ export const auth = betterAuth({
       verification: schema.verification,
     },
   }),
-  trustedOrigins: ['https://kookboek.app', 'https://www.kookboek.app', 'http://localhost:3000'],
+  trustedOrigins: [
+    "https://kookboek.app",
+    "https://www.kookboek.app",
+    ...(process.env.NODE_ENV === "production" ? [] : ["http://localhost:3000"]),
+  ],
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,

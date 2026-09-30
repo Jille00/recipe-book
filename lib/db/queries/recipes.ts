@@ -1,6 +1,6 @@
 import { eq, and, asc, desc, sql, or } from "drizzle-orm";
 import { db, recipe, user, recipeTag, favorite } from "@/lib/db";
-import { generateUniqueSlug } from "@/lib/utils/slug";
+import { generateSlug, generateUniqueSlug } from "@/lib/utils/slug";
 import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
 import type { NutritionInfo } from "@/types/nutrition";
 
@@ -313,7 +313,7 @@ export async function updateRecipe(
   return await db.transaction(async (tx) => {
     // First verify ownership
     const existing = await tx
-      .select({ id: recipe.id })
+      .select({ id: recipe.id, slug: recipe.slug })
       .from(recipe)
       .where(and(eq(recipe.id, id), eq(recipe.userId, userId)))
       .limit(1);
@@ -327,15 +327,27 @@ export async function updateRecipe(
     };
 
     if (data.title !== undefined) {
-      // Generate new slug if title changed
-      const existingSlugs = await tx
-        .select({ slug: recipe.slug })
-        .from(recipe)
-        .where(and(eq(recipe.userId, userId), sql`${recipe.id} != ${id}`));
-
-      const slugs = existingSlugs.map((r) => r.slug);
       updateData.title = data.title;
-      updateData.slug = generateUniqueSlug(data.title, slugs);
+
+      // The edit form always sends the title. Only a title that reads
+      // differently gets a new slug; otherwise "pasta-2" would quietly become
+      // "pasta" once that was free, changing the address on an unrelated edit.
+      const currentSlug = existing[0].slug;
+      const base = generateSlug(data.title);
+      const keepsSlug =
+        currentSlug === base || new RegExp(`^${base}-\\d+$`).test(currentSlug);
+
+      if (!keepsSlug) {
+        const existingSlugs = await tx
+          .select({ slug: recipe.slug })
+          .from(recipe)
+          .where(and(eq(recipe.userId, userId), sql`${recipe.id} != ${id}`));
+
+        updateData.slug = generateUniqueSlug(
+          data.title,
+          existingSlugs.map((r) => r.slug)
+        );
+      }
     }
 
     if (data.description !== undefined) updateData.description = data.description;

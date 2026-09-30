@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getRecipesByUserId, createRecipe } from "@/lib/db/queries/recipes";
 import { recipeSchema } from "@/lib/utils/validation";
+import { invalidBodyResponse, readJsonObject } from "@/lib/api-utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,12 +31,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = await readJsonObject(request);
+    if (!body) return invalidBodyResponse();
     const validation = recipeSchema.safeParse(body);
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: "Invalid recipe data", details: validation.error.issues },
+        {
+          error: validation.error.issues[0]?.message ?? "Invalid recipe data",
+          details: validation.error.issues,
+        },
         { status: 400 }
       );
     }

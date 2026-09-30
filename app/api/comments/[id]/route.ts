@@ -8,7 +8,12 @@ import {
   MAX_COMMENT_LENGTH,
 } from "@/lib/db/queries/comments";
 import { getRecipeById } from "@/lib/db/queries/recipes";
-import { invalidIdResponse, isUuid } from "@/lib/api-utils";
+import {
+  invalidBodyResponse,
+  invalidIdResponse,
+  isUuid,
+  readJsonObject,
+} from "@/lib/api-utils";
 
 export async function PATCH(
   request: NextRequest,
@@ -27,7 +32,8 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = await readJsonObject(request);
+    if (!body) return invalidBodyResponse();
     const { content } = body;
 
     if (!content || typeof content !== "string" || content.trim().length === 0) {

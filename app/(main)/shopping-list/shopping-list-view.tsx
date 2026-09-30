@@ -112,8 +112,13 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
 
   const groups = useMemo(() => groupShoppingItemsByRecipe(items), [items]);
   const mergedLines = useMemo(() => openFirst(mergeShoppingItems(items)), [items]);
-  const remaining = items.filter((item) => !item.checked).length;
-  const checkedCount = items.length - remaining;
+  const checkedCount = items.filter((item) => item.checked).length;
+  // Count what's on screen: in the combined view "6.5 oz sugar" and "3.5 oz
+  // sugar" are one line to buy, not two.
+  const remaining =
+    mode === "combined"
+      ? mergedLines.filter((line) => !line.checked).length
+      : items.length - checkedCount;
 
   const handleFailure = (error: unknown, fallback: string) => {
     if (error instanceof UnauthorizedError) {
@@ -404,7 +409,7 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
 
           {mode === "combined" ? (
             <Card>
-              <CardContent className="p-6">
+              <CardContent>
                 <ul className="divide-y divide-border">
                   {mergedLines.map((line) => (
                     <ItemRow
@@ -425,7 +430,7 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
             <div className="space-y-6">
               {groups.map((group) => (
                 <Card key={group.recipeId ?? "other"} className="break-inside-avoid">
-                  <CardContent className="p-6">
+                  <CardContent>
                     <h2 className="mb-2 font-display text-xl font-semibold text-foreground">
                       {group.recipeId === null ? (
                         "Other items"

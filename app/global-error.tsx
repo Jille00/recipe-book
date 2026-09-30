@@ -6,28 +6,29 @@
  * Everything here is inline and self-contained on purpose.
  *
  * Without the theme class it follows the OS setting instead. The colours are
- * the light and dark tokens from app/globals.css (checked there by
+ * the Delft tokens from app/globals.css (checked there by
  * lib/color-contrast.test.ts):
- *   light: ink on cream; stone-dark (#6b645b) text is 5.28:1 on parchment;
- *          cream on terracotta-600 is 5.58:1.
- *   dark:  #f5f2ed on #1a1816; taupe text is 5.98:1 on the #242220 card;
- *          ink on terracotta-400 is 6.13:1, which is 5.48:1 as text.
+ *   light: ink #141b2d on the white card (17.15:1); slate #4f5b75 text 6.81:1;
+ *          delft #1d3c8c eyebrow 10.11:1; white on oranje #c24e12 4.78:1.
+ *   dark:  #e7ecf6 on night-card #152040 (13.51:1); mist #a5b2ce 7.51:1;
+ *          delft-light #8fb1f2 7.42:1; night on oranje-bright #ff8a45 7.82:1.
  */
 const styles = `
   :root { color-scheme: light dark; }
   .ge-body {
-    --ge-page: #fffcf8;
-    --ge-card: #f7f3ed;
-    --ge-border: #ede8e0;
-    --ge-text: #1a1816;
-    --ge-muted: #6b645b;
-    --ge-accent: #a84a2d;
-    --ge-accent-hover: #8a3b23;
-    --ge-on-accent: #fffcf8;
-    --ge-link: #4a4640;
-    --ge-link-border: #ede8e0;
-    --ge-link-hover: #f7f3ed;
-    --ge-ring: #c75d3a;
+    --ge-page: #f4f6fa;
+    --ge-card: #ffffff;
+    --ge-border: #d4dcec;
+    --ge-text: #141b2d;
+    --ge-muted: #4f5b75;
+    --ge-brand: #1d3c8c;
+    --ge-accent: #c24e12;
+    --ge-accent-hover: #a3410e;
+    --ge-on-accent: #ffffff;
+    --ge-link: #141b2d;
+    --ge-link-border: #d4dcec;
+    --ge-link-hover: #e3e9f5;
+    --ge-ring: #1d3c8c;
     --ge-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     margin: 0;
     min-height: 100vh;
@@ -38,22 +39,23 @@ const styles = `
     box-sizing: border-box;
     background-color: var(--ge-page);
     color: var(--ge-text);
-    font-family: 'DM Sans', system-ui, sans-serif;
+    font-family: 'Hanken Grotesk', system-ui, sans-serif;
   }
   @media (prefers-color-scheme: dark) {
     .ge-body {
-      --ge-page: #1a1816;
-      --ge-card: #242220;
-      --ge-border: #3d3935;
-      --ge-text: #f5f2ed;
-      --ge-muted: #a69e91;
-      --ge-accent: #e8785a;
-      --ge-accent-hover: #f4a98a;
-      --ge-on-accent: #1a1816;
-      --ge-link: #f5f2ed;
-      --ge-link-border: #8a8276;
-      --ge-link-hover: #2d2a26;
-      --ge-ring: #e8785a;
+      --ge-page: #0d1428;
+      --ge-card: #152040;
+      --ge-border: #2a3a66;
+      --ge-text: #e7ecf6;
+      --ge-muted: #a5b2ce;
+      --ge-brand: #8fb1f2;
+      --ge-accent: #ff8a45;
+      --ge-accent-hover: #ffa56f;
+      --ge-on-accent: #0d1428;
+      --ge-link: #e7ecf6;
+      --ge-link-border: #6f80a8;
+      --ge-link-hover: #1e2b52;
+      --ge-ring: #8fb1f2;
       --ge-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
   }
@@ -63,25 +65,25 @@ const styles = `
     box-sizing: border-box;
     text-align: center;
     border: 1px solid var(--ge-border);
-    border-radius: 12px;
+    border-radius: 10px;
     background-color: var(--ge-card);
     padding: 48px 24px;
     box-shadow: var(--ge-shadow);
   }
   .ge-eyebrow {
     margin: 0;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--ge-accent);
+    font-family: 'Gloock', Georgia, serif;
+    font-size: 22px;
+    line-height: 1;
+    color: var(--ge-brand);
   }
   .ge-title {
-    margin: 16px 0 0;
-    font-family: 'Fraunces', Georgia, serif;
-    font-size: 28px;
-    line-height: 1.2;
-    font-weight: 600;
+    margin: 20px 0 0;
+    font-family: 'Gloock', Georgia, serif;
+    font-size: 36px;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    font-weight: 400;
   }
   .ge-text {
     margin: 12px auto 0;
@@ -93,7 +95,8 @@ const styles = `
   .ge-digest {
     margin: 16px 0 0;
     font-size: 12px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
     color: var(--ge-muted);
   }
   .ge-actions {
@@ -104,13 +107,17 @@ const styles = `
     justify-content: center;
   }
   .ge-button, .ge-link {
-    display: inline-block;
-    border-radius: 8px;
-    padding: 12px 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-height: 44px;
+    border-radius: 6px;
+    padding: 0 24px;
     font-size: 14px;
     font-weight: 600;
     font-family: inherit;
-    line-height: 1.5;
+    letter-spacing: 0.02em;
     text-decoration: none;
     cursor: pointer;
     transition: background-color 150ms ease, border-color 150ms ease;
@@ -119,13 +126,15 @@ const styles = `
     border: none;
     background-color: var(--ge-accent);
     color: var(--ge-on-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
   }
   .ge-button:hover { background-color: var(--ge-accent-hover); }
   .ge-link {
     border: 1.5px solid var(--ge-link-border);
     color: var(--ge-link);
   }
-  .ge-link:hover { background-color: var(--ge-link-hover); }
+  .ge-link:hover { background-color: var(--ge-link-hover); border-color: var(--ge-brand); }
   .ge-button:focus-visible, .ge-link:focus-visible {
     outline: 2px solid var(--ge-ring);
     outline-offset: 2px;
@@ -151,7 +160,7 @@ export default function GlobalError({
       </head>
       <body className="ge-body">
         <main className="ge-card">
-          <p className="ge-eyebrow">Kookboek</p>
+          <p className="ge-eyebrow">kookboek</p>
 
           <h1 className="ge-title">Something boiled over</h1>
 

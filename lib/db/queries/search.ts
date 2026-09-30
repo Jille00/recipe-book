@@ -1,4 +1,5 @@
 import { eq, and, sql, desc, lte, gte, inArray } from "drizzle-orm";
+import { recipeTagSlugs } from "./tag-slugs";
 import { prefixTsQuery } from "@/lib/search-query";
 import { db, recipe, user, recipeTag, favorite, profile } from "@/lib/db";
 import type { Difficulty, RecipeCardData } from "@/types/recipe";
@@ -119,6 +120,7 @@ export async function getPublicRecipes(
       servings: recipe.servings,
       difficulty: recipe.difficulty,
       imageUrl: recipe.imageUrl,
+      tags: recipeTagSlugs,
       isPublic: recipe.isPublic,
       code: recipe.code,
       createdAt: recipe.createdAt,

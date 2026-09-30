@@ -5,9 +5,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
   CardContent,
   Button,
   Input,
@@ -18,7 +15,9 @@ import {
   AvatarFallback,
 } from "@/components/ui";
 import Link from "next/link";
-import { User, Globe, MapPin, Scale, Loader2, AtSign, ArrowRight } from "lucide-react";
+import { Loader2, ArrowRight } from "lucide-react";
+import { AccountCardHeader } from "@/components/account/account-field";
+import { cn } from "@/lib/utils";
 import { profilePath, validateHandle } from "@/lib/handle";
 import { useUnitPreferences } from "@/hooks/use-unit-preferences";
 import { useSession } from "@/lib/auth-client";
@@ -43,6 +42,12 @@ async function readErrorMessage(response: Response): Promise<string> {
     return fallback;
   }
 }
+
+const UNIT_OPTION =
+  "flex cursor-pointer items-start gap-4 rounded-lg border-[1.5px] p-4 transition-colors duration-(--duration-fast) ease-out has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-primary/15";
+const UNIT_OPTION_ON = "border-primary bg-primary/5";
+const UNIT_OPTION_OFF = "border-border hover:border-primary/50";
+const UNIT_RADIO = "mt-1 size-4 shrink-0 cursor-pointer accent-primary";
 
 interface ProfileFormProps {
   user: {
@@ -168,35 +173,29 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Profile Info */}
       <Card>
-        <CardHeader>
-          <CardTitle className="font-display flex items-center gap-2">
-            <User className="h-5 w-5 text-primary" aria-hidden="true" />
-            Profile
-          </CardTitle>
-          <CardDescription>
-            Your name, bio, location and website are shown on your public
-            profile once you pick a handle
-          </CardDescription>
-        </CardHeader>
+        <AccountCardHeader
+          title="About you"
+          description="Your name, bio, location and website are shown on your public profile once you pick a handle."
+        />
         <CardContent className="space-y-6">
           {/* Avatar display */}
           <div className="flex items-center gap-4">
-            <Avatar className="h-20 w-20">
+            <Avatar className="size-16 sm:size-20">
               {/* Decorative: the name is spelled out right next to it. */}
               <AvatarImage src={user.image || undefined} alt="" />
-              <AvatarFallback className="bg-primary/10 text-primary text-xl font-medium">
+              <AvatarFallback className="bg-secondary font-display text-2xl text-secondary-foreground">
                 {getInitials(user.name)}
               </AvatarFallback>
             </Avatar>
-            <div>
-              <p className="font-medium text-foreground">{user.name || "Unnamed User"}</p>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
+            <div className="min-w-0">
+              <p className="truncate font-medium text-foreground">{user.name || "Unnamed user"}</p>
+              <p className="truncate text-sm text-muted-foreground">{user.email}</p>
             </div>
           </div>
 
           {/* Name */}
           <div className="space-y-2">
-            <Label htmlFor="name">Display Name</Label>
+            <Label htmlFor="name">Display name</Label>
             <Input
               id="name"
               name="name"
@@ -208,27 +207,35 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
 
           {/* Handle: the public profile address, /u/{handle} */}
           <div className="space-y-2">
-            <Label htmlFor="handle" className="flex items-center gap-2">
-              <AtSign className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              Handle
-            </Label>
-            <Input
-              id="handle"
-              name="handle"
-              value={formData.handle}
-              onChange={handleHandleChange}
-              onBlur={checkHandle}
-              placeholder="e.g. jille-bakes"
-              autoComplete="off"
-              autoCapitalize="none"
-              spellCheck={false}
-              maxLength={31}
-              aria-invalid={handleError ? true : undefined}
-              aria-describedby={handleError ? "handle-hint handle-error" : "handle-hint"}
-            />
-            <p id="handle-hint" className="text-sm text-muted-foreground">
+            <Label htmlFor="handle">Handle</Label>
+            {/* The address prefix sits inside the field, so what you type
+                reads as the end of your address. */}
+            <div className="relative">
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 font-mono text-base text-muted-foreground"
+              >
+                /u/
+              </span>
+              <Input
+                id="handle"
+                name="handle"
+                value={formData.handle}
+                onChange={handleHandleChange}
+                onBlur={checkHandle}
+                placeholder="e.g. jille-bakes"
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                maxLength={31}
+                aria-invalid={handleError ? true : undefined}
+                aria-describedby={handleError ? "handle-hint handle-error" : "handle-hint"}
+                className="pl-[3.25rem] font-mono"
+              />
+            </div>
+            <p id="handle-hint" className="text-[13px] text-muted-foreground">
               Your public page with your public recipes:{" "}
-              <span className="font-medium text-foreground break-all">
+              <span className="font-mono break-all text-primary">
                 /u/{formData.handle.trim() || "your-handle"}
               </span>
               . 3 to 30 lowercase letters, numbers or hyphens. Leave empty to
@@ -265,25 +272,19 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
 
           {/* Location */}
           <div className="space-y-2">
-            <Label htmlFor="location" className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              Location
-            </Label>
+            <Label htmlFor="location">Location</Label>
             <Input
               id="location"
               name="location"
               value={formData.location}
               onChange={handleInputChange}
-              placeholder="e.g., Amsterdam, Netherlands"
+              placeholder="e.g. Amsterdam, Netherlands"
             />
           </div>
 
           {/* Website */}
           <div className="space-y-2">
-            <Label htmlFor="website" className="flex items-center gap-2">
-              <Globe className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              Website
-            </Label>
+            <Label htmlFor="website">Website</Label>
             <Input
               id="website"
               name="website"
@@ -298,29 +299,24 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
 
       {/* Unit Preferences */}
       <Card>
-        <CardHeader>
-          <CardTitle className="font-display flex items-center gap-2">
-            <Scale className="h-5 w-5 text-primary" aria-hidden="true" />
-            Measurement Units
-          </CardTitle>
-          <CardDescription>
-            Choose your preferred measurement system for recipe ingredients
-          </CardDescription>
-        </CardHeader>
+        <AccountCardHeader
+          title="Measurement units"
+          description="The system recipes are shown in when you open them."
+        />
         <CardContent>
           {!isLoaded ? (
             <div className="space-y-3">
-              <div className="h-14 animate-pulse rounded-lg bg-muted" />
-              <div className="h-14 animate-pulse rounded-lg bg-muted" />
+              <div className="h-[74px] animate-pulse rounded-lg bg-muted" />
+              <div className="h-[74px] animate-pulse rounded-lg bg-muted" />
             </div>
           ) : (
-            <div className="space-y-3">
+            <fieldset className="space-y-3">
+              <legend className="sr-only">Measurement system</legend>
               <label
-                className={`flex cursor-pointer items-start gap-4 rounded-lg border p-4 transition-colors ${
-                  globalPreference === "imperial"
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
-                }`}
+                className={cn(
+                  UNIT_OPTION,
+                  globalPreference === "imperial" ? UNIT_OPTION_ON : UNIT_OPTION_OFF
+                )}
               >
                 <input
                   type="radio"
@@ -328,7 +324,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
                   value="imperial"
                   checked={globalPreference === "imperial"}
                   onChange={() => handleUnitSystemChange("imperial")}
-                  className="mt-1 h-4 w-4 border-border text-primary focus:ring-primary/50"
+                  className={UNIT_RADIO}
                 />
                 <div className="flex-1">
                   <p className="font-medium text-foreground">Imperial</p>
@@ -339,11 +335,10 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
               </label>
 
               <label
-                className={`flex cursor-pointer items-start gap-4 rounded-lg border p-4 transition-colors ${
-                  globalPreference === "metric"
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
-                }`}
+                className={cn(
+                  UNIT_OPTION,
+                  globalPreference === "metric" ? UNIT_OPTION_ON : UNIT_OPTION_OFF
+                )}
               >
                 <input
                   type="radio"
@@ -351,7 +346,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
                   value="metric"
                   checked={globalPreference === "metric"}
                   onChange={() => handleUnitSystemChange("metric")}
-                  className="mt-1 h-4 w-4 border-border text-primary focus:ring-primary/50"
+                  className={UNIT_RADIO}
                 />
                 <div className="flex-1">
                   <p className="font-medium text-foreground">Metric</p>
@@ -360,11 +355,12 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
                   </p>
                 </div>
               </label>
-            </div>
+            </fieldset>
           )}
 
-          <p className="mt-4 text-sm text-muted-foreground">
-            This sets your default preference. You can still switch units on individual recipes using the toggle.
+          <p className="mt-4 text-[13px] text-muted-foreground">
+            Saved as soon as you pick one. You can still switch units on a
+            single recipe with its toggle.
           </p>
         </CardContent>
       </Card>
@@ -372,8 +368,8 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
       {/* Save Button */}
       <div className="flex justify-end">
         <Button type="submit" disabled={isSubmitting || !hasChanges}>
-          {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-          {isSubmitting ? "Saving..." : "Save Changes"}
+          {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+          {isSubmitting ? "Saving..." : "Save changes"}
         </Button>
       </div>
     </form>

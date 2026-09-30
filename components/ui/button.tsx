@@ -5,26 +5,24 @@ import { Loader2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-// STYLE_GUIDE 04 (Button, Button Sizes) and 05 (Hover States):
-// radius 8px, DM Sans 600, 0.02em tracking, sm 36 / default 44 / lg 52px.
+// STYLE_GUIDE 04 (Button): Hanken Grotesk 600, sm 36 / default 44 / lg 52px.
+// Oranje is spent on one thing only: the main action (the default variant).
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-semibold tracking-[0.02em] transition-[color,background-color,border-color,box-shadow,transform] duration-200 ease-out active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
   {
     variants: {
       variant: {
-        // Primary: terracotta (the --primary token), cream text, darker on
-        // hover, uppercase (STYLE_GUIDE 04). Only primary is uppercase.
+        // Main action: oranje, white text (4.78:1), uppercase. Night: bright
+        // oranje with night text (7.82:1).
         default:
-          "bg-primary text-primary-foreground uppercase hover:bg-primary-hover hover:scale-[1.02]",
-        // Danger: paprika, cream text, darker paprika on hover
+          "bg-cta text-cta-foreground uppercase tracking-[0.06em] hover:bg-cta-hover",
         destructive:
-          "bg-destructive text-primary-foreground hover:bg-destructive-hover focus-visible:ring-destructive",
-        // Guide "Secondary": transparent, charcoal text, 1.5px linen border;
-        // hover fills parchment and darkens the border to sand.
+          "bg-destructive text-white hover:bg-destructive-hover focus-visible:ring-destructive dark:text-night",
+        // Everything else a page offers: a glazed-edge button in ink.
         outline:
-          "border-[1.5px] border-border bg-transparent text-charcoal hover:border-sand hover:bg-accent dark:text-foreground dark:border-input dark:hover:bg-input/50",
+          "border-[1.5px] border-border bg-card text-foreground hover:border-primary/40 hover:bg-accent dark:border-input",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-sage-200 dark:hover:bg-secondary/80",
+          "bg-secondary text-secondary-foreground hover:bg-glaze-line dark:hover:bg-night-line",
         // Guide "Ghost": muted text, darker on hover
         ghost:
           "text-muted-foreground hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",

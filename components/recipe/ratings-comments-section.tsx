@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui"
 import { RatingDisplay } from "./rating-display";
 import { RatingInput } from "./rating-input";
 import { CommentList } from "./comment-list";
-import { Star } from "lucide-react";
 import type { CommentWithUser } from "@/lib/db/queries/comments";
 import type { RatingStats } from "@/lib/db/queries/ratings";
 
@@ -46,51 +45,45 @@ export function RatingsCommentsSection({
     []
   );
 
+  const hasRatings = ratingStats.totalRatings > 0;
+
   return (
     <div className="space-y-8">
-      {/* Ratings Section */}
-      <Card>
-        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-amber/5 to-transparent">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber/10">
-              <Star className="h-5 w-5 text-amber" aria-hidden="true" />
-            </div>
-            <div>
-              <h2 className="font-display leading-none font-semibold">
-                Community Rating
-              </h2>
-              <CardDescription>
-                {ratingStats.totalRatings > 0
-                  ? `${ratingStats.averageRating.toFixed(1)} average from ${ratingStats.totalRatings} rating${
-                      ratingStats.totalRatings !== 1 ? "s" : ""
-                    }`
-                  : "Be the first to rate this recipe"}
-              </CardDescription>
-            </div>
-          </div>
+      {/* Rating */}
+      <Card className="gap-5">
+        <CardHeader>
+          <h2 className="text-[1.75rem] leading-[1.2] text-foreground">Rating</h2>
+          <CardDescription>
+            {hasRatings ? (
+              <>
+                <span className="font-mono tabular">
+                  {ratingStats.averageRating.toFixed(1)}
+                </span>{" "}
+                average from{" "}
+                <span className="font-mono tabular">{ratingStats.totalRatings}</span>{" "}
+                rating{ratingStats.totalRatings !== 1 ? "s" : ""}
+              </>
+            ) : (
+              "No ratings yet. Be the first to rate this recipe."
+            )}
+          </CardDescription>
         </CardHeader>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            {/* Average Rating Display */}
-            <div className="flex items-center gap-4">
-              <RatingDisplay
-                averageRating={ratingStats.averageRating}
-                totalRatings={ratingStats.totalRatings}
-                size="lg"
-                showCount={false}
-              />
-              {ratingStats.totalRatings > 0 && (
-                <div className="text-sm text-muted-foreground">
-                  {ratingStats.totalRatings} review
-                  {ratingStats.totalRatings !== 1 ? "s" : ""}
-                </div>
-              )}
-            </div>
+        <CardContent>
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            {/* Average */}
+            <RatingDisplay
+              averageRating={ratingStats.averageRating}
+              totalRatings={ratingStats.totalRatings}
+              size="lg"
+              showCount={false}
+            />
 
-            {/* User Rating Input */}
+            {/* The viewer's own rating */}
             {isAuthenticated ? (
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-muted-foreground">Your rating:</span>
+              <div className="flex items-center gap-2 sm:border-l sm:border-border sm:pl-6">
+                <span className="text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">
+                  Your rating
+                </span>
                 <RatingInput
                   code={code}
                   recipeId={recipeId}
@@ -102,18 +95,20 @@ export function RatingsCommentsSection({
             ) : (
               <p className="text-sm text-muted-foreground">
                 <Link
-                  href={loginHref} className="text-primary hover:underline">
+                  href={loginHref}
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
                   Sign in
                 </Link>{" "}
-                to rate this recipe
+                to rate this recipe.
               </p>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Comments Section */}
-      <Card>
+      {/* Comments */}
+      <Card className="py-0">
         <CardContent className="p-6">
           <CommentList
             code={code}

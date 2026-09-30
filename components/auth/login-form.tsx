@@ -97,11 +97,11 @@ export function LoginForm() {
       {unconfirmedEmail && (
         <div
           role="status"
-          className="rounded-xl border border-secondary/30 bg-secondary/10 p-4"
+          className="rounded-lg bg-muted p-4"
         >
           <div className="flex items-start gap-3">
             <MailCheck
-              className="mt-0.5 h-5 w-5 shrink-0 text-secondary-foreground"
+              className="mt-0.5 size-5 shrink-0 text-primary"
               aria-hidden="true"
             />
             <div className="space-y-1">
@@ -120,7 +120,7 @@ export function LoginForm() {
         <div
           id="login-error"
           role="alert"
-          className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
         >
           {error}
         </div>
@@ -130,7 +130,7 @@ export function LoginForm() {
         <Label htmlFor="email">Email</Label>
         <div className="relative">
           <Mail
-            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
           />
           <Input
@@ -144,7 +144,7 @@ export function LoginForm() {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
-            className="pl-10"
+            className="pl-11"
           />
         </div>
         {fieldErrors.email && (
@@ -159,14 +159,14 @@ export function LoginForm() {
           <Label htmlFor="password">Password</Label>
           <Link
             href="/forgot-password"
-            className="text-sm text-primary hover:text-primary/80 transition-colors"
+            className="rounded-sm text-sm font-medium text-primary underline-offset-4 transition-colors duration-(--duration-fast) hover:text-primary-hover hover:underline"
           >
             Forgot password?
           </Link>
         </div>
         <div className="relative">
           <Lock
-            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
           />
           <Input
@@ -186,7 +186,7 @@ export function LoginForm() {
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="current-password"
-            className="pl-10"
+            className="pl-11"
           />
         </div>
         {fieldErrors.password && (
@@ -199,11 +199,11 @@ export function LoginForm() {
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
             Signing in...
           </>
         ) : (
-          "Sign In"
+          "Sign in"
         )}
       </Button>
 
@@ -211,7 +211,7 @@ export function LoginForm() {
         Don&apos;t have an account?{" "}
         <Link
           href="/register"
-          className="font-medium text-primary hover:text-primary/80 transition-colors"
+          className="rounded-sm font-medium text-primary underline-offset-4 transition-colors duration-(--duration-fast) hover:text-primary-hover hover:underline"
         >
           Sign up
         </Link>

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -20,7 +19,8 @@ import {
   Skeleton,
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { ThemeSegmentedControl, ThemeToggle } from "./theme-toggle";
+import { ThemeSegmentedControl, ThemeToggle, useMounted } from "./theme-toggle";
+import { BrandMark } from "./brand-mark";
 import {
   Home,
   UtensilsCrossed,
@@ -43,25 +43,25 @@ const navigation = [
   { name: "Home", href: "/", icon: Home },
   { name: "Browse", href: "/browse", icon: Search },
   { name: "Categories", href: "/tags", icon: Tags },
-  { name: "My Recipes", href: "/recipes", auth: true, icon: UtensilsCrossed },
+  { name: "My recipes", href: "/recipes", auth: true, icon: UtensilsCrossed },
   { name: "Favorites", href: "/favorites", auth: true, icon: Heart },
 ];
 
 // The signed-in menu (desktop dropdown and the mobile panel).
 const accountLinks = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "New Recipe", href: "/recipes/new", icon: Plus },
+  { name: "New recipe", href: "/recipes/new", icon: Plus },
   { name: "Collections", href: "/collections", icon: FolderOpen },
-  { name: "Shopping List", href: "/shopping-list", icon: ShoppingBasket },
+  { name: "Shopping list", href: "/shopping-list", icon: ShoppingBasket },
   { name: "Profile", href: "/profile", icon: User },
-  { name: "Account Settings", href: "/settings", icon: Settings },
+  { name: "Account settings", href: "/settings", icon: Settings },
 ];
 
 const MOBILE_MENU_ID = "mobile-navigation";
 
 /**
  * A section stays highlighted on its sub-pages too, so /recipes/new still
- * shows "My Recipes" as the current section. Home only matches itself.
+ * shows "My recipes" as the current section. Home only matches itself.
  */
 function isActivePath(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
@@ -87,6 +87,8 @@ interface HeaderProps {
 export function Header({ initialUser }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
+  // Radix menus get useId-generated ids; see the account menu below.
+  const mounted = useMounted();
   const { user: clientUser, isLoading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // Close the panel whenever the route changes (a link was followed, Back was
@@ -172,7 +174,7 @@ export function Header({ initialUser }: HeaderProps) {
   );
 
   const getInitials = (name: string | undefined | null) => {
-    if (!name) return "U";
+    if (!name) return "K";
     return name
       .split(" ")
       .map((n) => n[0])
@@ -181,33 +183,42 @@ export function Header({ initialUser }: HeaderProps) {
       .slice(0, 2);
   };
 
+  const accountTrigger = (
+    <button
+      type="button"
+      aria-label={`Account menu${user?.name ? ` for ${user.name}` : ""}`}
+      className="flex h-11 items-center gap-2 rounded-md px-1.5 transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    >
+      <Avatar className="size-8">
+        {/* Decorative: the name is spelled out right next to it. */}
+        <AvatarImage src={user?.image || undefined} alt="" />
+        <AvatarFallback className="bg-secondary text-xs font-medium text-secondary-foreground">
+          {getInitials(user?.name)}
+        </AvatarFallback>
+      </Avatar>
+      <span className="max-w-[100px] truncate text-sm font-medium text-foreground">
+        {user?.name}
+      </span>
+      <ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
+    </button>
+  );
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border glass print:hidden">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/85 backdrop-blur-md backdrop-saturate-150 print:hidden">
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
 
       <nav
         aria-label="Main"
-        className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8"
+        className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8"
       >
-        {/* Logo */}
-        <Link href="/" className="flex items-center group">
-          <Image
-            src="/logo.png"
-            alt="Kookboek"
-            width={96}
-            height={96}
-            className="h-12 w-auto transition-transform group-hover:scale-105"
-            priority
-          />
-        </Link>
+        <BrandMark />
 
-        {/* Desktop Navigation */}
+        {/* Desktop navigation. Active: delft text with a 2px delft underline. */}
         <div className="hidden md:flex md:items-center md:gap-1">
           {sessionResolved
             ? filteredNav.map((item) => {
-                const Icon = item.icon;
                 const isActive = isActivePath(pathname, item.href);
                 return (
                   <Link
@@ -215,89 +226,74 @@ export function Header({ initialUser }: HeaderProps) {
                     href={item.href}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      "flex h-11 items-center rounded-md px-3 text-sm font-medium decoration-2 underline-offset-[6px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                       isActive
-                        ? "text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                        ? "text-primary underline decoration-primary"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    <Icon className="h-4 w-4" aria-hidden="true" />
                     {item.name}
-                    {isActive && (
-                      <span className="absolute bottom-0 left-1/2 h-0.5 w-4 -translate-x-1/2 rounded-full bg-primary" />
-                    )}
                   </Link>
                 );
               })
             : Array.from({ length: 3 }).map((_, index) => (
-                <Skeleton key={index} className="mx-1 h-9 w-24 rounded-lg" />
+                <Skeleton key={index} className="mx-1 h-6 w-20 rounded-md" />
               ))}
         </div>
 
-        {/* Desktop Auth */}
-        <div className="hidden md:flex md:items-center md:gap-3">
+        {/* Desktop account */}
+        <div className="hidden md:flex md:items-center md:gap-2">
           <ThemeToggle />
           {!sessionResolved ? (
             <div className="flex items-center gap-2">
-              <Skeleton className="h-9 w-24 rounded-lg" />
-              <Skeleton className="h-9 w-9 rounded-full" />
+              <Skeleton className="h-9 w-24 rounded-md" />
+              <Skeleton className="size-9 rounded-full" />
             </div>
           ) : isAuthenticated ? (
-            <div className="flex items-center gap-3">
-              <Button asChild size="sm" className="gap-2">
+            <div className="flex items-center gap-2">
+              {/* Outline: a page's own main action keeps the orange. */}
+              <Button asChild variant="outline" size="sm">
                 <Link href="/recipes/new">
-                  <Plus className="h-4 w-4" aria-hidden="true" />
-                  New Recipe
+                  <Plus aria-hidden="true" />
+                  New recipe
                 </Link>
               </Button>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={`Account menu${user?.name ? ` for ${user.name}` : ""}`}
-                    className="flex items-center gap-2 rounded-lg p-1.5 transition-colors hover:bg-accent"
-                  >
-                    <Avatar className="h-8 w-8">
-                      {/* Decorative: the name is spelled out right next to it. */}
-                      <AvatarImage src={user?.image || undefined} alt="" />
-                      <AvatarFallback className="bg-secondary text-secondary-foreground text-xs font-medium">
-                        {getInitials(user?.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm font-medium text-foreground max-w-[100px] truncate">
-                      {user?.name}
-                    </span>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52">
-                  {accountLinks.map((item) => (
-                    <DropdownMenuItem key={item.href} asChild>
-                      <Link href={item.href} className="flex items-center gap-2">
-                        <item.icon className="h-4 w-4" aria-hidden="true" />
-                        {item.name}
-                      </Link>
+              {/* Before mount, the same button without the Radix menu, so
+                  the generated trigger id never has to match the server. */}
+              {!mounted ? (
+                accountTrigger
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>{accountTrigger}</DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    {accountLinks.map((item) => (
+                      <DropdownMenuItem key={item.href} asChild>
+                        <Link href={item.href} className="flex min-h-11 items-center gap-2">
+                          <item.icon className="size-4 text-primary" aria-hidden="true" />
+                          {item.name}
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleSignOut}
+                      className="min-h-11 text-destructive focus:text-destructive"
+                    >
+                      <LogOut className="size-4" aria-hidden="true" />
+                      Sign out
                     </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={handleSignOut}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-2">
               <Button asChild variant="ghost" size="sm" className="text-foreground">
-                <Link href="/login">Sign In</Link>
+                <Link href="/login">Sign in</Link>
               </Button>
-              <Button asChild size="sm">
-                <Link href="/register">Sign Up</Link>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/register">Sign up</Link>
               </Button>
             </div>
           )}
@@ -310,13 +306,13 @@ export function Header({ initialUser }: HeaderProps) {
           aria-label={mobileMenuOpen ? "Close main menu" : "Open main menu"}
           aria-expanded={mobileMenuOpen}
           aria-controls={MOBILE_MENU_ID}
-          className="md:hidden flex h-11 w-11 items-center justify-center rounded-lg transition-colors hover:bg-accent"
+          className="flex size-11 items-center justify-center rounded-md transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
           onClick={() => setMobileMenuOpen((open) => !open)}
         >
           {mobileMenuOpen ? (
-            <X className="h-5 w-5 text-foreground" aria-hidden="true" />
+            <X className="size-5 text-foreground" aria-hidden="true" />
           ) : (
-            <Menu className="h-5 w-5 text-foreground" aria-hidden="true" />
+            <Menu className="size-5 text-foreground" aria-hidden="true" />
           )}
         </button>
       </nav>
@@ -326,7 +322,7 @@ export function Header({ initialUser }: HeaderProps) {
         <div
           id={MOBILE_MENU_ID}
           ref={mobileMenuRef}
-          className="md:hidden border-t border-border bg-background"
+          className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-border bg-background md:hidden"
         >
           <nav aria-label="Mobile" className="space-y-1 px-4 py-3">
             {sessionResolved
@@ -339,20 +335,23 @@ export function Header({ initialUser }: HeaderProps) {
                       href={item.href}
                       aria-current={isActive ? "page" : undefined}
                       className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium transition-colors",
+                        "flex min-h-11 items-center gap-3 rounded-md px-3 text-base font-medium transition-colors duration-150",
                         isActive
-                          ? "bg-primary/10 text-primary"
+                          ? "bg-secondary text-secondary-foreground"
                           : "text-muted-foreground hover:bg-accent hover:text-foreground"
                       )}
                       onClick={() => closeMobileMenu()}
                     >
-                      <Icon className="h-5 w-5" aria-hidden="true" />
+                      <Icon
+                        className={cn("size-5", isActive ? "text-current" : "text-primary")}
+                        aria-hidden="true"
+                      />
                       {item.name}
                     </Link>
                   );
                 })
               : Array.from({ length: 3 }).map((_, index) => (
-                  <Skeleton key={index} className="h-11 w-full rounded-lg" />
+                  <Skeleton key={index} className="h-11 w-full rounded-md" />
                 ))}
           </nav>
 
@@ -365,22 +364,22 @@ export function Header({ initialUser }: HeaderProps) {
           <div className="px-4 py-3">
             {!sessionResolved ? (
               <div className="space-y-2">
-                <Skeleton className="h-11 w-full rounded-lg" />
-                <Skeleton className="h-11 w-full rounded-lg" />
+                <Skeleton className="h-11 w-full rounded-md" />
+                <Skeleton className="h-11 w-full rounded-md" />
               </div>
             ) : isAuthenticated ? (
               <div className="space-y-1">
                 <div className="flex items-center gap-3 px-3 py-2">
-                  <Avatar className="h-10 w-10">
+                  <Avatar className="size-10">
                     {/* Decorative: the name is spelled out right next to it. */}
                     <AvatarImage src={user?.image || undefined} alt="" />
-                    <AvatarFallback className="bg-secondary text-secondary-foreground font-medium">
+                    <AvatarFallback className="bg-secondary font-medium text-secondary-foreground">
                       {getInitials(user?.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <p className="font-medium text-foreground">{user?.name}</p>
-                    <p className="text-sm text-muted-foreground">{user?.email}</p>
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-foreground">{user?.name}</p>
+                    <p className="truncate text-sm text-muted-foreground">{user?.email}</p>
                   </div>
                 </div>
 
@@ -389,10 +388,10 @@ export function Header({ initialUser }: HeaderProps) {
                     key={item.href}
                     href={item.href}
                     aria-current={isActivePath(pathname, item.href) ? "page" : undefined}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                    className="flex min-h-11 items-center gap-3 rounded-md px-3 text-base font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground aria-[current=page]:bg-secondary aria-[current=page]:text-secondary-foreground"
                     onClick={() => closeMobileMenu()}
                   >
-                    <item.icon className="h-5 w-5" aria-hidden="true" />
+                    <item.icon className="size-5 text-primary" aria-hidden="true" />
                     {item.name}
                   </Link>
                 ))}
@@ -402,22 +401,22 @@ export function Header({ initialUser }: HeaderProps) {
                 <button
                   type="button"
                   onClick={handleSignOut}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-destructive hover:bg-destructive/10"
+                  className="flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-base font-medium text-destructive transition-colors duration-150 hover:bg-destructive/10"
                 >
-                  <LogOut className="h-5 w-5" aria-hidden="true" />
-                  Sign Out
+                  <LogOut className="size-5" aria-hidden="true" />
+                  Sign out
                 </button>
               </div>
             ) : (
               <div className="flex gap-3">
-                <Button asChild variant="outline" className="h-11 flex-1">
+                <Button asChild variant="outline" className="flex-1">
                   <Link href="/login" onClick={() => closeMobileMenu()}>
-                    Sign In
+                    Sign in
                   </Link>
                 </Button>
-                <Button asChild className="h-11 flex-1">
+                <Button asChild variant="outline" className="flex-1">
                   <Link href="/register" onClick={() => closeMobileMenu()}>
-                    Sign Up
+                    Sign up
                   </Link>
                 </Button>
               </div>

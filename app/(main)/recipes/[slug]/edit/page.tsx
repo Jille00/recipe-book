@@ -87,24 +87,22 @@ export default async function EditRecipePage({ params }: Props) {
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8">
+    <div className="mx-auto max-w-4xl px-4 pt-8 pb-8 sm:px-6 sm:pb-12 lg:px-8">
+      <header className="mb-8 sm:mb-10">
         <Link
           href={recipePath(recipe)}
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-4"
+          className="-ml-1 mb-3 inline-flex min-h-11 items-center gap-2 rounded-md px-1 text-sm font-medium text-muted-foreground transition-colors duration-(--duration-fast) hover:text-primary"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="size-4" aria-hidden="true" />
           Back to recipe
         </Link>
-        <h1 className="font-display text-3xl font-semibold text-foreground">
-          Edit Recipe
+        <h1 className="text-4xl leading-[1.1] tracking-[-0.01em] text-foreground sm:text-[44px]">
+          Edit recipe
         </h1>
-        <p className="mt-2 text-muted-foreground">
-          Make changes to your recipe below.
-        </p>
-      </div>
+        <p className="mt-2 truncate text-muted-foreground">{recipe.title}</p>
+      </header>
 
-      <RecipeForm tags={tags} initialData={initialData} />
+      <RecipeForm tags={tags} initialData={initialData} tileSeed={recipe.code} />
     </div>
   );
 }

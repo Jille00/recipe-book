@@ -15,10 +15,11 @@ interface SaveCopyButtonProps {
 }
 
 /**
- * "Save a copy" of someone else's recipe: creates a private recipe for the
- * viewer and opens it in the editor so they can make it their own.
+ * Saving a copy of someone else's recipe: creates a private recipe for the
+ * viewer and opens it in the editor so they can make it their own. A hook so
+ * the recipe page can offer it from its "More" menu as well as a button.
  */
-export function SaveCopyButton({ recipeId, code, isAuthenticated }: SaveCopyButtonProps) {
+export function useSaveCopy({ recipeId, code, isAuthenticated }: SaveCopyButtonProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [isCopying, setIsCopying] = useState(false);
@@ -57,7 +58,7 @@ export function SaveCopyButton({ recipeId, code, isAuthenticated }: SaveCopyButt
         throw new Error(data.error || "Couldn't save a copy");
       }
 
-      toast.success("Copy saved to your recipes. Make it your own!");
+      toast.success("Copy saved to your recipes");
       // Stay busy while the editor loads, so a second click can't make a
       // second copy.
       router.push(data.editPath);
@@ -68,10 +69,16 @@ export function SaveCopyButton({ recipeId, code, isAuthenticated }: SaveCopyButt
     }
   };
 
+  return { isCopying, saveCopy: handleCopy };
+}
+
+/** "Save a copy" as a button. */
+export function SaveCopyButton(props: SaveCopyButtonProps) {
+  const { isCopying, saveCopy } = useSaveCopy(props);
   return (
-    <Button variant="outline" size="sm" onClick={handleCopy} isLoading={isCopying}>
+    <Button variant="outline" size="sm" onClick={saveCopy} isLoading={isCopying}>
       {!isCopying && <Copy className="h-4 w-4" aria-hidden="true" />}
-      {isCopying ? "Saving copy..." : "Save a copy"}
+      {isCopying ? "Saving copy…" : "Save a copy"}
     </Button>
   );
 }

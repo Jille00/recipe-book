@@ -5,18 +5,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  BookOpen,
   Check,
   Copy,
   Layers,
   ListChecks,
   Plus,
   Printer,
-  ShoppingBasket,
   Trash2,
   X,
 } from "lucide-react";
 import { Button, Card, CardContent, Input } from "@/components/ui";
+import { PageHeader } from "@/components/page/page-header";
+import { EmptyState } from "@/components/page/empty-state";
 import { buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -260,37 +260,41 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
 
   return (
     <>
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
-            Shopping List
-          </h1>
-          <p className="mt-1 text-muted-foreground" aria-live="polite">
-            {empty
-              ? "Nothing on your list yet"
-              : remaining === 0
-                ? "All done. Everything is ticked off."
-                : `${remaining} ${remaining === 1 ? "item" : "items"} to buy`}
-          </p>
-        </div>
-
-        {!empty && (
-          <div className="flex flex-wrap items-center gap-2 print:hidden">
-            <Button variant="outline" size="sm" onClick={handleCopy}>
-              {copied ? (
-                <Check className="h-4 w-4" aria-hidden="true" />
-              ) : (
-                <Copy className="h-4 w-4" aria-hidden="true" />
-              )}
-              Copy
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => window.print()}>
-              <Printer className="h-4 w-4" aria-hidden="true" />
-              Print
-            </Button>
-          </div>
-        )}
-      </div>
+      <PageHeader
+        title="Shopping list"
+        intro={
+          <span aria-live="polite">
+            {empty ? (
+              "Nothing on your list yet"
+            ) : remaining === 0 ? (
+              "All done. Everything is ticked off."
+            ) : (
+              <>
+                <span className="font-mono tabular text-foreground">{remaining}</span>{" "}
+                {remaining === 1 ? "item" : "items"} to buy
+              </>
+            )}
+          </span>
+        }
+        action={
+          empty ? undefined : (
+            <>
+              <Button variant="outline" size="sm" onClick={handleCopy}>
+                {copied ? (
+                  <Check className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Copy className="h-4 w-4" aria-hidden="true" />
+                )}
+                Copy
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => window.print()}>
+                <Printer className="h-4 w-4" aria-hidden="true" />
+                Print
+              </Button>
+            </>
+          )
+        }
+      />
 
       {/* Add an item by hand */}
       <form onSubmit={handleAdd} className="mb-6 flex gap-2 print:hidden">
@@ -315,33 +319,28 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
       </form>
 
       {empty ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-              <ShoppingBasket className="h-10 w-10 text-primary" aria-hidden="true" />
-            </div>
-            <h2 className="mb-2 font-display text-xl font-semibold text-foreground">
-              Your shopping list is empty
-            </h2>
-            <p className="mb-6 max-w-md text-muted-foreground">
-              Open a recipe and choose &ldquo;Add to List&rdquo; to collect its
-              ingredients here, or add items yourself above.
-            </p>
+        // STYLE_GUIDE 04 empty state: a cup tile for an empty list.
+        <EmptyState
+          seed="shopping-list-empty"
+          tags={["drinks"]}
+          title="Your shopping list is empty"
+          action={
+            // Outline: "Add" above is the page's one orange button.
             <Button asChild variant="outline">
-              <Link href="/browse">
-                <BookOpen className="h-4 w-4" aria-hidden="true" />
-                Browse Recipes
-              </Link>
+              <Link href="/browse">Browse recipes</Link>
             </Button>
-          </CardContent>
-        </Card>
+          }
+        >
+          Open a recipe and choose &ldquo;Add to list&rdquo; to collect its
+          ingredients here, or add items yourself above.
+        </EmptyState>
       ) : (
         <>
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden">
             <div
               role="group"
               aria-label="Show items"
-              className="inline-flex rounded-lg border-[1.5px] border-border p-0.5"
+              className="inline-flex rounded-md border-[1.5px] border-border bg-card p-0.5"
             >
               {(
                 [
@@ -355,10 +354,10 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
                   aria-pressed={mode === value}
                   onClick={() => changeMode(value)}
                   className={cn(
-                    "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[13px] font-semibold tracking-[0.02em] transition-colors duration-150",
+                    "inline-flex h-9 items-center gap-1.5 rounded-[4px] px-3 text-[13px] font-semibold tracking-[0.02em] transition-colors duration-(--duration-fast)",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                     mode === value
-                      ? "bg-primary/10 text-primary"
+                      ? "bg-secondary text-primary"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -391,21 +390,22 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="font-display">
+                    <AlertDialogTitle className="font-display text-[22px] leading-[1.3] font-normal">
                       Clear your shopping list?
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      All {items.length} {items.length === 1 ? "item" : "items"} will
+                      All <span className="font-mono tabular">{items.length}</span>{" "}
+                      {items.length === 1 ? "item" : "items"} will
                       be removed, including the ones you haven&apos;t ticked off.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Keep List</AlertDialogCancel>
+                    <AlertDialogCancel>Keep list</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={() => clear("all")}
                       className={buttonVariants({ variant: "destructive" })}
                     >
-                      Clear All
+                      Clear all
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -437,13 +437,13 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
               {groups.map((group) => (
                 <Card key={group.recipeId ?? "other"} className="break-inside-avoid">
                   <CardContent>
-                    <h2 className="mb-2 font-display text-xl font-semibold text-foreground">
+                    <h2 className="mb-2 font-display text-xl leading-[1.3] text-foreground">
                       {group.recipeId === null ? (
                         "Other items"
                       ) : group.href ? (
                         <Link
                           href={group.href}
-                          className="transition-colors duration-150 hover:text-primary"
+                          className="rounded-sm transition-colors duration-(--duration-fast) hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           {group.title}
                         </Link>
@@ -505,24 +505,33 @@ function ItemRow({
         id={id}
         checked={checked}
         onCheckedChange={(value) => onCheckedChange(value === true)}
-        className="mt-1"
+        className="mt-0.5 size-5"
       />
       {/* Paper gets an empty box to tick with a pen (buttons don't print). */}
       <span
         aria-hidden="true"
         className="mt-1 hidden size-4 shrink-0 rounded-[4px] border border-current print:inline-block"
       />
+      {/* Amount in a fixed mono column so quantities line up down the list;
+          ticked lines go slate and are struck through. */}
       <label
         htmlFor={id}
         className={cn(
-          "flex-1 cursor-pointer text-base leading-6 text-foreground transition-colors duration-150",
+          "flex min-w-0 flex-1 cursor-pointer gap-3 text-base leading-6 text-foreground transition-colors duration-(--duration-fast)",
           checked && "text-muted-foreground line-through"
         )}
       >
-        {quantity && <span className="font-medium">{quantity}</span>} {text}
-        {hint && (
-          <span className="block text-xs text-muted-foreground no-underline">{hint}</span>
-        )}
+        <span className="w-20 shrink-0 break-words font-mono text-sm leading-6 tabular sm:w-28">
+          {quantity}
+        </span>
+        <span className="min-w-0 flex-1 break-words">
+          {text}
+          {hint && (
+            <span className="block text-[13px] text-muted-foreground no-underline">
+              {hint}
+            </span>
+          )}
+        </span>
       </label>
       <Button
         type="button"
@@ -530,7 +539,7 @@ function ItemRow({
         size="icon-sm"
         onClick={onRemove}
         aria-label={`Remove ${label}`}
-        className="-my-1 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        className="-my-1.5 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
       >
         <X className="h-4 w-4" aria-hidden="true" />
       </Button>

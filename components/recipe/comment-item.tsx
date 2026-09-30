@@ -54,7 +54,7 @@ function CommentTime({ createdAt }: { createdAt: Date | string }) {
     <time
       dateTime={date.toISOString()}
       title={absolute}
-      className="text-xs text-muted-foreground ml-2"
+      className="ml-2 text-xs text-muted-foreground"
     >
       {isClient ? formatDistanceToNow(date, { addSuffix: true }) : absolute}
     </time>
@@ -137,12 +137,12 @@ export function CommentItem({
       data-comment-id={comment.id}
       tabIndex={-1}
       aria-label={`Comment by ${comment.userName}`}
-      className="flex gap-3 p-4 rounded-lg border border-border bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      className="flex gap-3 py-5 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
     >
       <Avatar className="h-10 w-10 shrink-0">
         {/* Decorative: the name is spelled out right next to it. */}
         <AvatarImage src={comment.userImage || undefined} alt="" />
-        <AvatarFallback className="bg-primary/10 text-primary text-sm">
+        <AvatarFallback className="bg-secondary text-sm font-medium text-secondary-foreground">
           {getInitials(comment.userName)}
         </AvatarFallback>
       </Avatar>
@@ -189,7 +189,7 @@ export function CommentItem({
                 }}
               >
                 <AlertDialogHeader>
-                  <AlertDialogTitle className="font-display">
+                  <AlertDialogTitle className="font-display text-xl font-normal">
                     Delete this comment?
                   </AlertDialogTitle>
                   <AlertDialogDescription>
@@ -201,7 +201,7 @@ export function CommentItem({
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel disabled={isDeleting}>
-                    Keep Comment
+                    Keep comment
                   </AlertDialogCancel>
                   <AlertDialogAction
                     onClick={handleDelete}
@@ -211,7 +211,7 @@ export function CommentItem({
                     {isDeleting && (
                       <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                     )}
-                    {isDeleting ? "Deleting..." : "Delete Comment"}
+                    {isDeleting ? "Deleting…" : "Delete comment"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -219,7 +219,7 @@ export function CommentItem({
           )}
         </div>
 
-        <p className="mt-1 text-foreground whitespace-pre-wrap break-words">
+        <p className="mt-1 max-w-[65ch] whitespace-pre-wrap break-words leading-relaxed text-foreground">
           {comment.content}
         </p>
       </div>

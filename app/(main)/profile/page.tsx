@@ -24,28 +24,26 @@ export default async function ProfilePage() {
   const profile = await getProfileByUserId(session.user.id);
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-semibold text-foreground">
-            Profile
-          </h1>
-          <p className="mt-1 text-muted-foreground">
-            Manage your profile and preferences
-          </p>
-        </div>
+    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+      <header className="mb-8 sm:mb-10">
+        <h1 className="text-4xl leading-[1.1] tracking-[-0.01em] text-foreground sm:text-[44px]">
+          Profile
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          How you appear to others, and how recipes are measured for you.
+        </p>
         <Link
           href="/settings"
-          className="group inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          className="group mt-3 -ml-1 inline-flex min-h-11 items-center gap-2 rounded-md px-1 text-sm font-medium text-primary transition-colors duration-(--duration-fast) hover:text-primary-hover"
         >
-          <Settings className="h-4 w-4" aria-hidden="true" />
+          <Settings className="size-4" aria-hidden="true" />
           Email, password and account
           <ArrowRight
-            className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+            className="size-4 transition-transform duration-(--duration-fast) group-hover:translate-x-0.5"
             aria-hidden="true"
           />
         </Link>
-      </div>
+      </header>
 
       <ProfileForm user={session.user} profile={profile} />
     </div>

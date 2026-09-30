@@ -1,4 +1,5 @@
 import { and, desc, eq, or, sql } from "drizzle-orm";
+import { recipeTagSlugs } from "./tag-slugs";
 import { db, collection, collectionRecipe, favorite, recipe, user } from "@/lib/db";
 import {
   MAX_COLLECTIONS_PER_USER,
@@ -238,6 +239,7 @@ export async function getCollectionRecipes(
       servings: recipe.servings,
       difficulty: recipe.difficulty,
       imageUrl: recipe.imageUrl,
+      tags: recipeTagSlugs,
       isPublic: recipe.isPublic,
       code: recipe.code,
       createdAt: recipe.createdAt,

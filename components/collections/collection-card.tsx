@@ -2,14 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { FolderOpen, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui";
-import { formatRecipeCount } from "@/lib/collections";
+import { DelftWall } from "@/components/delft/delft-tile";
 
 export interface CollectionCardData {
   id: string;
@@ -26,13 +26,14 @@ interface CollectionCardProps {
 
 /**
  * A collection in the /collections grid. Built like RecipeCard (STYLE_GUIDE
- * 04/05): 4:3 cover, parchment card, soft shadow lifting on hover, and a
- * stretched title link so the whole card opens the collection while the menu
- * button stays a separate control.
+ * 04/05): 4:3 cover (a recipe photo, else a tile wall seeded by the
+ * collection), white card, soft shadow lifting on hover, and a stretched
+ * title link so the whole card opens the collection while the menu button
+ * stays a separate control.
  */
 export function CollectionCard({ collection, onRename, onDelete }: CollectionCardProps) {
   return (
-    <article className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lifted">
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-[translate,box-shadow] duration-(--duration-slow) ease-out hover:-translate-y-1 hover:shadow-lifted">
       <div className="relative aspect-[4/3] overflow-hidden bg-muted">
         {collection.coverImageUrl ? (
           <Image
@@ -43,9 +44,11 @@ export function CollectionCard({ collection, onRename, onDelete }: CollectionCar
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           />
         ) : (
-          <div className="flex h-full items-center justify-center">
-            <FolderOpen className="h-12 w-12 text-muted-foreground/50" aria-hidden="true" />
-          </div>
+          <DelftWall
+            seed={collection.id}
+            tileSize={112}
+            className="transition-transform duration-500 ease-out group-hover:scale-105"
+          />
         )}
 
         {/* Not modal: the rename and delete dialogs it opens manage focus
@@ -73,8 +76,8 @@ export function CollectionCard({ collection, onRename, onDelete }: CollectionCar
         </DropdownMenu>
       </div>
 
-      <div className="p-4">
-        <h2 className="font-display text-xl font-semibold text-foreground line-clamp-1 transition-colors group-hover:text-primary">
+      <div className="p-4 sm:p-5">
+        <h2 className="font-display text-xl leading-[1.3] text-foreground line-clamp-1 transition-colors duration-(--duration-fast) group-hover:text-primary sm:text-[22px]">
           <Link
             href={`/collections/${collection.id}`}
             className="after:absolute after:inset-0 after:z-10 after:content-[''] focus-visible:outline-none focus-visible:after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-primary focus-visible:after:ring-offset-2"
@@ -83,7 +86,8 @@ export function CollectionCard({ collection, onRename, onDelete }: CollectionCar
           </Link>
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {formatRecipeCount(collection.recipeCount)}
+          <span className="font-mono tabular">{collection.recipeCount}</span>{" "}
+          {collection.recipeCount === 1 ? "recipe" : "recipes"}
         </p>
       </div>
     </article>

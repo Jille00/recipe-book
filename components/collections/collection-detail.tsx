@@ -4,11 +4,12 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, BookOpen, FolderOpen, Pencil, Trash2, X } from "lucide-react";
-import { Button, Card, CardContent } from "@/components/ui";
+import { ArrowLeft, Pencil, Trash2, X } from "lucide-react";
+import { Button } from "@/components/ui";
+import { DelftTile } from "@/components/delft/delft-tile";
+import { EmptyState } from "@/components/page/empty-state";
 import { RecipeCard } from "@/components/recipe/recipe-card";
 import type { RecipeCardData } from "@/types/recipe";
-import { formatRecipeCount } from "@/lib/collections";
 import { CollectionNameDialog } from "./collection-name-dialog";
 import { DeleteCollectionDialog } from "./delete-collection-dialog";
 import {
@@ -109,63 +110,65 @@ export function CollectionDetail({
 
   return (
     <>
-      <div className="mb-6">
+      <header className="mb-8 sm:mb-10">
         <Link
           href="/collections"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"
+          className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-md text-sm font-medium text-muted-foreground transition-colors duration-(--duration-fast) hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           All collections
         </Link>
-      </div>
 
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground break-words sm:text-4xl">
-            {name}
-          </h1>
-          <p className="mt-1 text-muted-foreground" aria-live="polite">
-            {formatRecipeCount(recipes.length)}
-          </p>
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+          {/* The collection's tile: the same seed as its card's wall. */}
+          <div className="flex min-w-0 items-center gap-5 sm:gap-6">
+            <DelftTile
+              seed={collection.id}
+              className="size-20 shrink-0 shadow-soft sm:size-28"
+            />
+            <div className="min-w-0">
+              <h1 className="font-display text-4xl leading-[1.1] tracking-[-0.01em] text-foreground break-words sm:text-[44px]">
+                {name}
+              </h1>
+              <p className="mt-2 text-muted-foreground" aria-live="polite">
+                <span className="font-mono tabular text-foreground">
+                  {recipes.length}
+                </span>{" "}
+                {recipes.length === 1 ? "recipe" : "recipes"}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setRenameOpen(true)}>
+              <Pencil className="h-4 w-4" aria-hidden="true" />
+              Rename
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDeleteOpen(true)}
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+              Delete
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setRenameOpen(true)}>
-            <Pencil className="h-4 w-4" aria-hidden="true" />
-            Rename
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setDeleteOpen(true)}
-            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
-            Delete
-          </Button>
-        </div>
-      </div>
+      </header>
 
       {recipes.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-              <FolderOpen className="h-10 w-10 text-primary" aria-hidden="true" />
-            </div>
-            <h2 className="mb-2 font-display text-xl font-semibold text-foreground">
-              Nothing in here yet
-            </h2>
-            <p className="mb-6 max-w-md text-muted-foreground">
-              Open any recipe and use &ldquo;Save to collection&rdquo; to add it
-              to {name}.
-            </p>
-            <Button asChild variant="outline">
-              <Link href="/browse">
-                <BookOpen className="h-4 w-4" aria-hidden="true" />
-                Browse Recipes
-              </Link>
+        <EmptyState
+          seed={collection.id}
+          title="Nothing in here yet"
+          action={
+            <Button asChild>
+              <Link href="/browse">Browse recipes</Link>
             </Button>
-          </CardContent>
-        </Card>
+          }
+        >
+          Open any recipe and use &ldquo;Save to collection&rdquo; to add it to{" "}
+          {name}.
+        </EmptyState>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {recipes.map((recipe) => (

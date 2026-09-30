@@ -6,6 +6,7 @@ import { Button, Label, Textarea } from "@/components/ui";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
 import type { CommentWithUser } from "@/lib/db/queries/comments";
+import { cn } from "@/lib/utils";
 
 /** Same limit the API enforces, measured the same way: on trimmed text. */
 const MAX_COMMENT_LENGTH = 1000;
@@ -70,7 +71,7 @@ export function CommentForm({ recipeId, code, onCommentAdded }: CommentFormProps
         onCommentAdded(data.comment);
       }
 
-      toast.success("Comment posted!");
+      toast.success("Comment posted");
     } catch (error) {
       console.error("Error posting comment:", error);
       toast.error(error instanceof Error ? error.message : "Failed to post comment");
@@ -104,7 +105,7 @@ export function CommentForm({ recipeId, code, onCommentAdded }: CommentFormProps
       </Label>
       <Textarea
         id={textareaId}
-        placeholder="Share your thoughts about this recipe..."
+        placeholder="How did it turn out? Any changes you made?"
         value={content}
         onChange={(e) => setContent(e.target.value)}
         rows={3}
@@ -116,27 +117,31 @@ export function CommentForm({ recipeId, code, onCommentAdded }: CommentFormProps
       <div className="flex items-center justify-between">
         <span
           id={counterId}
-          className={`text-xs ${
+          className={cn(
+            "text-xs",
             isOverLimit
               ? "text-destructive"
               : charactersRemaining < 100
-              ? "text-amber"
+              ? "text-warning dark:text-warning-light"
               : "text-muted-foreground"
-          }`}
+          )}
         >
-          {charactersRemaining} characters remaining
+          <span className="font-mono tabular">{charactersRemaining}</span> characters
+          remaining
         </span>
         <span role="status" aria-live="polite" className="sr-only">
           {counterAnnouncement}
         </span>
+        {/* Secondary: oranje is spent on the page's main action (Cook). */}
         <Button
           type="submit"
+          variant="secondary"
           size="sm"
           disabled={isSubmitting || trimmedLength === 0 || isOverLimit}
           isLoading={isSubmitting}
         >
           {!isSubmitting && <Send className="h-4 w-4" aria-hidden="true" />}
-          Post Comment
+          Post comment
         </Button>
       </div>
     </form>

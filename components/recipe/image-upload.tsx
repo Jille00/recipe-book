@@ -4,7 +4,9 @@ import { useState, useCallback, useRef } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { Button, Spinner } from "@/components/ui";
-import { ImagePlus, Upload, X, RefreshCw, Sparkles } from "lucide-react";
+import { AlertCircle, Upload, X, RefreshCw, Sparkles } from "lucide-react";
+import { DelftWall } from "@/components/delft/delft-tile";
+import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/image/compress-image";
 import {
   UPLOAD_BUDGET_BYTES,
@@ -25,12 +27,20 @@ interface ImageUploadProps {
   value?: string;
   onChange: (url: string) => void;
   recipeContext?: RecipeContext;
+  /**
+   * Seed (and tags) of the recipe's tile, shown behind the upload prompt as a
+   * preview of the cover the recipe gets without a photo.
+   */
+  tileSeed?: string;
+  tileTags?: readonly string[];
 }
 
 export function ImageUpload({
   value,
   onChange,
   recipeContext,
+  tileSeed,
+  tileTags,
 }: ImageUploadProps) {
   // "preparing" = shrinking the photo in the browser, "uploading" = POSTing it.
   const [uploadPhase, setUploadPhase] = useState<
@@ -227,7 +237,7 @@ export function ImageUpload({
       {canGenerateAI && (
         <Button
           type="button"
-          variant="secondary"
+          variant="outline"
           size="sm"
           onClick={handleGenerateAI}
           disabled={isGenerating}
@@ -238,7 +248,7 @@ export function ImageUpload({
       )}
       <Button
         type="button"
-        variant="secondary"
+        variant="outline"
         size="sm"
         onClick={openFilePicker}
         disabled={isGenerating}
@@ -248,10 +258,11 @@ export function ImageUpload({
       </Button>
       <Button
         type="button"
-        variant="destructive"
+        variant="outline"
         size="sm"
         onClick={handleRemove}
         disabled={isGenerating}
+        className="hover:text-destructive"
       >
         <X aria-hidden="true" />
         Remove
@@ -263,98 +274,112 @@ export function ImageUpload({
     <div className="w-full">
       {value ? (
         <>
-          <div className="relative aspect-video overflow-hidden rounded-xl border border-border">
+          <div className="relative aspect-video overflow-hidden rounded-xl border border-border bg-muted">
             <Image
               src={value}
               alt="Recipe preview"
               fill
+              sizes="(min-width: 896px) 832px, 100vw"
               className="object-cover"
             />
             {/* On hover-capable screens >= sm the actions sit over the photo
                 and appear on hover or focus. Touch screens have no hover, so
                 there they stay visible. */}
-            <div className="absolute inset-0 hidden items-center justify-center gap-2 bg-black/60 opacity-0 transition-opacity hover:opacity-100 focus-within:opacity-100 sm:flex [@media(hover:none)]:opacity-100">
+            <div className="absolute inset-0 hidden items-center justify-center gap-2 bg-ink/55 opacity-0 transition-opacity duration-(--duration-fast) ease-out hover:opacity-100 focus-within:opacity-100 sm:flex [@media(hover:none)]:opacity-100">
               {photoActions}
             </div>
           </div>
           {/* Below sm the actions sit under the photo, always visible. */}
-          <div className="mt-2 flex flex-wrap gap-2 sm:hidden">{photoActions}</div>
+          <div className="mt-3 flex flex-wrap gap-2 sm:hidden">{photoActions}</div>
         </>
       ) : (
         <div
-          // The copy promises "Click to upload", so the whole dashed area now
-          // opens the picker. It is marked presentational rather than given
+          // The copy promises "Choose a photo", so the whole area opens the
+          // picker. It is marked presentational rather than given
           // role="button" because it contains real buttons, and nesting
           // interactive content inside a widget role is invalid; keyboard
-          // users reach the same action through "Select Image" below, which is
-          // focusable and activates the same handler.
+          // users reach the same action through "Upload photo" below, which
+          // is focusable and activates the same handler.
           role="presentation"
           aria-busy={isBusy || undefined}
           onClick={isBusy ? undefined : openFilePicker}
-          className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-all ${
-            isBusy ? "" : "cursor-pointer"
-          } ${
+          className={cn(
+            "relative flex min-h-72 items-center justify-center overflow-hidden rounded-xl border-[1.5px] border-dashed p-4 transition-colors duration-(--duration-fast) ease-out sm:aspect-[2/1] sm:min-h-0 sm:p-6",
+            !isBusy && "cursor-pointer",
             dragActive
-              ? "border-primary bg-primary/5"
-              : "border-border hover:border-primary/50 hover:bg-muted/50"
-          }`}
+              ? "border-primary ring-[3px] ring-primary/15"
+              : "border-input hover:border-primary"
+          )}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
         >
-          {isBusy ? (
-            <div className="flex flex-col items-center gap-3">
-              <Spinner size="lg" />
-              <p className="text-sm text-muted-foreground" aria-hidden="true">
-                {statusMessage}
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                <ImagePlus className="h-7 w-7 text-primary" aria-hidden="true" />
+          {/* The recipe's own tile, as it will look without a photo. */}
+          {tileSeed && (
+            <DelftWall
+              seed={tileSeed}
+              tags={tileTags}
+              tileSize={112}
+              className="absolute inset-0"
+            />
+          )}
+
+          <div className="relative flex w-full max-w-sm flex-col items-center rounded-lg border border-border bg-card/95 px-5 py-5 text-center shadow-medium backdrop-blur-sm">
+            {isBusy ? (
+              <div className="flex flex-col items-center gap-3 py-2">
+                <Spinner size="lg" className="text-primary" />
+                <p className="text-sm text-muted-foreground" aria-hidden="true">
+                  {statusMessage}
+                </p>
               </div>
-              <p className="mb-1 text-sm text-foreground">
-                <span className="font-medium">Click to upload</span> or drag and
-                drop
-              </p>
-              <p className="text-xs text-muted-foreground">
-                PNG, JPG, WebP, GIF or HEIC (large photos are resized
-                automatically)
-              </p>
-              <div className="mt-4 flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => {
-                    // The whole dropzone is clickable; don't let the click
-                    // bubble and open the picker twice.
-                    e.stopPropagation();
-                    openFilePicker();
-                  }}
-                >
-                  <Upload aria-hidden="true" />
-                  Select Image
-                </Button>
-                {canGenerateAI && (
+            ) : (
+              <>
+                <p className="text-sm font-medium text-foreground">
+                  Choose a photo or drag it here
+                </p>
+                <p className="mt-1 text-[13px] text-muted-foreground">
+                  PNG, JPG, WebP, GIF or HEIC. Large photos are resized
+                  automatically.
+                </p>
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={(e) => {
+                      // The whole area is clickable; don't let the click
+                      // bubble and open the picker twice.
                       e.stopPropagation();
-                      handleGenerateAI();
+                      openFilePicker();
                     }}
                   >
-                    <Sparkles aria-hidden="true" />
-                    Generate with AI
+                    <Upload aria-hidden="true" />
+                    Upload photo
                   </Button>
+                  {canGenerateAI && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleGenerateAI();
+                      }}
+                    >
+                      <Sparkles aria-hidden="true" />
+                      Generate with AI
+                    </Button>
+                  )}
+                </div>
+                {!canGenerateAI && (
+                  <p className="mt-3 text-[13px] text-muted-foreground">
+                    Add a title to generate a photo with AI.
+                  </p>
                 )}
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -373,7 +398,11 @@ export function ImageUpload({
       />
 
       {error && (
-        <p role="alert" className="mt-2 text-sm text-destructive">
+        <p
+          role="alert"
+          className="mt-3 flex items-start gap-2 text-[13px] text-destructive"
+        >
+          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           {error}
         </p>
       )}

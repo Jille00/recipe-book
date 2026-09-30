@@ -4,14 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Trash2 } from "lucide-react";
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui";
+import { Button, Card, CardContent } from "@/components/ui";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -31,7 +24,7 @@ import {
   type DeleteAccountField,
   type FieldErrors,
 } from "@/lib/account-forms";
-import { AccountField, focusField, FormAlert } from "./account-field";
+import { AccountCardHeader, AccountField, focusField, FormAlert } from "./account-field";
 
 const FIELD_ORDER = ["password", "confirmation"] as const;
 
@@ -91,17 +84,14 @@ export function DeleteAccountCard() {
   };
 
   return (
-    <Card className="border-destructive/30">
-      <CardHeader>
-        <CardTitle className="font-display flex items-center gap-2 text-destructive">
-          <Trash2 className="h-5 w-5" aria-hidden="true" />
-          Delete account
-        </CardTitle>
-        <CardDescription>
-          Permanently removes your account, recipes, photos, favorites, ratings, comments,
-          collections and shopping list. This can&apos;t be undone.
-        </CardDescription>
-      </CardHeader>
+    // Danger zone: marked by a danger edge on the left and the danger colour
+    // on its one button, not by a red card.
+    <Card className="border-l-[3px] border-l-destructive/70">
+      <AccountCardHeader
+        eyebrow="Danger zone"
+        title="Delete account"
+        description="Permanently removes your account, recipes, photos, favorites, ratings, comments, collections and shopping list. This can't be undone."
+      />
       <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
           Want a copy first? Download your data above.
@@ -115,15 +105,20 @@ export function DeleteAccountCard() {
           }}
         >
           <AlertDialogTrigger asChild>
-            <Button variant="destructive" className="shrink-0">
-              <Trash2 className="h-4 w-4" aria-hidden="true" />
-              Delete Account
+            <Button
+              variant="outline"
+              className="shrink-0 text-destructive hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive focus-visible:ring-destructive"
+            >
+              <Trash2 className="size-4" aria-hidden="true" />
+              Delete account
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <form ref={formRef} onSubmit={handleSubmit} noValidate className="grid gap-4">
               <AlertDialogHeader>
-                <AlertDialogTitle className="font-display">Delete your account?</AlertDialogTitle>
+                <AlertDialogTitle className="font-display text-2xl font-normal">
+                  Delete your account?
+                </AlertDialogTitle>
                 <AlertDialogDescription>
                   Your recipes, photos and everything else in your account will be removed for
                   good, and links to your recipes will stop working. Copies other people saved
@@ -159,11 +154,11 @@ export function DeleteAccountCard() {
 
               <AlertDialogFooter>
                 <AlertDialogCancel type="button" disabled={isDeleting}>
-                  Keep Account
+                  Keep account
                 </AlertDialogCancel>
                 <Button type="submit" variant="destructive" disabled={isDeleting}>
-                  {isDeleting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                  {isDeleting ? "Deleting..." : "Delete Account"}
+                  {isDeleting && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+                  {isDeleting ? "Deleting..." : "Delete account"}
                 </Button>
               </AlertDialogFooter>
             </form>

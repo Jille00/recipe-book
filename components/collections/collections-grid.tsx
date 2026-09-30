@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { FolderOpen, Plus } from "lucide-react";
-import { Button, Card, CardContent } from "@/components/ui";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui";
+import { PageHeader } from "@/components/page/page-header";
+import { EmptyState } from "@/components/page/empty-state";
 import { CollectionCard, type CollectionCardData } from "./collection-card";
 import { CollectionNameDialog } from "./collection-name-dialog";
 import { DeleteCollectionDialog } from "./delete-collection-dialog";
@@ -78,48 +80,49 @@ export function CollectionsGrid({ initialCollections }: CollectionsGridProps) {
 
   return (
     <>
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-semibold text-foreground">
-            Collections
-          </h1>
-          <p className="mt-1 text-muted-foreground">
-            Your own groups of recipes. Only you can see them.
-          </p>
-        </div>
-        {collections.length > 0 && (
-          <Button onClick={() => setDialog({ kind: "create" })}>
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            New Collection
-          </Button>
-        )}
-      </div>
-
-      {collections.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-              <FolderOpen className="h-10 w-10 text-primary" aria-hidden="true" />
-            </div>
-            <h2 className="mb-2 font-display text-xl font-semibold text-foreground">
-              No collections yet
-            </h2>
-            <p className="mb-6 max-w-md text-muted-foreground">
-              Gather recipes into groups like &ldquo;Weeknight dinners&rdquo; or
-              &ldquo;Holiday baking&rdquo;. Start one here, or use &ldquo;Save to
-              collection&rdquo; on any recipe.
-            </p>
+      <PageHeader
+        title="Collections"
+        intro={
+          collections.length === 0 ? (
+            "Your own groups of recipes. Only you can see them."
+          ) : (
+            <>
+              <span className="font-mono tabular text-foreground">
+                {collections.length}
+              </span>{" "}
+              {collections.length === 1 ? "collection" : "collections"}. Only
+              you can see them.
+            </>
+          )
+        }
+        // When empty, the empty state carries the one orange action.
+        action={
+          collections.length > 0 ? (
             <Button onClick={() => setDialog({ kind: "create" })}>
               <Plus className="h-4 w-4" aria-hidden="true" />
-              Create Your First Collection
+              New collection
             </Button>
-          </CardContent>
-        </Card>
+          ) : undefined
+        }
+      />
+
+      {collections.length === 0 ? (
+        <EmptyState
+          seed="collections-empty"
+          title="No collections yet"
+          action={
+            <Button onClick={() => setDialog({ kind: "create" })}>
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Start a collection
+            </Button>
+          }
+        >
+          Gather recipes into groups like &ldquo;Weeknight dinners&rdquo; or
+          &ldquo;Holiday baking&rdquo;. Start one here, or use &ldquo;Save to
+          collection&rdquo; on any recipe.
+        </EmptyState>
       ) : (
         <>
-          <p className="mb-6 text-sm text-muted-foreground">
-            {collections.length} collection{collections.length === 1 ? "" : "s"}
-          </p>
           <div className="stagger grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {collections.map((c) => (
               <div key={c.id} className="animate-fade-in-up">

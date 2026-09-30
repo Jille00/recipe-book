@@ -23,22 +23,22 @@ export default async function NewRecipePage() {
 
   const tags = await getAllTags();
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8">
+    <div className="mx-auto max-w-4xl px-4 pt-8 pb-8 sm:px-6 sm:pb-12 lg:px-8">
+      <header className="mb-8 sm:mb-10">
         <Link
           href="/recipes"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-4"
+          className="-ml-1 mb-3 inline-flex min-h-11 items-center gap-2 rounded-md px-1 text-sm font-medium text-muted-foreground transition-colors duration-(--duration-fast) hover:text-primary"
         >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          <ArrowLeft className="size-4" aria-hidden="true" />
           Back to recipes
         </Link>
-        <h1 className="font-display text-3xl font-semibold text-foreground">
-          Create New Recipe
+        <h1 className="text-4xl leading-[1.1] tracking-[-0.01em] text-foreground sm:text-[44px]">
+          New recipe
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Add a new recipe to your collection. Fill in the details below.
+          Write it down once, and it&apos;s here every time you cook it.
         </p>
-      </div>
+      </header>
 
       <RecipeForm tags={tags} />
     </div>

@@ -3,8 +3,10 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, ChefHat } from "lucide-react";
-import { Button, Card, CardContent, Pagination } from "@/components/ui";
+import { ArrowLeft } from "lucide-react";
+import { Button, Pagination } from "@/components/ui";
+import { DelftTile } from "@/components/delft/delft-tile";
+import { EmptyState } from "@/components/page/empty-state";
 import { RecipeCard } from "@/components/recipe/recipe-card";
 import { auth } from "@/lib/auth";
 import { getPublicRecipesByTag, getTagBySlug } from "@/lib/db/queries/tags";
@@ -101,47 +103,57 @@ export default async function TagPage({ params, searchParams }: Props) {
       : (await getRecipePage(tag.id, currentPage, viewerId)).recipes;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* Header */}
-      <div className="mb-8">
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+      {/* Header: the category's own tile, its name and how many recipes */}
+      <header className="mb-8 sm:mb-10">
         <Link
           href="/tags"
-          className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-lg text-sm font-medium text-muted-foreground transition-colors duration-(--duration-fast) hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-md text-sm font-medium text-muted-foreground transition-colors duration-(--duration-fast) hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           All categories
         </Link>
-        <h1 className="font-display text-3xl font-semibold text-foreground">
-          {tag.name}
-        </h1>
-        <p className="mt-1 text-muted-foreground">{describeTag(tag.name)}</p>
-      </div>
+        <div className="flex items-center gap-5 sm:gap-6">
+          <DelftTile
+            seed={tag.slug}
+            tags={[tag.slug]}
+            className="size-20 shrink-0 shadow-soft sm:size-28"
+          />
+          <div className="min-w-0">
+            <h1 className="font-display text-4xl leading-[1.1] tracking-[-0.01em] text-foreground break-words sm:text-[44px]">
+              {tag.name}
+            </h1>
+            <p className="mt-2 text-muted-foreground">
+              <span className="font-mono tabular text-foreground">{total}</span>{" "}
+              {total === 1 ? "recipe" : "recipes"}
+              {currentPage > 1 && (
+                <>
+                  {" · page "}
+                  <span className="font-mono tabular">{currentPage}</span> of{" "}
+                  <span className="font-mono tabular">{totalPages}</span>
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+      </header>
 
       {recipes.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-muted">
-              <ChefHat className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
-            </div>
-            <h2 className="mb-2 font-display text-xl font-semibold text-foreground">
-              No recipes yet
-            </h2>
-            <p className="mb-6 max-w-md text-muted-foreground">
-              Nobody has shared a {tag.name.toLowerCase()} recipe yet. Have a
-              look around the rest of the collection.
-            </p>
-            <Button asChild variant="outline">
-              <Link href="/browse">Browse Recipes</Link>
+        <EmptyState
+          seed={tag.slug}
+          tags={[tag.slug]}
+          title="No recipes yet"
+          action={
+            <Button asChild>
+              <Link href="/browse">Browse recipes</Link>
             </Button>
-          </CardContent>
-        </Card>
+          }
+        >
+          Nobody has shared a {tag.name.toLowerCase()} recipe yet. Have a look
+          around the rest of the collection.
+        </EmptyState>
       ) : (
         <>
-          <p className="mb-6 text-sm text-muted-foreground">
-            {total} recipe{total !== 1 ? "s" : ""}
-            {currentPage > 1 && ` (page ${currentPage} of ${totalPages})`}
-          </p>
-
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {recipes.map((recipe) => (
               <RecipeCard
@@ -155,7 +167,7 @@ export default async function TagPage({ params, searchParams }: Props) {
           </div>
 
           {totalPages > 1 && (
-            <div className="mt-8">
+            <div className="mt-10">
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}

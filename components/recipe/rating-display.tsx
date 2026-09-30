@@ -11,8 +11,9 @@ interface RatingDisplayProps {
   className?: string;
 }
 
-// Empty stars: taupe-600 (3.43:1 on parchment, 3.71:1 on cream); sand was
-// 1.44:1 and read as missing rather than empty.
+// Filled stars are gold (graphic only). Empty stars use the form-control
+// edge colour (`input`: 4.00:1 on white, 4.06:1 on night-card) so they read
+// as empty rather than missing.
 const sizeClasses = {
   sm: "h-3 w-3",
   md: "h-4 w-4",
@@ -50,7 +51,7 @@ export function RatingDisplay({
             <Star
               key={i}
               aria-hidden="true"
-              className={cn(sizeClasses[size], "text-taupe-600")}
+              className={cn(sizeClasses[size], "text-input")}
               fill="none"
             />
           ))}
@@ -83,14 +84,14 @@ export function RatingDisplay({
           <Star
             key={`full-${i}`}
             aria-hidden="true"
-            className={cn(sizeClasses[size], "text-amber fill-amber")}
+            className={cn(sizeClasses[size], "text-gold fill-gold")}
           />
         ))}
         {/* Half star - we'll render as full for simplicity */}
         {hasHalfStar && (
           <Star
             aria-hidden="true"
-            className={cn(sizeClasses[size], "text-amber fill-amber/50")}
+            className={cn(sizeClasses[size], "text-gold fill-gold/50")}
           />
         )}
         {/* Empty stars */}
@@ -98,21 +99,21 @@ export function RatingDisplay({
           <Star
             key={`empty-${i}`}
             aria-hidden="true"
-            className={cn(sizeClasses[size], "text-taupe-600")}
+            className={cn(sizeClasses[size], "text-input")}
             fill="none"
           />
         ))}
       </div>
       <span
         aria-hidden="true"
-        className={cn("font-medium text-foreground", textSizeClasses[size])}
+        className={cn("ml-1 font-mono font-medium tabular text-foreground", textSizeClasses[size])}
       >
         {safeAverage.toFixed(1)}
       </span>
       {showCount && (
         <span
           aria-hidden="true"
-          className={cn("text-muted-foreground", textSizeClasses[size])}
+          className={cn("font-mono tabular text-muted-foreground", textSizeClasses[size])}
         >
           ({totalRatings})
         </span>

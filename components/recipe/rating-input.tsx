@@ -83,7 +83,7 @@ export function RatingInput({
           onRatingChange(value, data.stats);
         }
 
-        toast.success("Rating saved!");
+        toast.success("Rating saved");
       } catch (error) {
         console.error("Error saving rating:", error);
         toast.error(
@@ -167,7 +167,7 @@ export function RatingInput({
                 if (isInteractive) setPreviewRating(value);
               }}
               className={cn(
-                "rounded-lg transition-transform duration-(--duration-fast) ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                "rounded-md transition-transform duration-(--duration-fast) ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                 hitAreaClasses[size],
                 isInteractive && "hover:scale-110 cursor-pointer",
                 disabled && "cursor-not-allowed"
@@ -178,11 +178,11 @@ export function RatingInput({
                 className={cn(
                   sizeClasses[size],
                   "transition-colors",
-                  // Empty stars use taupe-600 (3.43:1 on parchment) - sand
-                  // was 1.44:1, too faint to read as a control.
+                  // Empty stars use the form-control edge colour (`input`,
+                  // >= 4:1 on cards) so they read as a control.
                   value <= displayRating
-                    ? "text-amber fill-amber"
-                    : "text-taupe-600"
+                    ? "text-gold fill-gold"
+                    : "text-input"
                 )}
               />
             </button>

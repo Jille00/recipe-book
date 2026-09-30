@@ -51,7 +51,7 @@ export function DeleteCollectionDialog({
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className="font-display">
+          <AlertDialogTitle className="font-display text-[22px] leading-[1.3] font-normal">
             Delete &ldquo;{name}&rdquo;?
           </AlertDialogTitle>
           <AlertDialogDescription>
@@ -60,14 +60,14 @@ export function DeleteCollectionDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Keep Collection</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>Keep collection</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={isDeleting}
             className={buttonVariants({ variant: "destructive" })}
           >
             {isDeleting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-            {isDeleting ? "Deleting..." : "Delete Collection"}
+            {isDeleting ? "Deleting..." : "Delete collection"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

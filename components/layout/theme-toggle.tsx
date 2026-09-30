@@ -34,7 +34,7 @@ const noopSubscribe = () => () => {};
  * render and the first client render show a neutral state; this flips to true
  * right after hydration without a mismatch.
  */
-function useMounted(): boolean {
+export function useMounted(): boolean {
   return useSyncExternalStore(
     noopSubscribe,
     () => true,
@@ -42,13 +42,38 @@ function useMounted(): boolean {
   );
 }
 
-/** Desktop header: a 44px icon button opening a light / dark / system menu. */
+const TRIGGER_CLASS = "rounded-md";
+
+/**
+ * Desktop header: a 44px icon button opening a light / dark / system menu.
+ *
+ * Radix gives the menu trigger a generated id (and aria-controls) from
+ * React's useId. The server and the hydrating client could disagree on it,
+ * so until mount this renders a plain button of the same size and look; the
+ * real menu takes its place right after hydration, when ids no longer have
+ * to match any server markup.
+ */
 export function ThemeToggle({ className }: { className?: string }) {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const mounted = useMounted();
-  const choice = mounted ? toThemeChoice(theme) : undefined;
+
+  if (!mounted) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className={cn(TRIGGER_CLASS, className)}
+        aria-label="Change theme"
+      >
+        <Sun className="size-5" aria-hidden="true" />
+      </Button>
+    );
+  }
+
+  const choice = toThemeChoice(theme);
   // The icon shows what is on screen, so "system" shows the sun or moon.
-  const Icon = mounted && resolvedTheme === "dark" ? Moon : Sun;
+  const Icon = resolvedTheme === "dark" ? Moon : Sun;
 
   return (
     <DropdownMenu>
@@ -57,14 +82,14 @@ export function ThemeToggle({ className }: { className?: string }) {
           type="button"
           variant="ghost"
           size="icon"
-          className={cn("rounded-lg", className)}
-          aria-label={mounted ? themeButtonLabel(theme, resolvedTheme) : "Change theme"}
+          className={cn(TRIGGER_CLASS, className)}
+          aria-label={themeButtonLabel(theme, resolvedTheme)}
         >
-          <Icon className="h-5 w-5" aria-hidden="true" />
+          <Icon className="size-5" aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuLabel className="text-xs font-medium tracking-[0.02em] text-muted-foreground">
+        <DropdownMenuLabel className="text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">
           Theme
         </DropdownMenuLabel>
         <DropdownMenuRadioGroup
@@ -75,7 +100,7 @@ export function ThemeToggle({ className }: { className?: string }) {
             const OptionIcon = THEME_ICONS[value];
             return (
               <DropdownMenuRadioItem key={value} value={value} className="min-h-11">
-                <OptionIcon className="h-4 w-4" aria-hidden="true" />
+                <OptionIcon className="size-4" aria-hidden="true" />
                 {label}
               </DropdownMenuRadioItem>
             );
@@ -108,7 +133,7 @@ export function ThemeSegmentedControl({ className }: { className?: string }) {
         onValueChange={(value) => {
           if (value) setTheme(toThemeChoice(value));
         }}
-        className="rounded-lg border border-border p-0.5"
+        className="rounded-md border border-border bg-card p-0.5"
       >
         {THEME_OPTIONS.map(({ value, label }) => {
           const OptionIcon = THEME_ICONS[value];
@@ -116,10 +141,10 @@ export function ThemeSegmentedControl({ className }: { className?: string }) {
             <ToggleGroupItem
               key={value}
               value={value}
-              // Same active treatment as the mobile nav links (primary tint).
-              className="h-11 min-w-11 gap-1.5 rounded-md px-3 text-muted-foreground hover:bg-accent hover:text-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary data-[spacing=0]:rounded-md"
+              // Selected: glaze fill with delft text, like the mobile nav links.
+              className="h-11 min-w-11 gap-1.5 rounded-md px-3 text-muted-foreground hover:bg-accent hover:text-foreground data-[state=on]:bg-secondary data-[state=on]:text-secondary-foreground data-[spacing=0]:rounded-md"
             >
-              <OptionIcon className="h-4 w-4" aria-hidden="true" />
+              <OptionIcon className="size-4" aria-hidden="true" />
               <span className="text-sm">{label}</span>
             </ToggleGroupItem>
           );

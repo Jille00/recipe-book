@@ -11,6 +11,10 @@ import {
   CardContent,
   CardHeader,
   CardDescription,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@/components/ui";
 import {
   AlertDialog,
@@ -32,27 +36,27 @@ import { ServingsSelector } from "./servings-selector";
 import { RatingsCommentsSection } from "./ratings-comments-section";
 import { TagPillLink } from "./tag-pill-link";
 import { SaveToCollection } from "./save-to-collection";
-import { SaveCopyButton } from "./save-copy-button";
+import { useSaveCopy } from "./save-copy-button";
 import { AdaptedFrom, type AdaptedFromInfo } from "./adapted-from";
 import { CookMode } from "./cook-mode";
-import { PrintButton } from "./print-button";
+import { printRecipe } from "./print-button";
+import { DelftWall } from "@/components/delft/delft-tile";
+import { tagPath } from "@/lib/tag-pages";
 import type { RecipeWithDetails, RatingStats } from "@/types/recipe";
 import type { CommentWithUser } from "@/lib/db/queries/comments";
 import { toast } from "sonner";
 import {
   ArrowLeft,
-  Clock,
-  Timer,
-  ChefHat,
   Pencil,
   Trash2,
   Share2,
   Globe,
   Link2,
-  Utensils,
-  Apple,
   Loader2,
   AlertTriangle,
+  Copy,
+  MoreHorizontal,
+  Printer,
 } from "lucide-react";
 import { useRecipeUnitSystem } from "@/hooks/use-unit-preferences";
 import { profilePath } from "@/lib/handle";
@@ -281,438 +285,125 @@ export function RecipeDetail({
     }
   };
 
+  const tagSlugs = tags.map((tag) => tag.slug);
+  // Tags come alphabetically; the first one is the recipe's category line.
+  const category = tags[0];
+  const canFavorite =
+    isAuthenticated &&
+    // Favorites only list public recipes and your own, so an unlisted
+    // recipe someone sent you can't be saved there - but one favorited
+    // while it was public must stay removable after it becomes link-only.
+    (recipe.isPublic || isOwner || (initialFavorited ?? recipe.isFavorited));
+  const hasMeta =
+    recipe.prepTimeMinutes != null ||
+    recipe.cookTimeMinutes != null ||
+    totalTime > 0 ||
+    !!recipe.servings ||
+    !!recipe.difficulty;
+
   return (
     <article className="mx-auto max-w-4xl">
-      {/* Header */}
-      <header className="mb-8">
-        {isOwner && (
-          <div className="mb-6 print:hidden">
-            <Link
-              href="/recipes"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-              Back to recipes
-            </Link>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <h1 className="font-display text-3xl font-semibold text-foreground sm:text-4xl tracking-tight">
-              {recipe.title}
-            </h1>
-            <div className="flex flex-wrap items-center gap-2 print:hidden">
-              <CookMode
-                recipeId={recipe.id}
-                title={recipe.title}
-                ingredients={convertedIngredients}
-                instructions={convertedInstructions}
-              />
-              <Button variant="outline" size="sm" onClick={handleShare}>
-                <Share2 className="h-4 w-4" aria-hidden="true" />
-                Share
-              </Button>
-              <AddToShoppingList recipeId={recipe.id} code={recipe.code} ingredients={convertedIngredients} isAuthenticated={isAuthenticated} />
-              <SaveToCollection
-                recipeId={recipe.id}
-                code={recipe.code}
-                isAuthenticated={isAuthenticated}
-                isListable={Boolean(recipe.isPublic) || isOwner}
-              />
-              {!isOwner && (
-                <SaveCopyButton
-                  recipeId={recipe.id}
-                  code={recipe.code}
-                  isAuthenticated={isAuthenticated}
-                />
-              )}
-              <PrintButton />
-              {isOwner && (
+      {/* Owner tools: set apart from the cooking actions, and quiet */}
+      {isOwner && (
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-3 print:hidden">
+          <Link
+            href="/recipes"
+            className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Your recipes
+          </Link>
+          <div className="flex items-center gap-1">
+            <Badge variant="secondary" className="mr-2">
+              {recipe.isPublic ? (
                 <>
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={recipeEditPath(recipe)}>
-                      <Pencil className="h-4 w-4" aria-hidden="true" />
-                      Edit
-                    </Link>
-                  </Button>
-                  {/* Set apart from Edit, and quieter than it, so it is hard to
-                      hit by accident; the dialog still asks before deleting. */}
-                  <span aria-hidden="true" className="mx-2 h-6 w-px bg-border" />
-                  <AlertDialog
-                    open={confirmDeleteOpen}
-                    onOpenChange={(open) => {
-                      // Don't let Escape or Cancel close it mid-request.
-                      if (!isDeleting) setConfirmDeleteOpen(open);
-                    }}
-                  >
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={isDeleting}
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                        Delete
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="font-display">
-                          Delete &ldquo;{recipe.title}&rdquo;?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          The recipe, its photo, ratings and comments will be
-                          removed for good, and links to it will stop working.
-                          This can&apos;t be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isDeleting}>
-                          Keep Recipe
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleDelete}
-                          disabled={isDeleting}
-                          className={buttonVariants({ variant: "destructive" })}
-                        >
-                          {isDeleting && (
-                            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                          )}
-                          {isDeleting ? "Deleting..." : "Delete Recipe"}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  <Globe aria-hidden="true" />
+                  Public
+                </>
+              ) : (
+                <>
+                  <Link2 aria-hidden="true" />
+                  Anyone with the link
                 </>
               )}
-            </div>
-          </div>
-          {adaptedFrom && <AdaptedFrom origin={adaptedFrom} />}
-          {recipe.description && (
-            <p className="text-lg text-muted-foreground max-w-2xl">
-              {recipe.description}
-            </p>
-          )}
-          {tags.length > 0 && (
-            <ul aria-label="Tags" className="flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <li key={tag.id}>
-                  <TagPillLink tag={tag} />
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="flex flex-wrap items-center gap-2">
-            {recipe.difficulty && (
-              <Badge
-                variant={getDifficultyVariant(recipe.difficulty)}
-                className="capitalize"
-              >
-                {recipe.difficulty}
-              </Badge>
-            )}
-            {isOwner && (
-              <Badge variant="secondary" className="print:hidden">
-                {recipe.isPublic ? (
-                  <>
-                    <Globe className="h-3 w-3 mr-1" aria-hidden="true" />
-                    Public
-                  </>
-                ) : (
-                  <>
-                    <Link2 className="h-3 w-3 mr-1" aria-hidden="true" />
-                    Anyone with the link
-                  </>
-                )}
-              </Badge>
-            )}
-            {/* Favorites only list public recipes and your own, so an unlisted
-                recipe someone sent you can't be saved there. */}
-            {/* ...but a recipe favorited while it was public must stay
-                removable after it becomes link-only. */}
-            {isAuthenticated &&
-              (recipe.isPublic || isOwner || (initialFavorited ?? recipe.isFavorited)) && (
-              <FavoriteButton
-                recipeId={recipe.id}
-                initialFavorited={initialFavorited ?? recipe.isFavorited ?? false}
-                variant="button"
-              />
-            )}
-            <UnitToggle recipeId={recipe.id} />
-          </div>
-        </div>
-      </header>
-
-      {/* Image */}
-      {recipe.imageUrl ? (
-        <div className="relative mb-8 aspect-video overflow-hidden rounded-2xl border border-border">
-          <Image
-            src={recipe.imageUrl}
-            alt={recipe.title}
-            fill
-            className="object-cover"
-            // The article is capped at max-w-4xl (896px).
-            sizes="(max-width: 896px) 100vw, 896px"
-            priority
-          />
-        </div>
-      ) : (
-        <div className="relative mb-8 aspect-video overflow-hidden rounded-2xl bg-muted flex items-center justify-center print:hidden">
-          <ChefHat className="h-16 w-16 text-muted-foreground/30" aria-hidden="true" />
-        </div>
-      )}
-
-      {/* Meta Cards */}
-      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {recipe.prepTimeMinutes != null && (
-          <Card className="text-center">
-            <CardContent className="py-4">
-              <div className="flex justify-center mb-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Clock className="h-5 w-5 text-primary" aria-hidden="true" />
-                </div>
-              </div>
-              <p className="text-2xl font-display font-semibold text-foreground">
-                {recipe.prepTimeMinutes}
-              </p>
-              <p className="text-xs text-muted-foreground">Prep (min)</p>
-            </CardContent>
-          </Card>
-        )}
-        {recipe.cookTimeMinutes != null && (
-          <Card className="text-center">
-            <CardContent className="py-4">
-              <div className="flex justify-center mb-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Timer className="h-5 w-5 text-primary" aria-hidden="true" />
-                </div>
-              </div>
-              <p className="text-2xl font-display font-semibold text-foreground">
-                {recipe.cookTimeMinutes}
-              </p>
-              <p className="text-xs text-muted-foreground">Cook (min)</p>
-            </CardContent>
-          </Card>
-        )}
-        {totalTime > 0 && (
-          <Card className="text-center">
-            <CardContent className="py-4">
-              <div className="flex justify-center mb-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Utensils className="h-5 w-5 text-primary" aria-hidden="true" />
-                </div>
-              </div>
-              <p className="text-2xl font-display font-semibold text-foreground">
-                {totalTime}
-              </p>
-              <p className="text-xs text-muted-foreground">Total (min)</p>
-            </CardContent>
-          </Card>
-        )}
-        {recipe.servings && (
-          <ServingsSelector
-            scaledServings={scaledServings}
-            originalServings={originalServings}
-            onIncrement={increment}
-            onDecrement={decrement}
-            onReset={resetToOriginal}
-            maxServings={maxServings}
-          />
-        )}
-      </div>
-
-      {/* Nutrition */}
-      {nutrition && (
-        <Card className="mb-8 p-0">
-          <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pt-8">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                <Apple className="h-5 w-5 text-primary" aria-hidden="true" />
-              </div>
-              <div>
-                <h2 className="font-display leading-none font-semibold">
-                  Nutrition
-                </h2>
-                <CardDescription>
-                  Estimated values per serving
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            {nutritionOutdated && (
-              <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber/30 bg-amber/10 p-3 text-sm print:hidden">
-                <AlertTriangle
-                  className="mt-0.5 h-4 w-4 shrink-0 text-amber"
-                  aria-hidden="true"
-                />
-                <p className="text-foreground">
-                  These numbers were calculated before the ingredients or
-                  servings last changed, so they may be off.
-                  {isOwner && (
-                    <>
-                      {" "}
-                      <Link
-                        href={recipeEditPath(recipe)}
-                        className="font-medium text-primary underline-offset-4 hover:underline"
-                      >
-                        Recalculate them in the editor
-                      </Link>
-                      .
-                    </>
-                  )}
-                </p>
-              </div>
-            )}
-            <NutritionDisplay
-              nutrition={nutrition}
-              // Values are per serving of the recipe as written, so they
-              // don't follow the servings selector.
-              servings={recipe.servings}
-              isEditable={false}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid gap-8 lg:grid-cols-3">
-        {/* Ingredients */}
-        <div className="lg:col-span-1">
-          <Card className="sticky top-24">
-            <CardContent className="p-6">
-              <h2 className="font-display text-xl font-semibold text-foreground mb-4">
-                Ingredients
-              </h2>
-              <ul className="space-y-3">
-                {convertedIngredients.map((ingredient, index) => {
-                  const ingredientKey = ingredient.id || `index-${index}`;
-                  const checkboxId = `${ingredientFieldId}-${ingredientKey}`;
-                  const isChecked = checkedIngredients[ingredientKey] ?? false;
-
-                  return (
-                  <li key={ingredientKey} className="flex items-start gap-3">
-                    <input
-                      id={checkboxId}
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={(e) =>
-                        setCheckedIngredients((prev) => ({
-                          ...prev,
-                          [ingredientKey]: e.target.checked,
-                        }))
-                      }
-                      className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary/50 focus:ring-offset-0"
-                    />
-                    <label
-                      htmlFor={checkboxId}
-                      className={cn(
-                        "cursor-pointer text-foreground",
-                        isChecked && "line-through opacity-60"
-                      )}
-                    >
-                      {ingredient.converted ? (
-                        // Unit conversion applied (and possibly scaling)
-                        <>
-                          <span className="font-medium text-foreground">
-                            {ingredient.converted.displayAmount}{" "}
-                            {ingredient.converted.unit}
-                          </span>{" "}
-                          <span className="text-xs text-muted-foreground">
-                            {/* The same scaled amount in the recipe's own unit. */}
-                            (
-                            {(ingredient.wasScaled && ingredient.scaledAmount) ||
-                              ingredient.originalAmount ||
-                              ingredient.amount}{" "}
-                            {ingredient.unit})
-                          </span>{" "}
-                        </>
-                      ) : ingredient.wasScaled && ingredient.scaledAmount ? (
-                        // Scaling applied but no unit conversion
-                        <>
-                          <span className="font-medium text-foreground">
-                            {ingredient.scaledAmount}{" "}
-                          </span>
-                          {ingredient.unit && <span>{ingredient.unit} </span>}
-                          {/* Countable items round back to their original
-                              amount at small scale factors; "1 (was 1)" is
-                              just noise, so only note a real change. */}
-                          {ingredient.scaledAmount !==
-                            ingredient.originalAmount && (
-                            <span className="text-xs text-muted-foreground">
-                              (was {ingredient.originalAmount}){" "}
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        // No conversion or scaling
-                        <>
-                          {ingredient.amount && (
-                            <span className="font-medium text-foreground">
-                              {ingredient.amount}{" "}
-                            </span>
-                          )}
-                          {ingredient.unit && <span>{ingredient.unit} </span>}
-                        </>
-                      )}
-                      {ingredient.text}
-                    </label>
-                  </li>
-                  );
-                })}
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Instructions */}
-        <div className="lg:col-span-2">
-          <h2 className="font-display text-xl font-semibold text-foreground mb-6">
-            Instructions
-          </h2>
-          <ol className="space-y-6">
-            {convertedInstructions.map((instruction, index) => (
-              <li key={index} className="flex gap-4">
-                {/* Step number: Fraunces 600, 24px/24px (style guide). */}
-                <span
-                  className="w-8 shrink-0 pt-0.5 text-right font-display text-2xl leading-6 font-semibold text-primary"
+            </Badge>
+            <Button asChild variant="ghost" size="sm">
+              <Link href={recipeEditPath(recipe)}>
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+                Edit
+              </Link>
+            </Button>
+            {/* Set apart from Edit so it is hard to hit by accident; the
+                dialog still asks before deleting. */}
+            <span aria-hidden="true" className="mx-1 h-5 w-px bg-border" />
+            <AlertDialog
+              open={confirmDeleteOpen}
+              onOpenChange={(open) => {
+                // Don't let Escape or Cancel close it mid-request.
+                if (!isDeleting) setConfirmDeleteOpen(open);
+              }}
+            >
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={isDeleting}
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 >
-                  {index + 1}
-                </span>
-                <p className="text-foreground leading-relaxed">
-                  {instruction.convertedText}
-                </p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </div>
-
-      {/* Ratings & Comments Section */}
-      {/* Anyone viewing this page holds its link, so everyone can rate and
-          comment. The code proves that to the API for unlisted recipes. */}
-      {initialRatingStats && (
-        <div className="mt-8 print:hidden">
-          <RatingsCommentsSection
-            code={recipe.code}
-            recipeId={recipe.id}
-            recipeOwnerId={recipe.userId}
-            initialRatingStats={initialRatingStats}
-            initialUserRating={initialUserRating}
-            initialComments={initialComments}
-            initialCommentTotal={initialCommentTotal}
-            currentUserId={currentUserId}
-            isAuthenticated={isAuthenticated}
-          />
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="font-display text-xl font-normal">
+                    Delete &ldquo;{recipe.title}&rdquo;?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    The recipe, its photo, ratings and comments will be
+                    removed for good, and links to it will stop working.
+                    This can&apos;t be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeleting}>
+                    Keep recipe
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className={buttonVariants({ variant: "destructive" })}
+                  >
+                    {isDeleting && (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    )}
+                    {isDeleting ? "Deleting…" : "Delete recipe"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       )}
 
-      {/* Author, for everyone but the author */}
-      {!isOwner && recipe.authorName && (
-        <div className="mt-8 border-t border-border pt-6">
-          <p className="text-muted-foreground">
-            Recipe by{" "}
+      {/* Title block */}
+      <header className="space-y-4">
+        {category && (
+          <p className="print:hidden">
+            <Link
+              href={tagPath(category.slug)}
+              className="text-xs font-medium uppercase tracking-[0.06em] text-primary underline-offset-4 hover:underline"
+            >
+              {category.name}
+            </Link>
+          </p>
+        )}
+        <h1 className="text-balance text-[2.25rem] leading-[1.05] tracking-[-0.02em] text-foreground sm:text-[3.5rem] lg:text-[4rem]">
+          {recipe.title}
+        </h1>
+        {!isOwner && recipe.authorName && (
+          <p className="text-sm text-muted-foreground">
+            By{" "}
             {recipe.authorHandle ? (
               <Link
                 href={profilePath(recipe.authorHandle)}
@@ -726,8 +417,433 @@ export function RecipeDetail({
               </span>
             )}
           </p>
+        )}
+        {adaptedFrom && <AdaptedFrom origin={adaptedFrom} />}
+        {recipe.description && (
+          <p className="max-w-[60ch] text-lg leading-relaxed text-muted-foreground">
+            {recipe.description}
+          </p>
+        )}
+        {/* The first tag is already the eyebrow above the title. */}
+        {tags.length > 1 && (
+          <ul aria-label="More tags" className="flex flex-wrap gap-2 print:hidden">
+            {tags.slice(1).map((tag) => (
+              <li key={tag.id}>
+                <TagPillLink tag={tag} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </header>
+
+      {/* Actions: Cook is the one main action; the rest stay quiet, and
+          below `sm` they shrink to icons (or move into More) so the row
+          stays on one line. */}
+      <div className="mt-6 flex items-center gap-2 print:hidden">
+        <CookMode
+          recipeId={recipe.id}
+          code={recipe.code}
+          tags={tagSlugs}
+          title={recipe.title}
+          ingredients={convertedIngredients}
+          instructions={convertedInstructions}
+        />
+        {canFavorite && (
+          <FavoriteButton
+            recipeId={recipe.id}
+            initialFavorited={initialFavorited ?? recipe.isFavorited ?? false}
+            variant="button"
+            compact
+          />
+        )}
+        <AddToShoppingList
+          recipeId={recipe.id}
+          code={recipe.code}
+          ingredients={convertedIngredients}
+          isAuthenticated={isAuthenticated}
+          compact
+        />
+        <SaveToCollection
+          recipeId={recipe.id}
+          code={recipe.code}
+          isAuthenticated={isAuthenticated}
+          isListable={Boolean(recipe.isPublic) || isOwner}
+          compact
+        />
+        <Button variant="outline" onClick={handleShare} className="max-sm:hidden">
+          <Share2 className="h-4 w-4" aria-hidden="true" />
+          Share
+        </Button>
+        <MoreActions
+          recipeId={recipe.id}
+          code={recipe.code}
+          isAuthenticated={isAuthenticated}
+          canCopy={!isOwner}
+          onShare={handleShare}
+        />
+      </div>
+
+      {/* Hero: the photo, or the recipe's own tile wall */}
+      <div className="relative mt-8 aspect-[4/3] overflow-hidden rounded-xl bg-muted sm:aspect-[16/9] print:hidden">
+        {recipe.imageUrl ? (
+          <Image
+            src={recipe.imageUrl}
+            alt={recipe.title}
+            fill
+            className="object-cover"
+            // The article is capped at max-w-4xl (896px).
+            sizes="(max-width: 896px) 100vw, 896px"
+            priority
+          />
+        ) : (
+          <DelftWall seed={recipe.code} tags={tagSlugs} tileSize={136} />
+        )}
+      </div>
+
+      {/* Meta strip */}
+      {hasMeta && (
+        <dl className="mt-8 grid grid-cols-3 gap-x-4 gap-y-5 border-y border-border py-5 sm:flex sm:flex-wrap sm:gap-x-10">
+          {recipe.prepTimeMinutes != null && (
+            <MetaItem label="Prep">
+              <Minutes value={recipe.prepTimeMinutes} />
+            </MetaItem>
+          )}
+          {recipe.cookTimeMinutes != null && (
+            <MetaItem label="Cook">
+              <Minutes value={recipe.cookTimeMinutes} />
+            </MetaItem>
+          )}
+          {totalTime > 0 && (
+            <MetaItem label="Total">
+              <Minutes value={totalTime} />
+            </MetaItem>
+          )}
+          {recipe.difficulty && (
+            <MetaItem label="Difficulty">
+              <Badge
+                variant={getDifficultyVariant(recipe.difficulty)}
+                className="mt-0.5 capitalize"
+              >
+                {recipe.difficulty}
+              </Badge>
+            </MetaItem>
+          )}
+          {recipe.servings && (
+            <ServingsSelector
+              className="col-span-2"
+              scaledServings={scaledServings}
+              originalServings={originalServings}
+              onIncrement={increment}
+              onDecrement={decrement}
+              onReset={resetToOriginal}
+              maxServings={maxServings}
+            />
+          )}
+        </dl>
+      )}
+
+      <div className="mt-8 grid gap-10 sm:mt-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
+        {/* Ingredients */}
+        <section aria-labelledby={`${ingredientFieldId}-heading`}>
+          <Card className="gap-0 py-0 lg:sticky lg:top-24">
+            <CardContent className="p-5 sm:p-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2
+                  id={`${ingredientFieldId}-heading`}
+                  className="text-[1.75rem] leading-[1.2] text-foreground"
+                >
+                  Ingredients
+                </h2>
+                <div className="print:hidden">
+                  <UnitToggle recipeId={recipe.id} />
+                </div>
+              </div>
+              <ul className="grid grid-cols-[auto_fit-content(7.5rem)_1fr] gap-x-3">
+                {convertedIngredients.map((ingredient, index) => {
+                  const ingredientKey = ingredient.id || `index-${index}`;
+                  const checkboxId = `${ingredientFieldId}-${ingredientKey}`;
+                  const isChecked = checkedIngredients[ingredientKey] ?? false;
+                  const { amount, hint } = describeIngredientAmount(ingredient);
+
+                  return (
+                    <li
+                      key={ingredientKey}
+                      className="col-span-3 grid grid-cols-subgrid items-start border-b border-border py-2.5 last:border-b-0"
+                    >
+                      <input
+                        id={checkboxId}
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) =>
+                          setCheckedIngredients((prev) => ({
+                            ...prev,
+                            [ingredientKey]: e.target.checked,
+                          }))
+                        }
+                        className="mt-1 size-4 cursor-pointer rounded accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                      />
+                      <label
+                        htmlFor={checkboxId}
+                        className={cn(
+                          // col-start-2: keeps the columns when print hides the checkbox
+                          "col-span-2 col-start-2 grid cursor-pointer grid-cols-subgrid text-foreground transition-opacity",
+                          isChecked && "line-through opacity-60"
+                        )}
+                      >
+                        <span className="text-right font-mono text-sm tabular leading-6 text-foreground">
+                          {amount}
+                        </span>
+                        <span className="leading-6">
+                          {ingredient.text}
+                          {hint && (
+                            <span className="ml-1.5 whitespace-nowrap font-mono text-xs tabular text-muted-foreground">
+                              {hint}
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Method: a numbered sequence */}
+        <section aria-labelledby={`${ingredientFieldId}-method`}>
+          <h2
+            id={`${ingredientFieldId}-method`}
+            className="mb-6 text-[1.75rem] leading-[1.2] text-foreground"
+          >
+            Method
+          </h2>
+          <ol className="space-y-7">
+            {convertedInstructions.map((instruction, index) => (
+              <li key={index} className="grid grid-cols-[2.5rem_1fr] gap-x-3">
+                <span className="font-display text-[2rem] leading-[1.1] text-primary">
+                  {index + 1}
+                </span>
+                <p className="max-w-[65ch] pt-1 leading-[1.7] text-foreground">
+                  {instruction.convertedText}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      </div>
+
+      {/* Nutrition */}
+      {nutrition && (
+        <section
+          aria-labelledby={`${ingredientFieldId}-nutrition`}
+          className="mt-12 sm:mt-16 print:hidden"
+        >
+          <Card className="gap-5">
+            <CardHeader>
+              <h2
+                id={`${ingredientFieldId}-nutrition`}
+                className="text-[1.75rem] leading-[1.2] text-foreground"
+              >
+                Nutrition
+              </h2>
+              <CardDescription>Estimated, per serving</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {nutritionOutdated && (
+                <div className="mb-5 flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning dark:border-warning-light/30 dark:bg-warning-light/15 dark:text-warning-light">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <p>
+                    These numbers were calculated before the ingredients or
+                    servings last changed, so they may be off.
+                    {isOwner && (
+                      <>
+                        {" "}
+                        <Link
+                          href={recipeEditPath(recipe)}
+                          className="font-medium underline underline-offset-4"
+                        >
+                          Recalculate them in the editor
+                        </Link>
+                        .
+                      </>
+                    )}
+                  </p>
+                </div>
+              )}
+              <NutritionDisplay
+                nutrition={nutrition}
+                // Values are per serving of the recipe as written, so they
+                // don't follow the servings selector.
+                servings={recipe.servings}
+                isEditable={false}
+              />
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
+      {/* Ratings & comments */}
+      {/* Anyone viewing this page holds its link, so everyone can rate and
+          comment. The code proves that to the API for unlisted recipes. */}
+      {initialRatingStats && (
+        <div className="mt-12 sm:mt-16 print:hidden">
+          <RatingsCommentsSection
+            code={recipe.code}
+            recipeId={recipe.id}
+            recipeOwnerId={recipe.userId}
+            initialRatingStats={initialRatingStats}
+            initialUserRating={initialUserRating}
+            initialComments={initialComments}
+            initialCommentTotal={initialCommentTotal}
+            currentUserId={currentUserId}
+            isAuthenticated={isAuthenticated}
+          />
         </div>
       )}
     </article>
+  );
+}
+
+/** One cell of the meta strip: a small uppercase label over its value. */
+function MetaItem({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <dt className="text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">
+        {label}
+      </dt>
+      <dd className="mt-1">{children}</dd>
+    </div>
+  );
+}
+
+/** "75" as "1 h 15 min", numbers in Plex Mono. */
+function Minutes({ value }: { value: number }) {
+  const hours = Math.floor(value / 60);
+  const minutes = value % 60;
+  const parts: Array<[number, string]> = [];
+  if (hours > 0) parts.push([hours, "h"]);
+  if (minutes > 0 || hours === 0) parts.push([minutes, "min"]);
+  return (
+    <span className="whitespace-nowrap">
+      {parts.map(([amount, unit], index) => (
+        <span key={unit}>
+          {index > 0 && " "}
+          <span className="font-mono text-xl tabular text-foreground">{amount}</span>
+          <span className="ml-1 text-sm text-muted-foreground">{unit}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+interface DisplayIngredient {
+  amount?: string;
+  unit?: string;
+  scaledAmount?: string | null;
+  originalAmount?: string;
+  wasScaled?: boolean;
+  converted: { displayAmount: string; unit: string } | null;
+}
+
+/**
+ * The amount column (converted and/or scaled when that applies) and, next to
+ * the name, what the recipe itself says when the amount was changed.
+ */
+function describeIngredientAmount(ingredient: DisplayIngredient): {
+  amount: string;
+  hint: string | null;
+} {
+  const join = (...parts: Array<string | null | undefined>) =>
+    parts.filter(Boolean).join(" ");
+
+  if (ingredient.converted) {
+    // Converted (and possibly scaled): the same amount in the recipe's unit.
+    const own =
+      (ingredient.wasScaled && ingredient.scaledAmount) ||
+      ingredient.originalAmount ||
+      ingredient.amount;
+    return {
+      amount: join(ingredient.converted.displayAmount, ingredient.converted.unit),
+      hint: `(${join(own, ingredient.unit)})`,
+    };
+  }
+  if (ingredient.wasScaled && ingredient.scaledAmount) {
+    return {
+      amount: join(ingredient.scaledAmount, ingredient.unit),
+      // Countable items round back to their original amount at small scale
+      // factors; "1 (was 1)" is just noise, so only note a real change.
+      hint:
+        ingredient.scaledAmount !== ingredient.originalAmount
+          ? `(was ${ingredient.originalAmount})`
+          : null,
+    };
+  }
+  return { amount: join(ingredient.amount, ingredient.unit), hint: null };
+}
+
+/**
+ * The quieter actions: Share (below `sm`, where it doesn't fit the row),
+ * Save a copy and Print.
+ */
+function MoreActions({
+  recipeId,
+  code,
+  isAuthenticated,
+  canCopy,
+  onShare,
+}: {
+  recipeId: string;
+  code: string;
+  isAuthenticated: boolean;
+  canCopy: boolean;
+  onShare: () => void;
+}) {
+  const { isCopying, saveCopy } = useSaveCopy({ recipeId, code, isAuthenticated });
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="icon" aria-label="More actions">
+          <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-48">
+        <DropdownMenuItem onSelect={onShare} className="min-h-11 sm:hidden">
+          <Share2 aria-hidden="true" />
+          Share
+        </DropdownMenuItem>
+        {canCopy && (
+          <DropdownMenuItem
+            className="min-h-11"
+            disabled={isCopying}
+            onSelect={(event) => {
+              // Stay open, showing progress, until the editor opens.
+              event.preventDefault();
+              void saveCopy();
+            }}
+          >
+            {isCopying ? (
+              <Loader2 className="animate-spin" aria-hidden="true" />
+            ) : (
+              <Copy aria-hidden="true" />
+            )}
+            {isCopying ? "Saving copy…" : "Save a copy"}
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem onSelect={printRecipe} className="min-h-11">
+          <Printer aria-hidden="true" />
+          Print
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

@@ -3,14 +3,8 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Download, Loader2 } from "lucide-react";
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui";
+import { Button, Card, CardContent } from "@/components/ui";
+import { AccountCardHeader } from "./account-field";
 
 const FALLBACK_NAME = "kookboek-export.json";
 
@@ -64,16 +58,10 @@ export function ExportDataCard() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="font-display flex items-center gap-2">
-          <Download className="h-5 w-5 text-primary" aria-hidden="true" />
-          Export your data
-        </CardTitle>
-        <CardDescription>
-          Download a JSON file with your profile, recipes, favorites, ratings, comments,
-          collections and shopping list.
-        </CardDescription>
-      </CardHeader>
+      <AccountCardHeader
+        title="Export your data"
+        description="Download a JSON file with your profile, recipes, favorites, ratings, comments, collections and shopping list."
+      />
       <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
           Photos are linked by address, not included in the file.
@@ -86,11 +74,11 @@ export function ExportDataCard() {
           disabled={isExporting}
         >
           {isExporting ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
           ) : (
-            <Download className="h-4 w-4" aria-hidden="true" />
+            <Download className="size-4" aria-hidden="true" />
           )}
-          {isExporting ? "Preparing..." : "Download My Data"}
+          {isExporting ? "Preparing..." : "Download my data"}
         </Button>
       </CardContent>
     </Card>

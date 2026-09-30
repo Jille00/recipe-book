@@ -14,6 +14,8 @@ import {
 } from "@/components/ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { withRecipeCode } from "./recipe-api";
+import { compactButtonClass, compactLabelClass } from "./action-styles";
+import { cn } from "@/lib/utils";
 import {
   COLLECTION_NAME_MAX_LENGTH,
   parseCollectionName,
@@ -31,6 +33,8 @@ interface SaveToCollectionProps {
    * in collections once it is public (see isListableInCollection).
    */
   isListable: boolean;
+  /** Icon-only below `sm` (the recipe page's action row). */
+  compact?: boolean;
 }
 
 type LoadState = "idle" | "loading" | "error" | "ready";
@@ -55,6 +59,7 @@ export function SaveToCollection({
   code,
   isAuthenticated,
   isListable,
+  compact = false,
 }: SaveToCollectionProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -223,9 +228,14 @@ export function SaveToCollection({
 
   if (!isAuthenticated) {
     return (
-      <Button variant="outline" size="sm" onClick={goToLogin}>
+      <Button
+        variant="outline"
+        size={compact ? "default" : "sm"}
+        onClick={goToLogin}
+        className={cn(compact && compactButtonClass)}
+      >
         <FolderPlus className="h-4 w-4" aria-hidden="true" />
-        Save to collection
+        <span className={cn(compact && compactLabelClass)}>Save to collection</span>
       </Button>
     );
   }
@@ -235,14 +245,18 @@ export function SaveToCollection({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button
+          variant="outline"
+          size={compact ? "default" : "sm"}
+          className={cn(compact && compactButtonClass)}
+        >
           <FolderPlus className="h-4 w-4" aria-hidden="true" />
-          Save to collection
+          <span className={cn(compact && compactLabelClass)}>Save to collection</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 rounded-xl p-0 shadow-medium">
         <div className="border-b border-border px-4 py-3">
-          <h2 className="font-display text-base font-semibold text-foreground">
+          <h2 className="text-xl text-foreground">
             Save to collection
           </h2>
           {loadState === "ready" && collections.length > 0 && (
@@ -296,7 +310,7 @@ export function SaveToCollection({
                         <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                           {c.name}
                         </span>
-                        <span className="shrink-0 text-xs text-muted-foreground">
+                        <span className="shrink-0 font-mono text-xs tabular text-muted-foreground">
                           {pending[c.id] ? (
                             <Loader2
                               className="h-3 w-3 animate-spin"
@@ -346,7 +360,13 @@ export function SaveToCollection({
                       aria-describedby={createError ? `${inputId}-error` : undefined}
                       className="h-11"
                     />
-                    <Button type="submit" size="sm" className="h-11" isLoading={isCreating}>
+                    <Button
+                      type="submit"
+                      variant="secondary"
+                      size="sm"
+                      className="h-11"
+                      isLoading={isCreating}
+                    >
                       Create
                     </Button>
                   </div>

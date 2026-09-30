@@ -1,1205 +1,231 @@
-# Recipe Book
-## Design System & Style Guide
+# Kookboek
 
-<br>
+## Design System & Style Guide: Delft
 
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+Kookboek is a personal cookbook for home cooks: the recipes you actually make, kept in one place and shared by link. The design borrows from the most Dutch of kitchen objects, the Delft tile: white glazed porcelain, cobalt paint, and a wall of tiles whose corner ornaments join into a second pattern where they meet.
 
-<br>
+Every recipe gets its own tile. That is the one memorable thing in this system; everything around it stays quiet.
 
-> *"Cooking is like love. It should be entered into with abandon or not at all."*
-> — Harriet Van Horne
-
-<br>
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-<br><br>
+---
 
 ## 00 — Design Philosophy
 
-Recipe Book draws inspiration from **editorial food magazines** and **artisanal cookbooks**. The aesthetic is warm yet sophisticated, organic yet precise—like a well-curated kitchen where every ingredient has its place.
-
-<br>
-
-### Core Principles
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                                                             │
-│    ◆  WARMTH         Earthy tones that evoke ingredients & kitchens        │
-│                                                                             │
-│    ◆  EDITORIAL      Magazine-quality typography & generous spacing         │
-│                                                                             │
-│    ◆  TACTILE        Subtle textures that feel handcrafted                 │
-│                                                                             │
-│    ◆  INTENTIONAL    Every element serves a purpose                        │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-<br><br>
+- **Porcelain, not paper.** Cool white grounds, crisp edges, no textures or grain.
+- **Cobalt does the talking.** Delft blue carries the brand: links, icons, selected states, tiles.
+- **One orange thing per page.** Dutch oranje is reserved for the main action (the default button). If a page has two orange buttons, one of them is wrong.
+- **The tile is the signature.** Recipes without a photo show their tile wall instead of a placeholder. Don't add other decoration to compete with it.
+- **Numbers line up.** Amounts, times and counts use the mono face with tabular figures.
+- **Plain words.** Sentence case, active verbs, English UI. A button says what it does ("Save recipe"), and its toast repeats it ("Recipe saved").
 
 ---
-
-<br><br>
 
 ## 01 — Color Palette
 
-A palette inspired by the kitchen: terracotta clays, fresh herbs, aged paper, and cast iron.
+All values are defined in `app/globals.css` (`@theme inline`) and checked for WCAG AA in `lib/color-contrast.test.ts`.
 
-<br>
+### Delft (brand)
 
-### Primary — Terracotta
+| Token | Hex | Use |
+|---|---|---|
+| `delft` | `#1D3C8C` | Links, icons, headings accents, tile paint. 10.11:1 on white |
+| `delft-deep` | `#142B66` | Hover for delft |
+| `delft-light` | `#8FB1F2` | Delft on dark surfaces. 7.42:1 on night-card |
 
-*The heart of our palette. Warm, appetizing, inviting.*
+### Porcelain (neutrals)
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                                                                  │
-│   TERRACOTTA 50      #FEF7F4      ░░░░░░░░░░   Subtle wash      │
-│   TERRACOTTA 100     #FCE8E0      ░░░░░░░░░░   Hover states     │
-│   TERRACOTTA 200     #F9D0C2      ░░░░░░░░░░   Backgrounds      │
-│   TERRACOTTA 300     #F4A98A      ░░░░░░░░░░   Accents          │
-│   TERRACOTTA 400     #E8785A      ░░░░░░░░░░   Interactive      │
-│   ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓   │
-│   TERRACOTTA 500     #C75D3A      ████████████  PRIMARY          │
-│   ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓   │
-│   TERRACOTTA 600     #A84A2D      ████████████  Hover            │
-│   TERRACOTTA 700     #8A3B23      ████████████  Active           │
-│   TERRACOTTA 800     #6B2E1C      ████████████  Dark accent      │
-│   TERRACOTTA 900     #4A2015      ████████████  Deep tone        │
-│                                                                  │
-└──────────────────────────────────────────────────────────────────┘
-```
+| Token | Hex | Use |
+|---|---|---|
+| `porcelain` | `#F4F6FA` | Page background |
+| white | `#FFFFFF` | Cards, inputs, popovers ("glaze") |
+| `glaze` | `#E3E9F5` | Quiet surfaces: pills, muted panels, tile ground edge |
+| `glaze-line` | `#D4DCEC` | Decorative lines, card edges (not for form controls) |
+| `pewter` | `#737F9C` | Form-control edges. 4.00:1 on white, 3.29:1 on glaze |
+| `slate` | `#4F5B75` | Secondary text. 6.81:1 on white |
+| `ink` | `#141B2D` | Body text. 17.15:1 on white |
 
-<br>
+### Oranje (main action only)
 
-### Secondary — Sage
+| Token | Hex | Use |
+|---|---|---|
+| `oranje` | `#C24E12` | Default button. White text 4.78:1 |
+| `oranje-deep` | `#A3410E` | Hover |
+| `oranje-bright` | `#FF8A45` | Default button at night. Night text 7.82:1 |
 
-*Fresh, herbal, calming. The perfect complement.*
+### Status
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                                                                  │
-│   SAGE 50            #F6F8F5      ░░░░░░░░░░   Light wash       │
-│   SAGE 100           #E8EEE4      ░░░░░░░░░░   Subtle bg        │
-│   SAGE 200           #D1DEC8      ░░░░░░░░░░   Tags             │
-│   SAGE 300           #B5C9A8      ░░░░░░░░░░   Success light    │
-│   SAGE 400           #8FB07A      ░░░░░░░░░░   Interactive      │
-│   SAGE 500           #6B9456      ████████████  Success          │
-│   SAGE 600           #567A45      ████████████  Success hover    │
-│   SAGE 700           #435F36      ████████████  Dark             │
-│                                                                  │
-└──────────────────────────────────────────────────────────────────┘
-```
+| Token | Day | Night | Use |
+|---|---|---|---|
+| success | `#2B6E4F` | `#6FD3A2` | Easy, confirmations |
+| warning | `#8A5A00` | `#F2C14E` | Medium, "outdated" notices |
+| danger | `#B3261E` | `#FF8A80` | Hard, destructive actions, errors |
+| gold | `#D99A1C` | same | Rating stars (graphic only, never text) |
 
-<br>
+Status badges use the colour as text on a 10% tint of itself (15% at night).
 
-### Neutrals — Stone & Paper
+### Semantic tokens
 
-*Warm grays with subtle undertones, never cold or sterile.*
+Components use the semantic names, never raw hex:
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                                                                  │
-│   CREAM              #FFFCF8      ░░░░░░░░░░   Page background  │
-│   PARCHMENT          #F7F3ED      ░░░░░░░░░░   Card background  │
-│   LINEN              #EDE8E0      ░░░░░░░░░░   Borders          │
-│   SAND               #D4CCC0      ░░░░░░░░░░   Dividers         │
-│   TAUPE              #A69E91      ░░░░░░░░░░   Muted text       │
-│   STONE              #7A7268      ████████████  Secondary text   │
-│   CHARCOAL           #4A4640      ████████████  Body text        │
-│   GRAPHITE           #2D2A26      ████████████  Headings         │
-│   INK                #1A1816      ████████████  Primary text     │
-│                                                                  │
-└──────────────────────────────────────────────────────────────────┘
+background  porcelain / night          foreground  ink / #E7ECF6
+card        white / night-card         muted-foreground  slate / mist
+primary     delft / delft-light        primary-foreground  white / night
+cta         oranje / oranje-bright     cta-foreground  white / night
+surface, secondary, muted, accent      glaze / night-muted
+border      glaze-line / night-line    input  pewter / #6F80A8
+destructive danger / danger-light      ring   delft / delft-light
 ```
 
-<br>
-
-### Accents
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                                                                  │
-│   AMBER              #D4A43A      ████  Warning, highlights      │
-│   PAPRIKA            #C23D2E      ████  Error, danger            │
-│   ESPRESSO           #3D2E24      ████  Dark mode accent         │
-│                                                                  │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-<br>
-
-### CSS Variables
-
-```css
-:root {
-  /* Primary - Terracotta */
-  --color-primary-50: #FEF7F4;
-  --color-primary-100: #FCE8E0;
-  --color-primary-200: #F9D0C2;
-  --color-primary-300: #F4A98A;
-  --color-primary-400: #E8785A;
-  --color-primary-500: #C75D3A;
-  --color-primary-600: #A84A2D;
-  --color-primary-700: #8A3B23;
-  --color-primary-800: #6B2E1C;
-  --color-primary-900: #4A2015;
-
-  /* Secondary - Sage */
-  --color-sage-50: #F6F8F5;
-  --color-sage-100: #E8EEE4;
-  --color-sage-200: #D1DEC8;
-  --color-sage-300: #B5C9A8;
-  --color-sage-400: #8FB07A;
-  --color-sage-500: #6B9456;
-  --color-sage-600: #567A45;
-  --color-sage-700: #435F36;
-
-  /* Neutrals */
-  --color-cream: #FFFCF8;
-  --color-parchment: #F7F3ED;
-  --color-linen: #EDE8E0;
-  --color-sand: #D4CCC0;
-  --color-taupe: #A69E91;
-  --color-stone: #7A7268;
-  --color-charcoal: #4A4640;
-  --color-graphite: #2D2A26;
-  --color-ink: #1A1816;
-
-  /* Accents */
-  --color-amber: #D4A43A;
-  --color-paprika: #C23D2E;
-  --color-espresso: #3D2E24;
-}
-```
-
-<br><br>
+`bg-primary` is Delft, not orange. Orange only comes from `bg-cta` (the default Button variant).
 
 ---
-
-<br><br>
 
 ## 02 — Typography
 
-Editorial-quality type that elevates every recipe into a story worth reading.
+| Role | Face | Notes |
+|---|---|---|
+| Display | **Gloock** (`font-display`) | Titles only: page h1, recipe titles, section headings. One weight (400); never bold it. |
+| Interface | **Hanken Grotesk** (`font-sans`) | Everything you read and press. 400 body, 500 labels, 600 buttons. |
+| Data | **IBM Plex Mono** (`font-mono` + `tabular`) | Amounts, times, servings, counts, step timers. |
 
-<br>
+`html` sets `font-synthesis-weight: none`: asking Gloock for `font-semibold` renders regular, not a smeared fake bold. Don't put `font-semibold` on display text; size carries hierarchy.
 
-### Type Pairing
+### Type scale
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                                                             │
-│                                                                             │
-│      ╔═══════════════════════════════════════════════════════════════╗      │
-│      ║                                                               ║      │
-│      ║   DISPLAY & HEADINGS                                          ║      │
-│      ║                                                               ║      │
-│      ║   Fraunces                                                    ║      │
-│      ║   Variable font with "wonky" optical axis                     ║      │
-│      ║   Weights: 400, 500, 600, 700                                 ║      │
-│      ║                                                               ║      │
-│      ║   fonts.google.com/specimen/Fraunces                          ║      │
-│      ║                                                               ║      │
-│      ╚═══════════════════════════════════════════════════════════════╝      │
-│                                                                             │
-│                              +                                              │
-│                                                                             │
-│      ╔═══════════════════════════════════════════════════════════════╗      │
-│      ║                                                               ║      │
-│      ║   BODY & UI                                                   ║      │
-│      ║                                                               ║      │
-│      ║   DM Sans                                                     ║      │
-│      ║   Geometric sans with warmth                                  ║      │
-│      ║   Weights: 400, 500, 600, 700                                 ║      │
-│      ║                                                               ║      │
-│      ║   fonts.google.com/specimen/DM+Sans                           ║      │
-│      ║                                                               ║      │
-│      ╚═══════════════════════════════════════════════════════════════╝      │
-│                                                                             │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+| Name | Size / line-height | Face |
+|---|---|---|
+| Hero | 56–72px / 1.02, tracking -0.02em | Gloock |
+| H1 | 36–44px / 1.1, tracking -0.01em | Gloock |
+| H2 | 28px / 1.2 | Gloock |
+| H3 | 20–22px / 1.3 | Gloock |
+| Body | 16px / 1.6 | Hanken |
+| Small | 14px / 1.5 | Hanken |
+| Label / eyebrow | 12–13px, 500, tracking 0.06em, uppercase | Hanken |
+| Data | 13–15px, tabular | Plex Mono |
 
-<br>
-
-### Type Scale
-
-```
-DISPLAY
-────────────────────────────────────────────────────────────────────────
-
-Display Large    Fraunces 700    48px / 52px    -0.02em    Hero titles
-Display Medium   Fraunces 700    40px / 44px    -0.02em    Page titles
-Display Small    Fraunces 600    32px / 36px    -0.01em    Section titles
-
-
-HEADINGS
-────────────────────────────────────────────────────────────────────────
-
-Heading 1        Fraunces 600    28px / 34px    -0.01em    Recipe titles
-Heading 2        Fraunces 600    24px / 30px     0        Card titles
-Heading 3        Fraunces 500    20px / 26px     0        Subsections
-Heading 4        DM Sans 600     16px / 22px     0.01em   Labels (caps)
-
-
-BODY
-────────────────────────────────────────────────────────────────────────
-
-Body Large       DM Sans 400     18px / 28px     0        Long-form
-Body             DM Sans 400     16px / 24px     0        Default
-Body Small       DM Sans 400     14px / 20px     0        Secondary
-Caption          DM Sans 500     12px / 16px     0.02em   Meta, tags
-
-
-SPECIAL
-────────────────────────────────────────────────────────────────────────
-
-Quote            Fraunces 400i   20px / 30px     0        Blockquotes
-Ingredient       DM Sans 400     16px / 24px     0        Recipe lists
-Step Number      Fraunces 600    24px / 24px     0        Instructions
-```
-
-<br>
-
-### CSS Implementation
-
-```css
-/* Font imports */
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:wght@400;500;600;700&display=swap');
-
-:root {
-  --font-display: 'Fraunces', Georgia, serif;
-  --font-body: 'DM Sans', system-ui, sans-serif;
-
-  /* Type scale */
-  --text-display-lg: 3rem;      /* 48px */
-  --text-display-md: 2.5rem;    /* 40px */
-  --text-display-sm: 2rem;      /* 32px */
-  --text-h1: 1.75rem;           /* 28px */
-  --text-h2: 1.5rem;            /* 24px */
-  --text-h3: 1.25rem;           /* 20px */
-  --text-h4: 1rem;              /* 16px */
-  --text-body-lg: 1.125rem;     /* 18px */
-  --text-body: 1rem;            /* 16px */
-  --text-body-sm: 0.875rem;     /* 14px */
-  --text-caption: 0.75rem;      /* 12px */
-}
-```
-
-<br><br>
+Eyebrows (small uppercase labels above a title) are allowed only when they say something true, e.g. a recipe's category above its title.
 
 ---
-
-<br><br>
 
 ## 03 — Spacing & Layout
 
-Generous whitespace creates breathing room. Asymmetry adds visual interest.
-
-<br>
-
-### Spacing Scale
-
-```
-BASE UNIT: 4px
-────────────────────────────────────────────────────────────────────────
-
---space-1     4px    ▪           Tight, inline
---space-2     8px    ▪▪          Icon gaps
---space-3    12px    ▪▪▪         Compact padding
---space-4    16px    ▪▪▪▪        Default gap
---space-5    20px    ▪▪▪▪▪       —
---space-6    24px    ▪▪▪▪▪▪      Card padding
---space-8    32px    ▪▪▪▪▪▪▪▪    Section gaps
---space-10   40px    ▪▪▪▪▪▪▪▪▪▪  —
---space-12   48px    ▪▪▪▪▪▪▪▪▪▪▪▪ Page margins
---space-16   64px    ████████████ Section breaks
---space-20   80px    ████████████ Hero spacing
---space-24   96px    ████████████ Major sections
-```
-
-<br>
-
-### Layout Grid
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                                                             │
-│   CONTAINER                                                                 │
-│   Max width: 1200px                                                         │
-│   Padding: 24px (mobile) → 48px (desktop)                                   │
-│                                                                             │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│   12-COLUMN GRID                                                            │
-│   Gap: 24px                                                                 │
-│   ┌───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┐                        │
-│   │ 1 │ 2 │ 3 │ 4 │ 5 │ 6 │ 7 │ 8 │ 9 │10 │11 │12 │                        │
-│   └───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘                        │
-│                                                                             │
-│   Common spans:                                                             │
-│   • Full width:     12 cols                                                 │
-│   • Content:        8 cols (centered)                                       │
-│   • Sidebar + Main: 4 + 8 cols                                              │
-│   • Cards:          4 cols each (3-up)                                      │
-│   • Cards:          6 cols each (2-up)                                      │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-<br>
-
-### Responsive Breakpoints
-
-```
-MOBILE FIRST
-────────────────────────────────────────────────────────────────────────
-
-sm      640px     Large phones          2-column grids begin
-md      768px     Tablets               Sidebar layouts
-lg     1024px     Laptops               3-column grids
-xl     1280px     Desktops              Full experience
-2xl    1536px     Large displays        Maximum container
-```
-
-<br><br>
+- 4px base; common steps 8, 12, 16, 24, 32, 48, 64.
+- Page container: `max-w-6xl` (1152px), `px-4 sm:px-6 lg:px-8`. Reading pages (recipe, recipe editor) `max-w-4xl`; single-column settings pages (account, profile) `max-w-2xl`.
+- Section rhythm: 48px between sections on desktop, 32px on mobile.
+- Grids: recipe cards 1 / 2 / 3 columns (sm / lg), 24px gap.
+- Radius: `--radius` 6px. Buttons and inputs `rounded-lg` (6px), cards `rounded-xl` (10px), pills `rounded-full`. Tiles have the square corners of the object they depict (2px at most).
 
 ---
-
-<br><br>
 
 ## 04 — Components
 
-<br>
+### Button (`components/ui/button.tsx`)
 
-### Button
+| Variant | Look | When |
+|---|---|---|
+| `default` | Oranje, white text, uppercase, tracking 0.06em | The one main action on a page |
+| `outline` | White with a 1.5px glaze-line edge, ink text; hover delft edge | Everything else a page offers |
+| `secondary` | Glaze fill, delft text | Toggles, secondary actions inside cards |
+| `ghost` | Slate text, glaze on hover | Toolbars, icon buttons |
+| `destructive` | Danger fill | Confirm-delete buttons inside dialogs only |
+| `link` | Delft text, underline on hover | Inline actions |
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                                                             │
-│   PRIMARY                                                                   │
-│   ┌─────────────────────────┐                                               │
-│   │    Save Recipe          │   bg: terracotta-500                          │
-│   └─────────────────────────┘   text: cream                                 │
-│                                 hover: terracotta-600                       │
-│                                 border-radius: 8px                          │
-│                                 padding: 12px 24px                          │
-│                                 font: DM Sans 600, 14px                     │
-│                                 letter-spacing: 0.02em                      │
-│                                 text-transform: uppercase                   │
-│                                                                             │
-│   SECONDARY                                                                 │
-│   ┌─────────────────────────┐                                               │
-│   │    View All             │   bg: transparent                             │
-│   └─────────────────────────┘   text: charcoal                              │
-│                                 border: 1.5px solid linen                   │
-│                                 hover: bg parchment                         │
-│                                                                             │
-│   GHOST                                                                     │
-│   ┌─────────────────────────┐                                               │
-│   │    Cancel               │   bg: transparent                             │
-│   └─────────────────────────┘   text: stone                                 │
-│                                 hover: text charcoal                        │
-│                                                                             │
-│   DANGER                                                                    │
-│   ┌─────────────────────────┐                                               │
-│   │    Delete               │   bg: paprika                                 │
-│   └─────────────────────────┘   text: cream                                 │
-│                                 hover: darker paprika                       │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+Sizes: sm 36px, default 44px, lg 52px; icon buttons 44px (touch target).
 
-<br>
+### Card (`components/ui/card.tsx`)
 
-### Button Sizes
+White on the porcelain page, 1px `border` edge, `rounded-xl`, `shadow-soft`. Recipe cards lift 4px to `shadow-lifted` on hover.
 
-```
-SIZE        HEIGHT      PADDING         FONT SIZE
-────────────────────────────────────────────────────────────────────────
-Small       36px        8px  16px       13px
-Medium      44px        12px 24px       14px          ← Default
-Large       52px        16px 32px       15px
-```
+### Recipe card
 
-<br>
+- Cover: the photo, or the recipe's **tile wall** (`DelftWall`, tile ~112px) when there's no photo.
+- Time badge: glass pill, top-right, Plex Mono.
+- Title: Gloock 20–22px, one line.
+- Meta row: servings and rating in Plex Mono; difficulty as a status badge. Time lives only on the cover badge.
+- Author: slate, linked to `/u/{handle}` when set.
 
-### Card
+### Inputs
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                                                             │
-│   RECIPE CARD                                                               │
-│                                                                             │
-│   ╭─────────────────────────────────────╮                                   │
-│   │                                     │                                   │
-│   │          ┌───────────────┐          │  Image: aspect-ratio 4:3          │
-│   │          │               │          │  border-radius: 12px 12px 0 0     │
-│   │          │     IMAGE     │          │  object-fit: cover                │
-│   │          │               │          │                                   │
-│   │          └───────────────┘          │                                   │
-│   │                                     │                                   │
-│   │  ┌─────────┐                        │  Badge: positioned top-right      │
-│   │  │ 30 min  │                        │  over image with glass effect     │
-│   │  └─────────┘                        │                                   │
-│   │                                     │                                   │
-│   │  Grandma's Apple Pie                │  Title: Fraunces 600, 20px        │
-│   │                                     │  color: graphite                  │
-│   │  A classic recipe passed down       │                                   │
-│   │  through generations...             │  Description: DM Sans 400         │
-│   │                                     │  color: stone, line-clamp: 2      │
-│   │                                     │                                   │
-│   │  ┌────────┐  ┌────────┐             │  Tags: pill-shaped                │
-│   │  │Dessert │  │ Easy   │             │  bg: sage-100, text: sage-700     │
-│   │  └────────┘  └────────┘             │                                   │
-│   │                                     │                                   │
-│   ╰─────────────────────────────────────╯                                   │
-│                                                                             │
-│   Card Properties:                                                          │
-│   • bg: parchment                                                           │
-│   • border: 1px solid linen                                                 │
-│   • border-radius: 12px                                                     │
-│   • box-shadow: 0 2px 8px rgba(0,0,0,0.04)                                  │
-│   • hover: shadow increases, subtle lift transform                          │
-│   • transition: all 0.3s ease                                               │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+48px, white, 1.5px `input` (pewter) edge, `rounded-md`, 16px text. Focus: delft border and a 3px `primary/15` halo. Error: danger border and halo, message below in danger 13px, linked with `aria-describedby`.
 
-<br>
+### Tag pills
 
-### Input Fields
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                                                             │
-│   DEFAULT STATE                                                             │
-│                                                                             │
-│   Recipe Title                              Label: DM Sans 500, 14px        │
-│   ┌────────────────────────────────────┐    color: charcoal                 │
-│   │ Enter recipe name...               │    margin-bottom: 8px              │
-│   └────────────────────────────────────┘                                    │
-│                                             Input:                          │
-│                                             • height: 48px                  │
-│                                             • bg: cream                     │
-│                                             • border: 1.5px solid sand      │
-│                                             • border-radius: 8px            │
-│                                             • padding: 0 16px               │
-│                                             • font: DM Sans 400, 16px       │
-│                                                                             │
-│   FOCUS STATE                                                               │
-│                                                                             │
-│   Recipe Title                                                              │
-│   ┌────────────────────────────────────┐    • border: 1.5px terracotta-400  │
-│   │ Grandma's Apple Pie                │    • box-shadow: 0 0 0 3px         │
-│   └────────────────────────────────────┘      terracotta-100                │
-│                                                                             │
-│   ERROR STATE                                                               │
-│                                                                             │
-│   Recipe Title                                                              │
-│   ┌────────────────────────────────────┐    • border: 1.5px paprika         │
-│   │                                    │    • box-shadow: 0 0 0 3px         │
-│   └────────────────────────────────────┘      rgba(paprika, 0.1)            │
-│   Please enter a recipe title               • Error text: paprika, 13px    │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-<br>
-
-### Badge / Tag
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                                                             │
-│   CATEGORY TAGS                                                             │
-│                                                                             │
-│   ┌──────────┐    bg: sage-100          border-radius: 100px (pill)         │
-│   │ Dessert  │    text: sage-700        padding: 6px 14px                   │
-│   └──────────┘    font: DM Sans 500     font-size: 12px                     │
-│                   letter-spacing: 0.02em                                    │
-│                                                                             │
-│   DIFFICULTY BADGES                                                         │
-│                                                                             │
-│   ┌────────┐      Easy:    bg sage-100, text sage-700                       │
-│   │  Easy  │      Medium:  bg amber/15, text amber-700                      │
-│   └────────┘      Hard:    bg paprika/10, text paprika                      │
-│                                                                             │
-│   TIME BADGE (Glass Effect)                                                 │
-│                                                                             │
-│   ┌──────────┐    bg: rgba(255,255,255,0.85)                                │
-│   │  30 min  │    backdrop-filter: blur(8px)                                │
-│   └──────────┘    border: 1px solid rgba(255,255,255,0.5)                   │
-│                   box-shadow: 0 2px 8px rgba(0,0,0,0.1)                     │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-<br>
+`rounded-full`, glaze background, delft text, 12–13px, 500. At night: night-muted with delft-light text.
 
 ### Navigation
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                                                             │
-│   HEADER                                                                    │
-│                                                                             │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                                                                     │   │
-│   │   🍳 Recipe Book          Recipes   Categories   Favorites    [AV]  │   │
-│   │                                                                     │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                             │
-│   Properties:                                                               │
-│   • height: 72px                                                            │
-│   • bg: cream with subtle grain texture                                     │
-│   • border-bottom: 1px solid linen                                          │
-│   • position: sticky, top: 0                                                │
-│   • backdrop-filter: blur(12px) saturate(1.2)                               │
-│                                                                             │
-│   Logo:                                                                     │
-│   • Fraunces 700, 22px                                                      │
-│   • color: graphite                                                         │
-│   • icon: custom chef hat or pan                                            │
-│                                                                             │
-│   Nav Links:                                                                │
-│   • DM Sans 500, 15px                                                       │
-│   • color: stone → charcoal on hover                                        │
-│   • active: terracotta-500 with dot indicator below                         │
-│   • transition: color 0.2s                                                  │
-│                                                                             │
-│   ACTIVE STATE                                                              │
-│   ┌──────────┐                                                              │
-│   │ Recipes  │    color: terracotta-500                                     │
-│   │    •     │    dot: 4px circle, terracotta-500                           │
-│   └──────────┘    positioned 4px below text                                 │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+Sticky header on porcelain with a glaze-line bottom edge (glass while scrolling). Left: the tile mark + "kookboek" wordmark in Gloock. Active link: delft text with a 2px delft underline offset 6px.
 
-<br><br>
+### Empty states
+
+A single `DelftTile` (96–120px) with the motif that fits (e.g. a cup for an empty shopping list), a Gloock title that says what's missing, one line of guidance, one action.
 
 ---
-
-<br><br>
 
 ## 05 — Motion & Interaction
 
-Subtle, purposeful animations that feel natural and delightful.
-
-<br>
-
-### Timing & Easing
-
-```
-DURATIONS
-────────────────────────────────────────────────────────────────────────
-
---duration-fast      150ms     Micro-interactions (color, opacity)
---duration-normal    250ms     Standard transitions
---duration-slow      400ms     Larger movements, reveals
---duration-slower    600ms     Page transitions, hero animations
-
-
-EASING CURVES
-────────────────────────────────────────────────────────────────────────
-
---ease-out           cubic-bezier(0.33, 1, 0.68, 1)      Default
---ease-in-out        cubic-bezier(0.65, 0, 0.35, 1)      Symmetric
---ease-spring        cubic-bezier(0.34, 1.56, 0.64, 1)   Bouncy
---ease-smooth        cubic-bezier(0.4, 0, 0.2, 1)        Material-like
-```
-
-<br>
-
-### Hover States
-
-```
-CARDS
-────────────────────────────────────────────────────────────────────────
-
-Default  →  Hover
-• transform: translateY(0)  →  translateY(-4px)
-• box-shadow: 0 2px 8px rgba(0,0,0,0.04)  →  0 12px 24px rgba(0,0,0,0.08)
-• transition: all 0.3s var(--ease-out)
-
-
-BUTTONS
-────────────────────────────────────────────────────────────────────────
-
-Primary:
-• background-color transition: 0.2s
-• transform: scale(1) → scale(1.02) on hover
-• active: scale(0.98)
-
-Secondary:
-• border-color: linen → sand
-• background: transparent → parchment
-
-
-IMAGES
-────────────────────────────────────────────────────────────────────────
-
-• transform: scale(1) → scale(1.05)
-• transition: transform 0.5s var(--ease-out)
-• overflow: hidden on container
-```
-
-<br>
-
-### Page Transitions
-
-```
-STAGGERED REVEAL
-────────────────────────────────────────────────────────────────────────
-
-On page load, elements fade in and slide up with staggered delays:
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-in {
-  animation: fadeInUp 0.6s var(--ease-out) forwards;
-  opacity: 0;
-}
-
-/* Stagger children */
-.stagger > *:nth-child(1) { animation-delay: 0ms; }
-.stagger > *:nth-child(2) { animation-delay: 75ms; }
-.stagger > *:nth-child(3) { animation-delay: 150ms; }
-.stagger > *:nth-child(4) { animation-delay: 225ms; }
-/* ... */
-```
-
-<br><br>
+- Durations: fast 150ms (hover/color), normal 250ms (popovers), slow 400ms (cards lift).
+- Easing: `ease-out` (`cubic-bezier(0.33, 1, 0.68, 1)`) for entering, `ease-in-out` for toggles.
+- One orchestrated moment: the home page tile wall settles in (tiles fade and rise with a short stagger). Elsewhere, motion is limited to hover lift, focus, and dialog open/close.
+- `prefers-reduced-motion`: all animation and transitions collapse to instant (see `globals.css`).
 
 ---
 
-<br><br>
+## 06 — The Delft Tile (signature)
 
-## 06 — Textures & Effects
+`lib/delft-tile.ts` (pure, tested) and `components/delft/delft-tile.tsx` (SVG).
 
-Subtle details that add depth and tactile quality.
+- **Seed:** the recipe's share code (`recipe.code`). Same recipe, same tile, forever.
+- **Motif** from the recipe's tags, most specific first: seafood → fish, soups & stews → bowl, desserts → tulip, baking/bread/pasta → wheat, breakfast → sun, drinks → cup, poultry → hen, meat → pot, vegan/vegetarian/salads → sprig, dinner → windmill. Untagged recipes get a seeded fallback (rosette, tulip, windmill, sprig).
+- **Seeded variation:** corner style (ox-head, spider, fleur, quarter), a slight tilt, optional painted ring, wash strength, line weight.
+- **Colours:** `--tile-ground`, `--tile-ground-edge`, `--tile-paint`, `--tile-line`. Day: cobalt on porcelain. Night: pale blue on cobalt.
 
-<br>
+| Component | Use |
+|---|---|
+| `<DelftTile seed tags />` | A single tile: logo mark, empty states, tag headers, small marks |
+| `<DelftWall seed tags tileSize />` | The tile repeated as a wall: covers without a photo (cards, recipe hero, collections) |
 
-### Grain Overlay
-
-```css
-/* Apply to body or sections for subtle texture */
-.grain::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  opacity: 0.03;
-  pointer-events: none;
-  z-index: 1000;
-}
-```
-
-<br>
-
-### Glass Effect
-
-```css
-.glass {
-  background: rgba(255, 252, 248, 0.8);
-  backdrop-filter: blur(12px) saturate(1.5);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-}
-```
-
-<br>
-
-### Decorative Divider
-
-```
-────────  ◆  ────────
-
-/* CSS */
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  color: var(--color-sand);
-}
-
-.divider::before,
-.divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: currentColor;
-}
-```
-
-<br><br>
+Tiles are decorative (`aria-hidden`) unless given a `label`. Don't recolour them, add borders around them, or put text on top of a wall except the glass time badge.
 
 ---
-
-<br><br>
 
 ## 07 — Dark Mode
 
-A warm, cozy dark theme—like a kitchen at night.
+Delft at night: the same structure, inverted grounds.
 
-<br>
+| Token | Value |
+|---|---|
+| background (night) | `#0D1428` |
+| card (night-card) | `#152040` |
+| muted (night-muted) | `#1E2B52` |
+| border (night-line) | `#2A3A66` |
+| foreground | `#E7ECF6` (13.51:1 on card) |
+| muted-foreground (mist) | `#A5B2CE` (7.51:1 on card) |
+| primary | `#8FB1F2` |
+| cta | `#FF8A45` with night text |
 
-### Color Mapping
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                                                             │
-│   ELEMENT              LIGHT MODE           DARK MODE                       │
-│   ─────────────────────────────────────────────────────────────────────     │
-│                                                                             │
-│   Page background      cream                #1A1816 (ink)                   │
-│   Card background      parchment            #242220                         │
-│   Elevated surface     cream                #2D2A26                         │
-│                                                                             │
-│   Primary text         ink                  #F5F2ED                         │
-│   Secondary text       charcoal             #A69E91 (taupe)                 │
-│   Muted text           stone                #7A7268 (stone)                 │
-│                                                                             │
-│   Borders              linen                #3D3935                         │
-│   Dividers             sand                 #4A4640                         │
-│                                                                             │
-│   Primary button       terracotta-500       terracotta-400                  │
-│   Primary hover        terracotta-600       terracotta-500                  │
-│                                                                             │
-│   Success              sage-500             sage-400                        │
-│   Warning              amber                amber (lighter)                 │
-│   Error                paprika              paprika (lighter)               │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-<br>
-
-### CSS Variables (Dark)
-
-```css
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #1A1816;
-    --color-bg-card: #242220;
-    --color-bg-elevated: #2D2A26;
-
-    --color-text-primary: #F5F2ED;
-    --color-text-secondary: #A69E91;
-    --color-text-muted: #7A7268;
-
-    --color-border: #3D3935;
-    --color-divider: #4A4640;
-
-    --color-primary: #E8785A;
-    --color-primary-hover: #C75D3A;
-  }
-}
-```
-
-<br><br>
+Theme follows the system by default; the header toggle offers light / dark / system (`next-themes`, class strategy).
 
 ---
-
-<br><br>
 
 ## 08 — Iconography
 
-Clean, consistent iconography using **Lucide React** — a beautifully crafted open-source icon library.
-
-<br>
-
-### Icon Library
-
-```
-LUCIDE REACT (lucide.dev)
-────────────────────────────────────────────────────────────────────────
-
-Package: lucide-react
-Style: Consistent 24x24 viewBox with 2px stroke
-License: ISC (open source)
-
-Installation:
-npm install lucide-react
-
-Import example:
-import { ChefHat, Clock, Heart } from "lucide-react";
-```
-
-<br>
-
-### Core Icons Used
-
-```
-NAVIGATION & UI
-────────────────────────────────────────────────────────────────────────
-ChefHat              Logo, branding
-Menu                 Mobile menu
-X                    Close, remove
-Plus                 Add new item
-ArrowLeft            Back navigation
-ArrowRight           Forward, links
-Search               Search functionality
-Settings             User settings
-LogOut               Sign out
-User                 User profile
-Moon / Sun           Theme toggle
-
-
-RECIPE & CONTENT
-────────────────────────────────────────────────────────────────────────
-Clock                Prep time
-Timer                Cook time
-Users                Servings
-Utensils             Total time
-ChefHat              Recipe placeholder
-ImagePlus            Image upload
-Upload               File upload
-RefreshCw            Change/replace
-
-
-ACTIONS
-────────────────────────────────────────────────────────────────────────
-Heart                Favorites
-Share2               Share recipe
-Pencil               Edit
-Trash2               Delete
-Copy                 Copy to clipboard
-Check                Success, confirmation
-AlertCircle          Error, warning
-Loader2              Loading spinner
-GripVertical         Drag handle
-
-
-CATEGORIES (Food-specific)
-────────────────────────────────────────────────────────────────────────
-Coffee               Breakfast
-Salad                Lunch
-UtensilsCrossed      Dinner
-Cookie               Appetizers
-Soup                 Soups & Salads
-Beef                 Main Courses
-Carrot               Side Dishes
-Cake                 Desserts
-Popcorn              Snacks
-Wine                 Beverages
-Croissant            Baking
-
-
-LAYOUT & NAVIGATION
-────────────────────────────────────────────────────────────────────────
-BookOpen             Recipe collection
-Library              All recipes
-FolderOpen           Categories
-PenLine              Create/write
-Home                 Home page
-```
-
-<br>
-
-### Icon Sizing
-
-```
-SIZE          CLASS            DIMENSIONS     USAGE
-────────────────────────────────────────────────────────────────────────
-Extra Small   h-3 w-3          12 × 12        Inside badges
-Small         h-4 w-4          16 × 16        Buttons, inline text
-Medium        h-5 w-5          20 × 20        List items, cards
-Large         h-6 w-6          24 × 24        Navigation, headers
-Extra Large   h-8 w-8          32 × 32        Empty states
-Hero          h-10 w-10        40 × 40        Feature highlights
-```
-
-<br>
-
-### Usage Guidelines
-
-```tsx
-// Basic usage
-import { Heart, Clock, Users } from "lucide-react";
-
-// In components - always use className for sizing
-<Heart className="h-4 w-4" />
-<Clock className="h-5 w-5 text-primary" />
-<Users className="h-6 w-6 text-muted-foreground" />
-
-// With color from design system
-<ChefHat className="h-6 w-6 text-primary" />
-<Trash2 className="h-4 w-4 text-destructive" />
-<Check className="h-4 w-4 text-emerald-500" />
-
-// Animated icons (for loading states)
-<Loader2 className="h-4 w-4 animate-spin" />
-
-// Icon in button
-<Button>
-  <Plus className="h-4 w-4" />
-  Add Recipe
-</Button>
-
-// Icon-only button
-<Button variant="ghost" size="icon">
-  <Heart className="h-5 w-5" />
-</Button>
-```
-
-<br>
-
-### Icon Containers
-
-```
-CIRCULAR CONTAINER (for feature highlights)
-────────────────────────────────────────────────────────────────────────
-
-<div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-  <ChefHat className="h-6 w-6 text-primary" />
-</div>
-
-Sizes:
-• Small:   h-10 w-10 container, h-5 w-5 icon
-• Medium:  h-12 w-12 container, h-6 w-6 icon
-• Large:   h-14 w-14 container, h-7 w-7 icon
-• XLarge:  h-20 w-20 container, h-10 w-10 icon (empty states)
-
-
-ROUNDED SQUARE CONTAINER (for cards, navigation)
-────────────────────────────────────────────────────────────────────────
-
-<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-  <ChefHat className="h-5 w-5" />
-</div>
-```
-
-<br>
-
-### Hover & Interactive States
-
-```css
-/* Icon color transition on hover */
-.group:hover .icon {
-  @apply text-primary;
-}
-
-/* Scale effect */
-.group:hover .icon-container {
-  @apply scale-110;
-}
-
-/* Icon button hover */
-<Button variant="ghost" className="text-muted-foreground hover:text-destructive">
-  <Trash2 className="h-4 w-4" />
-</Button>
-```
-
-<br><br>
+Lucide, 1.5–2px stroke, `size-4` in buttons, `size-5` in navigation. Icons are delft when they carry meaning (nav, section headings), slate when supportive. Recipe imagery is never an icon: use the tile.
 
 ---
-
-<br><br>
 
 ## 09 — Accessibility
 
-Beautiful design should be usable by everyone.
-
-<br>
-
-### Color Contrast
-
-```
-All text combinations meet WCAG 2.1 AA standards:
-
-TEXT                    BACKGROUND          RATIO       PASS
-────────────────────────────────────────────────────────────────────────
-ink (#1A1816)           cream (#FFFCF8)     14.8:1      ✓ AAA
-charcoal (#4A4640)      cream               7.2:1       ✓ AAA
-stone (#7A7268)         cream               4.6:1       ✓ AA
-terracotta-600          cream               4.7:1       ✓ AA (large)
-
-Light text (dark mode):
-#F5F2ED                 #1A1816             13.9:1      ✓ AAA
-#A69E91                 #1A1816             6.1:1       ✓ AA
-```
-
-<br>
-
-### Focus States
-
-```css
-/* Visible focus ring for keyboard navigation */
-:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 2px var(--color-cream),
-    0 0 0 4px var(--color-primary-500);
-}
-
-/* Skip link for screen readers */
-.skip-link {
-  position: absolute;
-  top: -100%;
-  left: 16px;
-  padding: 12px 24px;
-  background: var(--color-primary-500);
-  color: white;
-  border-radius: 8px;
-  z-index: 9999;
-}
-
-.skip-link:focus {
-  top: 16px;
-}
-```
-
-<br>
-
-### Reduced Motion
-
-```css
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-```
-
-<br><br>
+- Text 4.5:1, large text and UI boundaries 3:1, in both themes (tests in `lib/color-contrast.test.ts`, `lib/auth-panel-contrast.test.ts`).
+- Visible focus: 2px delft ring with 2px offset on buttons/links; delft border + halo on inputs.
+- Touch targets ≥ 44px.
+- Form errors in `role="alert"`, fields linked with `aria-invalid` / `aria-describedby`.
+- Reduced motion respected globally.
 
 ---
-
-<br><br>
 
 ## 10 — Implementation
 
-<br>
-
-### Tailwind Config
-
-```js
-// tailwind.config.js
-module.exports = {
-  theme: {
-    extend: {
-      colors: {
-        terracotta: {
-          50: '#FEF7F4',
-          100: '#FCE8E0',
-          200: '#F9D0C2',
-          300: '#F4A98A',
-          400: '#E8785A',
-          500: '#C75D3A',
-          600: '#A84A2D',
-          700: '#8A3B23',
-          800: '#6B2E1C',
-          900: '#4A2015',
-        },
-        sage: {
-          50: '#F6F8F5',
-          100: '#E8EEE4',
-          200: '#D1DEC8',
-          300: '#B5C9A8',
-          400: '#8FB07A',
-          500: '#6B9456',
-          600: '#567A45',
-          700: '#435F36',
-        },
-        cream: '#FFFCF8',
-        parchment: '#F7F3ED',
-        linen: '#EDE8E0',
-        sand: '#D4CCC0',
-        taupe: '#A69E91',
-        stone: '#7A7268',
-        charcoal: '#4A4640',
-        graphite: '#2D2A26',
-        ink: '#1A1816',
-        amber: '#D4A43A',
-        paprika: '#C23D2E',
-        espresso: '#3D2E24',
-      },
-      fontFamily: {
-        display: ['Fraunces', 'Georgia', 'serif'],
-        body: ['DM Sans', 'system-ui', 'sans-serif'],
-      },
-      borderRadius: {
-        DEFAULT: '8px',
-        lg: '12px',
-        xl: '16px',
-        full: '9999px',
-      },
-      boxShadow: {
-        'soft': '0 2px 8px rgba(0,0,0,0.04)',
-        'medium': '0 4px 16px rgba(0,0,0,0.06)',
-        'lifted': '0 12px 24px rgba(0,0,0,0.08)',
-      },
-    },
-  },
-};
-```
-
-<br>
-
-### File Structure
-
-```
-styles/
-├── globals.css           # CSS variables, base styles, grain texture
-├── fonts.css             # @font-face declarations
-└── components/
-    ├── button.css
-    ├── card.css
-    ├── input.css
-    └── ...
-
-components/ui/
-├── Button.tsx
-├── Card.tsx
-├── Input.tsx
-├── Badge.tsx
-├── Avatar.tsx
-└── index.ts              # Barrel export
-```
-
-<br><br>
-
----
-
-<br>
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-<br>
-
-<p align="center">
-  <strong>Recipe Book Design System</strong><br>
-  <em>Version 1.0 · December 2024</em>
-</p>
-
-<br>
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+- Tokens: `app/globals.css`. Fonts: `app/layout.tsx` via `next/font` (`--font-gloock`, `--font-hanken`, `--font-plex-mono`).
+- Primitives: `components/ui/*` (shadcn, restyled). Use variants, not one-off colour classes.
+- Use semantic utilities (`bg-card`, `text-muted-foreground`, `text-primary`, `bg-cta`) or the named palette (`bg-glaze`, `text-delft`, `text-success`). Never raw hex in components.

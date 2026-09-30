@@ -4,17 +4,16 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { format } from "date-fns";
-import { CalendarDays, ChefHat, Globe, MapPin, Pencil } from "lucide-react";
+import { CalendarDays, Globe, MapPin, Pencil } from "lucide-react";
 import { auth } from "@/lib/auth";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
   Button,
-  Card,
-  CardContent,
   Pagination,
 } from "@/components/ui";
+import { EmptyState } from "@/components/page/empty-state";
 import { RecipeCard } from "@/components/recipe/recipe-card";
 import {
   getPublicProfileByHandle,
@@ -143,16 +142,16 @@ export default async function PublicProfilePage({ params, searchParams }: Props)
   const website = websiteLink(profile.website);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
       {/* Profile header */}
       <section
         aria-labelledby="profile-name"
-        className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-start"
+        className="mb-10 flex flex-col gap-6 sm:mb-12 sm:flex-row sm:items-start"
       >
         <Avatar className="h-24 w-24 shrink-0 border border-border">
           {/* Decorative: the name is the heading right next to it. */}
           <AvatarImage src={profile.image || undefined} alt="" />
-          <AvatarFallback className="bg-primary/10 text-2xl font-medium text-primary">
+          <AvatarFallback className="bg-secondary font-display text-3xl text-primary">
             {initials(profile.name)}
           </AvatarFallback>
         </Avatar>
@@ -162,7 +161,7 @@ export default async function PublicProfilePage({ params, searchParams }: Props)
             <div className="min-w-0">
               <h1
                 id="profile-name"
-                className="font-display text-3xl font-semibold tracking-tight text-foreground break-words"
+                className="font-display text-4xl leading-[1.1] tracking-[-0.01em] text-foreground break-words sm:text-[44px]"
               >
                 {profile.name}
               </h1>
@@ -179,7 +178,7 @@ export default async function PublicProfilePage({ params, searchParams }: Props)
           </div>
 
           {profile.bio && (
-            <p className="mt-4 max-w-2xl whitespace-pre-line text-lg leading-7 text-foreground">
+            <p className="mt-4 max-w-2xl whitespace-pre-line text-base leading-[1.6] text-foreground sm:text-lg">
               {profile.bio}
             </p>
           )}
@@ -201,7 +200,7 @@ export default async function PublicProfilePage({ params, searchParams }: Props)
                   // User-supplied link: no ranking credit, no window.opener.
                   rel="nofollow ugc noopener"
                   target="_blank"
-                  className="inline-flex min-h-11 items-center break-all font-medium text-primary underline-offset-4 hover:text-primary-hover hover:underline sm:min-h-0"
+                  className="inline-flex min-h-11 items-center break-all font-medium text-primary underline-offset-4 transition-colors duration-(--duration-fast) hover:text-primary-hover hover:underline sm:min-h-0"
                 >
                   {website.label}
                   <span className="sr-only"> (opens in a new tab)</span>
@@ -211,7 +210,10 @@ export default async function PublicProfilePage({ params, searchParams }: Props)
             {profile.createdAt && (
               <li className="flex items-center gap-1.5">
                 <CalendarDays className="h-4 w-4" aria-hidden="true" />
-                Joined {format(profile.createdAt, "MMMM yyyy")}
+                Joined {format(profile.createdAt, "MMMM")}{" "}
+                <span className="font-mono tabular">
+                  {format(profile.createdAt, "yyyy")}
+                </span>
               </li>
             )}
           </ul>
@@ -220,32 +222,44 @@ export default async function PublicProfilePage({ params, searchParams }: Props)
 
       {/* Public recipes */}
       <section aria-labelledby="profile-recipes">
-        <div className="mb-6 flex items-baseline justify-between gap-4 border-b border-border pb-4">
-          <h2 id="profile-recipes" className="font-display text-2xl font-semibold text-foreground">
+        <div className="mb-6 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border pb-4">
+          <h2 id="profile-recipes" className="font-display text-[28px] leading-[1.2] text-foreground">
             Recipes
           </h2>
           <p className="text-sm text-muted-foreground">
-            {total} public recipe{total === 1 ? "" : "s"}
-            {requestedPage > 1 && ` (page ${requestedPage} of ${totalPages})`}
+            <span className="font-mono tabular text-foreground">{total}</span>{" "}
+            public {total === 1 ? "recipe" : "recipes"}
+            {requestedPage > 1 && (
+              <>
+                {" · page "}
+                <span className="font-mono tabular">{requestedPage}</span> of{" "}
+                <span className="font-mono tabular">{totalPages}</span>
+              </>
+            )}
           </p>
         </div>
 
         {recipes.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-muted">
-                <ChefHat className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
-              </div>
-              <p className="font-display text-xl font-semibold text-foreground">
-                No public recipes yet
-              </p>
-              <p className="mt-2 max-w-md text-muted-foreground">
-                {isOwner
-                  ? "Recipes you make public will show up here for everyone to see."
-                  : `${profile.name} hasn't shared any recipes publicly yet.`}
-              </p>
-            </CardContent>
-          </Card>
+          <EmptyState
+            seed={profile.handle}
+            headingLevel="h3"
+            title="No public recipes yet"
+            action={
+              isOwner ? (
+                <Button asChild>
+                  <Link href="/recipes">Go to my recipes</Link>
+                </Button>
+              ) : (
+                <Button asChild variant="outline">
+                  <Link href="/browse">Browse recipes</Link>
+                </Button>
+              )
+            }
+          >
+            {isOwner
+              ? "Recipes you make public will show up here for everyone to see."
+              : `${profile.name} hasn't shared any recipes publicly yet.`}
+          </EmptyState>
         ) : (
           <>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

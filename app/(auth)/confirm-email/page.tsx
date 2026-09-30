@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
+import { AuthHeading, AuthShell } from "../_components/auth-shell";
 import { Button } from "@/components/ui";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { parseEmailChangeStage, type EmailChangeStage } from "@/lib/auth-links";
 
 export const metadata: Metadata = {
-  title: "Confirm Email",
+  title: "Confirm email",
   description: "Confirm the email address for your Kookboek account",
   robots: { index: false, follow: false },
 };
@@ -89,73 +89,49 @@ export default async function ConfirmEmailPage({ searchParams }: Props) {
     : { title: "Your email is confirmed", body: "Your account is ready and you're signed in." };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left side - Message */}
-      <div className="flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
-        <div className="mx-auto w-full max-w-sm lg:w-96">
-          <div className="mb-8">
-            <Link href="/" className="inline-block">
-              <Image
-                src="/logo.png"
-                alt="Kookboek"
-                width={96}
-                height={96}
-                className="h-12 w-auto"
-              />
-            </Link>
-            <div
-              className={
-                failure
-                  ? "mt-8 flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10 text-destructive"
-                  : "mt-8 flex h-10 w-10 items-center justify-center rounded-full bg-secondary/20 text-secondary-foreground"
-              }
-            >
-              {failure ? (
-                <AlertTriangle className="h-5 w-5" aria-hidden="true" />
-              ) : (
-                <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
-              )}
-            </div>
-            <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight text-balance">
-              {failure ? failure.title : success.title}
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {failure ? failure.body : success.body}
-            </p>
+    <AuthShell
+      seed="kookboek-confirm-email"
+      tags={["vegetarian"]}
+      quote="People who love to eat are always the best people."
+      author="Julia Child"
+    >
+      <AuthHeading
+        title={failure ? failure.title : success.title}
+        description={failure ? failure.body : success.body}
+        icon={
+          <div
+            className={
+              failure
+                ? "flex size-10 items-center justify-center rounded-full bg-destructive/10 text-destructive"
+                : "flex size-10 items-center justify-center rounded-full bg-success/10 text-success dark:bg-success-light/15 dark:text-success-light"
+            }
+          >
+            {failure ? (
+              <AlertTriangle className="size-5" aria-hidden="true" />
+            ) : (
+              <CheckCircle2 className="size-5" aria-hidden="true" />
+            )}
           </div>
+        }
+      />
 
-          {emailChange ? (
-            <Button asChild className="w-full">
-              <Link href={safeRedirectPath(next, "/settings")}>Back to account settings</Link>
-            </Button>
-          ) : failure ? (
-            <Button asChild className="w-full">
-              {error === "user_not_found" ? (
-                <Link href="/register">Create an account</Link>
-              ) : (
-                <Link href="/login">Sign in</Link>
-              )}
-            </Button>
+      {emailChange ? (
+        <Button asChild className="w-full">
+          <Link href={safeRedirectPath(next, "/settings")}>Back to account settings</Link>
+        </Button>
+      ) : failure ? (
+        <Button asChild className="w-full">
+          {error === "user_not_found" ? (
+            <Link href="/register">Create an account</Link>
           ) : (
-            <Button asChild className="w-full">
-              <Link href={safeNext(next)}>Start cooking</Link>
-            </Button>
+            <Link href="/login">Sign in</Link>
           )}
-        </div>
-      </div>
-
-      {/* Right side - Image */}
-      <div className="relative hidden w-0 flex-1 lg:block">
-        <div className="absolute inset-0 bg-gradient-to-br from-secondary/30 via-primary/10 to-secondary/20" />
-        <div className="absolute inset-0 flex items-center justify-center p-12">
-          <div className="max-w-lg text-center">
-            <p className="font-display text-4xl font-semibold text-foreground/80">
-              &ldquo;People who love to eat are always the best people.&rdquo;
-            </p>
-            <p className="mt-4 text-charcoal dark:text-muted-foreground">— Julia Child</p>
-          </div>
-        </div>
-      </div>
-    </div>
+        </Button>
+      ) : (
+        <Button asChild className="w-full">
+          <Link href={safeNext(next)}>Start cooking</Link>
+        </Button>
+      )}
+    </AuthShell>
   );
 }

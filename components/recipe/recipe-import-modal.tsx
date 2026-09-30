@@ -11,7 +11,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Button, Input, Label, Spinner, Textarea } from "@/components/ui";
+import { Badge, Button, Input, Label, Spinner, Textarea } from "@/components/ui";
+import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -30,7 +31,6 @@ import {
   AlertTriangle,
   Clock,
   Users,
-  ChefHat,
   X,
   Plus,
   FileText,
@@ -78,6 +78,13 @@ interface RecipeImportModalProps {
 
 type ModalState = "idle" | "preparing" | "extracting" | "preview" | "error";
 type ImportMethod = "photo" | "link" | "text";
+
+/** Difficulty as a status badge (STYLE_GUIDE 01 Status). */
+const DIFFICULTY_BADGE = {
+  easy: "success",
+  medium: "warning",
+  hard: "danger",
+} as const;
 
 const METHOD_DESCRIPTIONS: Record<ImportMethod, string> = {
   photo:
@@ -573,15 +580,8 @@ export function RecipeImportModal({
         }}
       >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {importMethod === "photo" ? (
-              <Camera className="h-5 w-5" />
-            ) : importMethod === "link" ? (
-              <Link2 className="h-5 w-5" />
-            ) : (
-              <FileText className="h-5 w-5" />
-            )}
-            Import Recipe
+          <DialogTitle className="font-display text-2xl leading-tight font-normal">
+            Import a recipe
           </DialogTitle>
           <DialogDescription>{METHOD_DESCRIPTIONS[importMethod]}</DialogDescription>
         </DialogHeader>
@@ -596,15 +596,19 @@ export function RecipeImportModal({
             }}
             className="gap-4"
           >
-            <TabsList className="w-full">
+            <TabsList className="h-11 w-full">
               {(
                 [
-                  { method: "photo", label: "From Photos", Icon: Camera },
-                  { method: "link", label: "From Link", Icon: Link2 },
-                  { method: "text", label: "From Text", Icon: FileText },
+                  { method: "photo", label: "From photos", Icon: Camera },
+                  { method: "link", label: "From link", Icon: Link2 },
+                  { method: "text", label: "From text", Icon: FileText },
                 ] as const
               ).map(({ method, label, Icon }) => (
-                <TabsTrigger key={method} value={method}>
+                <TabsTrigger
+                  key={method}
+                  value={method}
+                  className="data-[state=active]:text-primary"
+                >
                   {/* Three tabs with icons do not fit a phone-width dialog. */}
                   <Icon className="hidden sm:block" aria-hidden="true" />
                   {label}
@@ -615,11 +619,12 @@ export function RecipeImportModal({
             <TabsContent value="photo" className="space-y-4">
               {/* Dropzone */}
               <div
-                className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 transition-all ${
+                className={cn(
+                  "relative flex cursor-pointer flex-col items-center justify-center rounded-xl border-[1.5px] border-dashed px-6 py-8 text-center transition-colors duration-(--duration-fast) ease-out",
                   dragActive
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50 hover:bg-muted/50"
-                } cursor-pointer`}
+                    ? "border-primary bg-primary/5 ring-[3px] ring-primary/15"
+                    : "border-input hover:border-primary"
+                )}
                 role="presentation"
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
@@ -627,28 +632,27 @@ export function RecipeImportModal({
                 onDrop={handleDrop}
                 onClick={() => inputRef.current?.click()}
               >
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <Camera className="h-6 w-6 text-primary" />
-                </div>
-                <p className="mb-1 text-sm text-foreground">
-                  <span className="font-medium">Click to upload</span> or drag and drop
+                <Camera className="mb-3 size-7 text-primary" aria-hidden="true" />
+                <p className="text-sm font-medium text-foreground">
+                  Choose photos or drag them here
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  PNG, JPG, WebP, or HEIC (up to {MAX_IMPORT_FILES} images; large
-                  photos are resized automatically)
+                <p className="mt-1 text-[13px] text-muted-foreground">
+                  PNG, JPG, WebP or HEIC, up to{" "}
+                  <span className="font-mono tabular">{MAX_IMPORT_FILES}</span>{" "}
+                  photos. Large photos are resized automatically.
                 </p>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="mt-3"
+                  className="mt-4"
                   onClick={(e) => {
                     e.stopPropagation();
                     inputRef.current?.click();
                   }}
                 >
-                  <Upload className="h-4 w-4" />
-                  Select Images
+                  <Upload aria-hidden="true" />
+                  Choose photos
                 </Button>
               </div>
 
@@ -656,9 +660,9 @@ export function RecipeImportModal({
               {error && (
                 <p
                   role="alert"
-                  className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+                  className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
                 >
-                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                   <span>{error}</span>
                 </p>
               )}
@@ -668,7 +672,8 @@ export function RecipeImportModal({
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">
-                      {selectedFiles.length} image{selectedFiles.length !== 1 ? "s" : ""} selected
+                      <span className="font-mono tabular">{selectedFiles.length}</span>{" "}
+                      {selectedFiles.length !== 1 ? "photos" : "photo"} selected
                     </p>
                     <Button
                       type="button"
@@ -680,7 +685,7 @@ export function RecipeImportModal({
                         releaseAllPreviewUrls();
                         updateSelectedFiles(() => []);
                       }}
-                      className="text-muted-foreground hover:text-destructive"
+                      className="hover:text-destructive"
                     >
                       Clear all
                     </Button>
@@ -689,7 +694,7 @@ export function RecipeImportModal({
                     {selectedFiles.map((sf, index) => (
                       <div
                         key={sf.id}
-                        className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted"
+                        className="group relative aspect-square overflow-hidden rounded-md border border-border bg-muted"
                       >
                         {sf.status === "ready" && sf.previewUrl ? (
                           <Image
@@ -722,11 +727,11 @@ export function RecipeImportModal({
                           aria-label={`Remove image ${index + 1}`}
                           // Always visible where there is no hover (touch, small
                           // screens); revealed on hover or keyboard focus above.
-                          className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white transition-opacity hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+                          className="absolute top-1 right-1 flex size-7 items-center justify-center rounded-full bg-ink/70 text-white transition-opacity hover:bg-ink/90 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 [@media(hover:none)]:opacity-100"
                         >
-                          <X className="h-3 w-3" aria-hidden="true" />
+                          <X className="size-3.5" aria-hidden="true" />
                         </button>
-                        <span className="absolute bottom-1 left-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-xs text-white">
+                        <span className="absolute bottom-1 left-1 flex size-5 items-center justify-center rounded-full bg-ink/70 font-mono text-[11px] text-white tabular">
                           {index + 1}
                         </span>
                       </div>
@@ -736,9 +741,9 @@ export function RecipeImportModal({
                         type="button"
                         onClick={() => inputRef.current?.click()}
                         aria-label="Add more images"
-                        className="flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-muted/50 transition-colors"
+                        className="flex aspect-square items-center justify-center rounded-md border-[1.5px] border-dashed border-input text-muted-foreground transition-colors duration-(--duration-fast) hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                       >
-                        <Plus className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+                        <Plus className="size-6" aria-hidden="true" />
                       </button>
                     )}
                   </div>
@@ -759,9 +764,8 @@ export function RecipeImportModal({
                       </>
                     ) : (
                       <>
-                        <ChefHat className="h-4 w-4" aria-hidden="true" />
-                        Extract Recipe from {selectedFiles.length} Image
-                        {selectedFiles.length !== 1 ? "s" : ""}
+                        Extract recipe from {selectedFiles.length}{" "}
+                        {selectedFiles.length !== 1 ? "photos" : "photo"}
                       </>
                     )}
                   </Button>
@@ -791,9 +795,7 @@ export function RecipeImportModal({
                 }}
               >
                 <div className="space-y-2">
-                  <Label htmlFor="recipe-link" className="text-sm font-medium">
-                    Recipe Link
-                  </Label>
+                  <Label htmlFor="recipe-link">Recipe link</Label>
                   <Input
                     id="recipe-link"
                     type="url"
@@ -811,11 +813,14 @@ export function RecipeImportModal({
                   />
                   <p
                     id="recipe-link-help"
-                    className={`text-xs ${showLinkHint ? "text-destructive" : "text-muted-foreground"}`}
+                    className={cn(
+                      "text-[13px]",
+                      showLinkHint ? "text-destructive" : "text-muted-foreground"
+                    )}
                   >
                     {showLinkHint
                       ? "Enter a full web address, like https://www.example.com/recipe"
-                      : "Works with many recipe websites and food blogs. Some sites block importing; for those, copy the recipe into From Text"}
+                      : "Works with many recipe websites and food blogs. Some sites block importing; for those, copy the recipe into From text."}
                   </p>
                 </div>
 
@@ -824,30 +829,27 @@ export function RecipeImportModal({
                   disabled={state !== "idle" || !normalizedLink}
                   className="w-full"
                 >
-                  <ChefHat className="h-4 w-4" aria-hidden="true" />
-                  Import Recipe from Link
+                  Import recipe from link
                 </Button>
               </form>
             </TabsContent>
 
             <TabsContent value="text" className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="recipe-text" className="text-sm font-medium">
-                  Recipe Text
-                </Label>
+                <Label htmlFor="recipe-text">Recipe text</Label>
                 <Textarea
                   id="recipe-text"
                   value={textInput}
                   onChange={(e) => setTextInput(e.target.value)}
-                  placeholder="Paste recipe text here... (ingredients, instructions, etc.)"
+                  placeholder="Paste the recipe here: ingredients, steps, anything else"
                   rows={8}
                   aria-describedby="recipe-text-help"
                   // field-sizing-content would grow with a long paste; keep the
                   // box a fixed size and scroll instead.
                   className="h-48 resize-none [field-sizing:fixed]"
                 />
-                <p id="recipe-text-help" className="text-xs text-muted-foreground">
-                  Copy and paste recipe content from a website or document
+                <p id="recipe-text-help" className="text-[13px] text-muted-foreground">
+                  Copy and paste the recipe from a website or document.
                 </p>
               </div>
 
@@ -857,8 +859,7 @@ export function RecipeImportModal({
                 disabled={state !== "idle" || !textInput.trim()}
                 className="w-full"
               >
-                <ChefHat aria-hidden="true" />
-                Extract Recipe from Text
+                Extract recipe from text
               </Button>
             </TabsContent>
           </Tabs>
@@ -867,10 +868,10 @@ export function RecipeImportModal({
         {isBusy && (
           <div
             role="status"
-            className="flex flex-col items-center justify-center py-12"
+            className="flex flex-col items-center justify-center py-12 text-center"
           >
-            <Spinner size="lg" />
-            <p className="mt-4 text-sm text-muted-foreground">
+            <Spinner size="lg" className="text-primary" />
+            <p className="mt-4 text-sm font-medium text-foreground">
               {state === "preparing"
                 ? `Preparing ${selectedFiles.length === 1 ? "photo" : "photos"} for upload...`
                 : importMethod === "photo"
@@ -879,14 +880,14 @@ export function RecipeImportModal({
                     ? "Importing recipe from link..."
                     : "Extracting recipe from text..."}
             </p>
-            <p className="text-xs text-muted-foreground">
-              This may take a few seconds
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              This may take a few seconds.
             </p>
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="mt-4"
+              className="mt-5"
               onClick={cancelExtraction}
             >
               Cancel
@@ -900,20 +901,18 @@ export function RecipeImportModal({
               role="alert"
               className="flex flex-col items-center justify-center py-8 text-center"
             >
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
-                <AlertTriangle className="h-7 w-7 text-destructive" aria-hidden="true" />
-              </div>
-              <p className="font-medium text-foreground">
-                {importMethod === "link" ? "Import Failed" : "Extraction Failed"}
+              <AlertTriangle className="mb-3 size-7 text-destructive" aria-hidden="true" />
+              <p className="font-display text-xl text-foreground">
+                {importMethod === "link" ? "Import failed" : "Extraction failed"}
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+              <p className="mt-1 max-w-md text-sm text-destructive">{error}</p>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={resetState}>
-                Start Over
+                Start over
               </Button>
               <Button onClick={backToInput}>
-                Try Again
+                Try again
               </Button>
             </DialogFooter>
           </div>
@@ -923,9 +922,9 @@ export function RecipeImportModal({
           <div className="space-y-4">
             {confidence &&
               (confidence !== "high" || warnings.length > 0) && (
-              <div className="flex items-start gap-2 rounded-lg border border-amber/30 bg-amber/10 p-3 text-sm">
+              <div className="flex items-start gap-2 rounded-lg border border-warning/25 bg-warning/10 p-3 text-sm dark:border-warning-light/30 dark:bg-warning-light/15">
                 <AlertTriangle
-                  className="h-4 w-4 text-amber mt-0.5 shrink-0"
+                  className="mt-0.5 size-4 shrink-0 text-warning dark:text-warning-light"
                   aria-hidden="true"
                 />
                 <div>
@@ -939,9 +938,9 @@ export function RecipeImportModal({
                           : "The recipe may be incomplete"}
                   </p>
                   {warnings.length > 0 && (
-                    <ul className="mt-1 text-muted-foreground">
+                    <ul className="mt-1 list-disc space-y-0.5 pl-4 text-muted-foreground">
                       {warnings.map((w, i) => (
-                        <li key={i}>• {w}</li>
+                        <li key={i}>{w}</li>
                       ))}
                     </ul>
                   )}
@@ -962,72 +961,97 @@ export function RecipeImportModal({
                     />
                   </div>
                 )}
-                <div>
-                  <h3 className="text-lg font-semibold">{extractedData.title}</h3>
+                <div className="min-w-0">
+                  <h3 className="text-[22px] leading-tight">{extractedData.title}</h3>
                   {extractedData.description && (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       {extractedData.description}
                     </p>
                   )}
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-3 text-sm">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
                 {extractedData.prepTimeMinutes && (
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    <span>Prep: {extractedData.prepTimeMinutes} min</span>
-                  </div>
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="size-4" aria-hidden="true" />
+                    Prep{" "}
+                    <span className="font-mono text-foreground tabular">
+                      {extractedData.prepTimeMinutes} min
+                    </span>
+                  </span>
                 )}
                 {extractedData.cookTimeMinutes && (
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    <span>Cook: {extractedData.cookTimeMinutes} min</span>
-                  </div>
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="size-4" aria-hidden="true" />
+                    Cook{" "}
+                    <span className="font-mono text-foreground tabular">
+                      {extractedData.cookTimeMinutes} min
+                    </span>
+                  </span>
                 )}
                 {extractedData.servings && (
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    <span>{extractedData.servings} servings</span>
-                  </div>
+                  <span className="flex items-center gap-1.5">
+                    <Users className="size-4" aria-hidden="true" />
+                    <span className="font-mono text-foreground tabular">
+                      {extractedData.servings}
+                    </span>{" "}
+                    servings
+                  </span>
                 )}
                 {extractedData.difficulty && (
-                  <span className="capitalize text-muted-foreground">
+                  <Badge
+                    variant={DIFFICULTY_BADGE[extractedData.difficulty]}
+                    className="capitalize"
+                  >
                     {extractedData.difficulty}
-                  </span>
+                  </Badge>
                 )}
                 {/* Only a tag the form will actually select is shown. */}
                 {matchedTagName && (
-                  <span className="text-muted-foreground">
-                    Tag: {matchedTagName}
-                  </span>
+                  <Badge variant="secondary">
+                    <span className="sr-only">Tag: </span>
+                    {matchedTagName}
+                  </Badge>
                 )}
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <h4 className="font-medium mb-2">
-                    Ingredients ({extractedData.ingredients.length})
+                <div className="rounded-lg border border-border p-4">
+                  <h4 className="mb-2 text-xs font-medium tracking-[0.06em] text-muted-foreground uppercase">
+                    Ingredients{" "}
+                    <span className="font-mono tabular">
+                      ({extractedData.ingredients.length})
+                    </span>
                   </h4>
-                  <ul className="space-y-1 text-sm max-h-40 overflow-y-auto">
+                  <ul className="max-h-40 space-y-1 overflow-y-auto text-sm">
                     {extractedData.ingredients.map((ing, i) => (
-                      <li key={i} className="text-muted-foreground">
-                        {ing.amount && `${ing.amount} `}
-                        {ing.unit && `${ing.unit} `}
+                      <li key={i} className="text-foreground">
+                        {(ing.amount || ing.unit) && (
+                          <span className="font-mono text-primary tabular">
+                            {[ing.amount, ing.unit].filter(Boolean).join(" ")}{" "}
+                          </span>
+                        )}
                         {ing.text}
                       </li>
                     ))}
                   </ul>
                 </div>
 
-                <div>
-                  <h4 className="font-medium mb-2">
-                    Instructions ({extractedData.instructions.length} steps)
+                <div className="rounded-lg border border-border p-4">
+                  <h4 className="mb-2 text-xs font-medium tracking-[0.06em] text-muted-foreground uppercase">
+                    Method{" "}
+                    <span className="font-mono tabular">
+                      ({extractedData.instructions.length}{" "}
+                      {extractedData.instructions.length === 1 ? "step" : "steps"})
+                    </span>
                   </h4>
-                  <ol className="space-y-1 text-sm max-h-40 overflow-y-auto">
+                  <ol className="max-h-40 space-y-1 overflow-y-auto text-sm">
                     {extractedData.instructions.map((inst) => (
-                      <li key={inst.step} className="text-muted-foreground">
-                        <span className="font-medium">{inst.step}.</span>{" "}
+                      <li key={inst.step} className="text-foreground">
+                        <span className="font-mono text-primary tabular">
+                          {inst.step}.
+                        </span>{" "}
                         {inst.text.length > 80
                           ? `${inst.text.slice(0, 80)}...`
                           : inst.text}
@@ -1041,14 +1065,14 @@ export function RecipeImportModal({
             <DialogFooter>
               <Button variant="outline" onClick={resetState}>
                 {importMethod === "photo"
-                  ? "Try Different Image"
+                  ? "Try different photos"
                   : importMethod === "link"
-                    ? "Try Different Link"
-                    : "Try Different Text"}
+                    ? "Try a different link"
+                    : "Try different text"}
               </Button>
               <Button onClick={handleApply}>
                 <Check aria-hidden="true" />
-                Apply to Form
+                Apply to form
               </Button>
             </DialogFooter>
           </div>
@@ -1063,7 +1087,9 @@ export function RecipeImportModal({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Replace what you&apos;ve entered?</AlertDialogTitle>
+            <AlertDialogTitle className="font-display text-2xl font-normal">
+              Replace what you&apos;ve entered?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               Applying this import replaces these fields in the form:{" "}
               {confirmFields?.join(", ")}. Tags you picked are kept.

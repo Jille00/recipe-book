@@ -1,10 +1,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { RecipeCardData } from "@/types/recipe";
-import { Clock, Users, ChefHat, Star } from "lucide-react";
+import { Clock, Users, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { FavoriteButton } from "./favorite-button";
 import { recipePath } from "@/lib/recipe-url";
+import { DelftWall } from "@/components/delft/delft-tile";
 import { profilePath } from "@/lib/handle";
 
 interface RecipeCardProps {
@@ -14,7 +15,7 @@ interface RecipeCardProps {
   initialFavorited?: boolean;
 }
 
-// STYLE_GUIDE 04 difficulty badges: Easy sage, Medium amber, Hard paprika.
+// STYLE_GUIDE 01/04 difficulty badges: Easy success, Medium warning, Hard danger.
 const DIFFICULTY_BADGE_VARIANT = {
   easy: "success",
   medium: "warning",
@@ -39,14 +40,19 @@ export function RecipeCard({
     ? DIFFICULTY_BADGE_VARIANT[recipe.difficulty]
     : undefined;
 
+  const rating =
+    recipe.ratingStats && recipe.ratingStats.totalRatings > 0
+      ? recipe.ratingStats
+      : null;
+
   return (
     // The card is the hover group and the positioning context. The link is a
     // "stretched link" on the title: its ::after overlay makes the whole card
     // clickable without nesting the favorite <button> inside an <a>.
     // STYLE_GUIDE 04/05 card: soft shadow -> lifted shadow and a 4px lift on
-    // hover, 0.3s with the guide's ease-out.
-    <article className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lifted">
-      {/* Image */}
+    // hover, over the slow (400ms) duration with the guide's ease-out.
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-[translate,box-shadow] duration-(--duration-slow) ease-out hover:-translate-y-1 hover:shadow-lifted">
+      {/* Cover: the photo, or the recipe's own tile wall */}
       <div className="relative aspect-[4/3] overflow-hidden bg-muted">
         {recipe.imageUrl ? (
           <Image
@@ -58,23 +64,25 @@ export function RecipeCard({
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           />
         ) : (
-          <div className="flex h-full items-center justify-center">
-            <ChefHat
-              className="h-12 w-12 text-muted-foreground/50"
-              aria-hidden="true"
-            />
-          </div>
+          // No photo: the recipe's own Delft tile, laid as a wall
+          // (STYLE_GUIDE 06). Same recipe, same tile, everywhere.
+          <DelftWall
+            seed={recipe.code}
+            tags={recipe.tags}
+            tileSize={112}
+            className="transition-transform duration-500 ease-out group-hover:scale-105"
+          />
         )}
 
-        {/* Time Badge - glass, top-right over the image (STYLE_GUIDE 04) */}
+        {/* Time badge: glass, top-right over the cover (STYLE_GUIDE 04) */}
         {totalTime > 0 && (
-          <div className="glass-badge absolute top-3 right-3 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium tracking-[0.02em]">
+          <div className="glass-badge absolute top-3 right-3 flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-xs tabular">
             <Clock className="h-3.5 w-3.5" aria-hidden="true" />
             {totalTime} min
           </div>
         )}
 
-        {/* Favorite Button - sits above the stretched link overlay (z-10) */}
+        {/* Favorite button: sits above the stretched link overlay (z-10) */}
         {showFavorite && (
           <FavoriteButton
             recipeId={recipe.id}
@@ -86,9 +94,9 @@ export function RecipeCard({
         )}
       </div>
 
-      {/* Content */}
-      <div className="p-4">
-        <h3 className="font-display font-semibold text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+      <div className="flex flex-1 flex-col p-4 sm:p-5">
+        {/* Title: Gloock 20-22px, one line, never bold */}
+        <h3 className="font-display text-xl leading-[1.3] text-foreground line-clamp-1 transition-colors duration-(--duration-fast) group-hover:text-primary sm:text-[22px]">
           <Link
             href={link}
             className="after:absolute after:inset-0 after:z-10 after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-primary focus-visible:after:ring-offset-2 focus-visible:after:rounded-xl"
@@ -103,56 +111,64 @@ export function RecipeCard({
           </p>
         )}
 
-        {/* Meta */}
-        <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-          {recipe.ratingStats && recipe.ratingStats.totalRatings > 0 && (
-            <span className="flex items-center gap-1">
-              <Star
-                className="h-3.5 w-3.5 text-amber fill-amber"
-                aria-hidden="true"
-              />
-              <span className="font-medium text-foreground">
-                {recipe.ratingStats.averageRating.toFixed(1)}
+        {/* Meta row: data in Plex Mono, difficulty as a status badge */}
+        {/* Time is on the cover badge (STYLE_GUIDE 04), so it isn't repeated here. */}
+        {(recipe.servings || rating || difficultyVariant) && (
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-muted-foreground">
+            {recipe.servings && (
+              <span className="flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="font-mono tabular">
+                  {recipe.servings}
+                  <span className="sr-only"> servings</span>
+                </span>
               </span>
-              <span>({recipe.ratingStats.totalRatings})</span>
-            </span>
-          )}
-          {recipe.servings && (
-            <span className="flex items-center gap-1">
-              <Users className="h-3.5 w-3.5" aria-hidden="true" />
-              {recipe.servings} servings
-            </span>
-          )}
-        </div>
-
-        {/* Difficulty - tag-style pill with the guide's difficulty colours */}
-        {recipe.difficulty && difficultyVariant && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Badge variant={difficultyVariant} className="px-3.5 py-1.5">
-              {recipe.difficulty.charAt(0).toUpperCase() +
-                recipe.difficulty.slice(1)}
-            </Badge>
+            )}
+            {rating && (
+              <span className="flex items-center gap-1.5">
+                <Star
+                  className="h-3.5 w-3.5 fill-gold text-gold"
+                  aria-hidden="true"
+                />
+                <span className="sr-only">Rated </span>
+                <span className="font-mono tabular text-foreground">
+                  {rating.averageRating.toFixed(1)}
+                </span>
+                <span className="font-mono tabular">
+                  <span aria-hidden="true">({rating.totalRatings})</span>
+                  <span className="sr-only">
+                    {" "}
+                    out of 5 from {rating.totalRatings}{" "}
+                    {rating.totalRatings === 1 ? "rating" : "ratings"}
+                  </span>
+                </span>
+              </span>
+            )}
+            {recipe.difficulty && difficultyVariant && (
+              <Badge variant={difficultyVariant} className="ml-auto px-2.5 py-1">
+                {recipe.difficulty.charAt(0).toUpperCase() +
+                  recipe.difficulty.slice(1)}
+              </Badge>
+            )}
           </div>
         )}
 
         {/* Author */}
         {showAuthor && recipe.authorName && (
-          <div className="mt-3">
-            <span className="text-xs text-muted-foreground">
-              by{" "}
-              {recipe.authorHandle ? (
-                // z-20 lifts it above the title's stretched-link overlay.
-                <Link
-                  href={profilePath(recipe.authorHandle)}
-                  className="relative z-20 font-medium underline decoration-muted-foreground/60 underline-offset-2 transition-colors hover:text-primary hover:decoration-primary focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {recipe.authorName}
-                </Link>
-              ) : (
-                recipe.authorName
-              )}
-            </span>
-          </div>
+          <p className="mt-auto pt-3 text-sm text-muted-foreground">
+            by{" "}
+            {recipe.authorHandle ? (
+              // z-20 lifts it above the title's stretched-link overlay.
+              <Link
+                href={profilePath(recipe.authorHandle)}
+                className="relative z-20 font-medium underline decoration-muted-foreground/50 underline-offset-2 transition-colors duration-(--duration-fast) hover:text-primary hover:decoration-primary focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {recipe.authorName}
+              </Link>
+            ) : (
+              recipe.authorName
+            )}
+          </p>
         )}
       </div>
     </article>

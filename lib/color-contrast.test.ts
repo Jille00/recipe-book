@@ -111,17 +111,15 @@ describe("dark theme tokens (app/globals.css) meet WCAG AA", () => {
     }
   );
 
-  it("the dark difficulty badges keep 4.5:1 on their tints over the card", () => {
-    const card = dark.card;
-    // components/ui/badge.tsx dark variants
-    expect(
-      contrastRatio(palette["color-sage-300"], blend(palette["color-sage-400"], card, 0.15))
-    ).toBeGreaterThanOrEqual(AA_TEXT);
-    expect(
-      contrastRatio(palette["color-amber-300"], blend(palette["color-amber"], card, 0.15))
-    ).toBeGreaterThanOrEqual(AA_TEXT);
-    expect(
-      contrastRatio(palette["color-paprika-300"], blend(palette["color-paprika"], card, 0.2))
-    ).toBeGreaterThanOrEqual(AA_TEXT);
+  it("the difficulty badges keep 4.5:1 on their tints, day and night", () => {
+    // components/ui/badge.tsx: status colour as text on a 10% (day) or 15%
+    // (night) tint of itself over the card.
+    const day = "#ffffff";
+    for (const status of ["success", "warning", "danger"]) {
+      const colour = palette[`color-${status}`];
+      expect(contrastRatio(colour, blend(colour, day, 0.1))).toBeGreaterThanOrEqual(AA_TEXT);
+      const light = palette[`color-${status}-light`];
+      expect(contrastRatio(light, blend(light, dark.card, 0.15))).toBeGreaterThanOrEqual(AA_TEXT);
+    }
   });
 });

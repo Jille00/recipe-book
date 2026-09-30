@@ -12,10 +12,6 @@ import {
   Input,
   Textarea,
   Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
   Label,
   Select,
   SelectContent,
@@ -49,21 +45,13 @@ import {
   Plus,
   X,
   AlertCircle,
-  BookOpen,
-  Clock,
-  Users,
-  ListChecks,
-  ChefHat,
-  Globe,
-  Flame,
-  Timer,
-  UtensilsCrossed,
   Camera,
-  Apple,
+  Check,
   Sparkles,
   AlertTriangle,
   Loader2,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useUnitPreferences } from "@/hooks/use-unit-preferences";
 import type { UnitSystem } from "@/types/units";
 import { recipePath } from "@/lib/recipe-url";
@@ -158,9 +146,14 @@ interface RecipeFormProps {
     tag_ids: string[];
     is_public: boolean;
   };
+  /**
+   * Seeds the tile shown in the photo area: the recipe's share code when
+   * editing, so it is the tile the recipe actually has.
+   */
+  tileSeed?: string;
 }
 
-export function RecipeForm({ tags, initialData }: RecipeFormProps) {
+export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
   const router = useRouter();
   const isEditing = !!initialData?.id;
   const { globalPreference } = useUnitPreferences();
@@ -558,7 +551,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       // the beforeunload guard before navigation starts.
       const onGuardEntry = historyGuard.release();
       flushSync(() => setLeaveAllowed(true));
-      toast.success(isEditing ? "Recipe updated" : "Recipe created");
+      toast.success(isEditing ? "Recipe saved" : "Recipe created");
       // Land on the recipe's one address, which is also its share link. The
       // form stays disabled while that page loads.
       // Replace the Back-button guard's extra entry rather than leaving it
@@ -604,631 +597,514 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
     }
   };
 
+  // The tile the recipe will get when it has no photo: its share code once it
+  // exists, a fixed seed before that. Tags pick the motif, so it follows the
+  // tag picker.
+  const tileTags = tags
+    .filter((tag) => selectedTagIds.includes(tag.id))
+    .map((tag) => tag.slug);
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
       {error && (
         <div
           ref={errorRef}
           role="alert"
           aria-live="assertive"
           tabIndex={-1}
-          className="flex items-center gap-3 rounded-xl bg-destructive/10 border border-destructive/20 p-4 text-destructive animate-in fade-in slide-in-from-top-2 duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
+          className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-destructive animate-in fade-in slide-in-from-top-2 duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
-            <AlertCircle className="h-5 w-5" aria-hidden="true" />
-          </div>
+          <AlertCircle className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
           <p className="text-sm font-medium">{error}</p>
         </div>
       )}
 
-      {/* Hero Section - Title & Image */}
-      <Card className="overflow-hidden p-0">
-        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pt-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                <BookOpen className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="font-display">Recipe Details</CardTitle>
-                <CardDescription>
-                  Give your recipe a name and description
-                </CardDescription>
-              </div>
+      {/* Details: title, description, tags, difficulty */}
+      <FormSection
+        id="details"
+        title="Details"
+        description="A name, a few lines about the dish, and where it belongs."
+        action={
+          !isEditing && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={openImportModal}
+            >
+              <Camera aria-hidden="true" />
+              Import
+            </Button>
+          )
+        }
+      >
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="title">
+              Title
+              <span className="text-destructive" aria-hidden="true">
+                *
+              </span>
+            </Label>
+            <Input
+              ref={titleInputRef}
+              id="title"
+              placeholder="e.g. Grandma's apple pie"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              className="h-14 font-display text-xl"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              placeholder="Where it comes from, when you make it, what makes it good"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              className="resize-none"
+            />
+          </div>
+
+          <fieldset className="space-y-3" aria-describedby="tags-help">
+            <legend className="mb-1 text-sm font-medium">Tags</legend>
+            <p id="tags-help" className="text-[13px] text-muted-foreground">
+              Pick any that fit. Tags also choose what is painted on the
+              recipe&apos;s tile.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag) => {
+                const selected = selectedTagIds.includes(tag.id);
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => toggleTag(tag.id)}
+                    className={cn(
+                      "inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium transition-colors duration-(--duration-fast) ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card sm:min-h-9",
+                      selected
+                        ? "bg-primary text-primary-foreground hover:bg-primary-hover"
+                        : "bg-secondary text-secondary-foreground hover:bg-glaze-line dark:hover:bg-night-line"
+                    )}
+                  >
+                    {selected && (
+                      <Check className="size-3.5" aria-hidden="true" />
+                    )}
+                    {tag.name}
+                  </button>
+                );
+              })}
             </div>
-            {!isEditing && (
+          </fieldset>
+
+          <div className="space-y-2 sm:max-w-xs">
+            <Label htmlFor="difficulty">Difficulty</Label>
+            <Select
+              value={difficulty}
+              onValueChange={(v) => setDifficulty(v as Difficulty)}
+            >
+              <SelectTrigger id="difficulty" className="w-full">
+                <SelectValue placeholder="Choose a level" />
+              </SelectTrigger>
+              <SelectContent>
+                {DIFFICULTY_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <span className="flex items-center gap-2">
+                      <span
+                        className={cn("size-2 rounded-full", option.dot)}
+                        aria-hidden="true"
+                      />
+                      {option.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </FormSection>
+
+      {/* Photo, with the recipe's tile as the stand-in */}
+      <FormSection
+        id="photo"
+        title="Photo"
+        description={
+          isEditing
+            ? "Without a photo, the recipe's tile wall is its cover."
+            : "Until you add a photo, the recipe shows a tile wall like this one."
+        }
+      >
+        <ImageUpload
+          value={imageUrl}
+          onChange={setImageUrl}
+          tileSeed={tileSeed ?? "new"}
+          tileTags={tileTags}
+          recipeContext={{
+            title,
+            description,
+            ingredients: ingredients.filter((i) => i.text.trim()),
+            instructions: instructions.filter((i) => i.text.trim()),
+          }}
+        />
+      </FormSection>
+
+      {/* Time & servings */}
+      <FormSection
+        id="time"
+        title="Time and servings"
+        description="Rough numbers are fine; they help people plan."
+      >
+        <div className="grid gap-4 sm:grid-cols-3">
+          <NumberField
+            id="prepTime"
+            label="Prep time"
+            suffix="min"
+            min="0"
+            placeholder="30"
+            value={prepTime}
+            onChange={setPrepTime}
+          />
+          <NumberField
+            id="cookTime"
+            label="Cook time"
+            suffix="min"
+            min="0"
+            placeholder="45"
+            value={cookTime}
+            onChange={setCookTime}
+          />
+          <NumberField
+            ref={servingsInputRef}
+            id="servings"
+            label="Servings"
+            suffix="people"
+            min="1"
+            placeholder="4"
+            value={servings}
+            onChange={setServings}
+          />
+        </div>
+      </FormSection>
+
+      {/* Ingredients */}
+      <FormSection
+        id="ingredients"
+        title="Ingredients"
+        description="One per line. Amounts scale with the servings."
+      >
+        {/* Column labels for the aligned rows (the fields carry their own
+            accessible names). */}
+        <div
+          aria-hidden="true"
+          className="mb-2 hidden grid-cols-[6rem_10rem_minmax(0,1fr)_2.75rem] gap-2 text-xs font-medium tracking-[0.06em] text-muted-foreground uppercase sm:grid"
+        >
+          <span>Amount</span>
+          <span>Unit</span>
+          <span>Ingredient</span>
+        </div>
+        <ul className="space-y-3 sm:space-y-2">
+          {ingredients.map((ingredient, index) => (
+            <li
+              key={ingredient.id}
+              className="group grid grid-cols-[5.5rem_minmax(0,1fr)_2.75rem] items-center gap-2 border-b border-border pb-3 last:border-b-0 last:pb-0 sm:grid-cols-[6rem_10rem_minmax(0,1fr)_2.75rem] sm:border-b-0 sm:pb-0"
+            >
+              <Input
+                aria-label={`Ingredient ${index + 1} quantity`}
+                placeholder="Qty"
+                inputMode="decimal"
+                value={ingredient.amount || ""}
+                onChange={(e) =>
+                  updateIngredient(ingredient.id, "amount", e.target.value)
+                }
+                className="px-3 text-right font-mono tabular"
+              />
+              <Select
+                value={ingredient.unit || "none"}
+                onValueChange={(value) =>
+                  updateIngredient(
+                    ingredient.id,
+                    "unit",
+                    value === "none" ? "" : value
+                  )
+                }
+              >
+                <SelectTrigger
+                  aria-label={`Ingredient ${index + 1} unit`}
+                  className="w-full"
+                >
+                  <SelectValue placeholder="Unit" />
+                </SelectTrigger>
+                <SelectContent>
+                  {unitOptionsFor(ingredient.unit).map((unit) => (
+                    <SelectItem
+                      key={unit.value || "none"}
+                      value={unit.value || "none"}
+                    >
+                      {unit.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                aria-label={`Ingredient ${index + 1} name`}
+                placeholder="e.g. plain flour, sifted"
+                value={ingredient.text}
+                onChange={(e) =>
+                  updateIngredient(ingredient.id, "text", e.target.value)
+                }
+                className="col-span-3 row-start-2 sm:col-span-1 sm:col-start-3 sm:row-start-1"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => removeIngredient(ingredient.id)}
+                disabled={ingredients.length === 1}
+                aria-label={`Remove ingredient ${index + 1}`}
+                // Hover-only controls are unreachable on touch devices and
+                // invisible to keyboard users, so only fade on >= sm and
+                // always reveal while something in the row has focus.
+                className="col-start-3 row-start-1 hover:text-destructive sm:col-start-4 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 [@media(hover:none)]:opacity-100"
+              >
+                <X aria-hidden="true" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addIngredient}
+          className="mt-5"
+        >
+          <Plus aria-hidden="true" />
+          Add ingredient
+        </Button>
+      </FormSection>
+
+      {/* Method */}
+      <FormSection
+        id="method"
+        title="Method"
+        description="Step by step, in the order you cook."
+      >
+        <ol className="space-y-5">
+          {instructions.map((instruction, index) => (
+            <li
+              key={instruction.id}
+              className="group grid grid-cols-[2.25rem_minmax(0,1fr)_2.75rem] items-start gap-x-3"
+            >
+              <span
+                aria-hidden="true"
+                className="pt-2 text-right font-display text-[28px] leading-none text-primary tabular"
+              >
+                {index + 1}
+              </span>
+              <Textarea
+                aria-label={`Step ${index + 1} instructions`}
+                placeholder={`Describe step ${index + 1}`}
+                value={instruction.text}
+                onChange={(e) =>
+                  updateInstruction(instruction.id, e.target.value)
+                }
+                className="min-h-20 resize-none"
+                rows={3}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => removeInstruction(instruction.id)}
+                disabled={instructions.length === 1}
+                aria-label={`Remove step ${index + 1}`}
+                className="hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 [@media(hover:none)]:opacity-100"
+              >
+                <X aria-hidden="true" />
+              </Button>
+            </li>
+          ))}
+        </ol>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addInstruction}
+          className="mt-5"
+        >
+          <Plus aria-hidden="true" />
+          Add step
+        </Button>
+      </FormSection>
+
+      {/* Nutrition */}
+      <FormSection
+        id="nutrition"
+        title="Nutrition"
+        description="An estimate per serving, worked out from the ingredients."
+        action={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={calculateNutrition}
+            disabled={isCalculatingNutrition || !canCalculateNutrition}
+          >
+            {isCalculatingNutrition ? (
+              <Loader2 className="animate-spin" aria-hidden="true" />
+            ) : (
+              <Sparkles aria-hidden="true" />
+            )}
+            {nutrition ? "Recalculate" : "Calculate"}
+          </Button>
+        }
+      >
+        {!nutrition && !isCalculatingNutrition && (
+          <p className="rounded-lg bg-muted px-4 py-5 text-center text-sm text-muted-foreground">
+            {ingredients.filter((i) => i.text.trim()).length === 0 ? (
+              "Add ingredients to calculate nutrition."
+            ) : !servings ? (
+              <>
+                <button
+                  type="button"
+                  onClick={focusServingsField}
+                  className="rounded-sm font-medium text-primary underline-offset-4 transition-colors hover:text-primary-hover hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-muted"
+                >
+                  Add servings
+                </button>{" "}
+                to calculate nutrition.
+              </>
+            ) : (
+              'Choose "Calculate" to estimate the nutrition per serving.'
+            )}
+          </p>
+        )}
+        {isCalculatingNutrition && (
+          <div className="flex items-center justify-center gap-3 rounded-lg bg-muted px-4 py-5">
+            <Loader2
+              className="size-5 animate-spin text-primary"
+              aria-hidden="true"
+            />
+            <p className="text-sm text-muted-foreground">
+              Calculating nutrition...
+            </p>
+          </div>
+        )}
+        {nutrition && !isCalculatingNutrition && nutritionOutdated && (
+          <div
+            role="status"
+            className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-warning/25 bg-warning/10 p-3 text-sm dark:border-warning-light/30 dark:bg-warning-light/15"
+          >
+            <AlertTriangle
+              className="size-4 shrink-0 text-warning dark:text-warning-light"
+              aria-hidden="true"
+            />
+            <p className="flex-1 text-foreground">
+              The ingredients or servings have changed since this was
+              calculated, so these numbers may be out of date.
+            </p>
+            {canCalculateNutrition ? (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={openImportModal}
+                onClick={calculateNutrition}
               >
-                <Camera aria-hidden="true" />
-                Import
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="p-6 space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Left: Title & Description */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title" className="text-sm font-medium">
-                  Recipe Title <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  ref={titleInputRef}
-                  id="title"
-                  placeholder="e.g., Grandma's Apple Pie"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                  className="text-lg font-display"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description" className="text-sm font-medium">
-                  Description
-                </Label>
-                <Textarea
-                  id="description"
-                  placeholder="Share the story behind this recipe..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={4}
-                  className="resize-none"
-                />
-              </div>
-              <fieldset className="space-y-2" aria-describedby="tags-help">
-                <legend className="mb-2 text-sm font-medium">Tags</legend>
-                <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-border min-h-[44px]">
-                  {tags.map((tag) => {
-                    const selected = selectedTagIds.includes(tag.id);
-                    return (
-                      <button
-                        key={tag.id}
-                        type="button"
-                        aria-pressed={selected}
-                        onClick={() => toggleTag(tag.id)}
-                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                          selected
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground hover:bg-muted/80"
-                        }`}
-                      >
-                        {tag.name}
-                        {selected && (
-                          <X className="h-3 w-3" aria-hidden="true" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p id="tags-help" className="text-xs text-muted-foreground">
-                  Click to select multiple tags
-                </p>
-              </fieldset>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="difficulty" className="text-sm font-medium">
-                    Difficulty
-                  </Label>
-                  <Select
-                    value={difficulty}
-                    onValueChange={(v) => setDifficulty(v as Difficulty)}
-                  >
-                    <SelectTrigger id="difficulty">
-                      <SelectValue placeholder="Select level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="easy">
-                        <span className="flex items-center gap-2">
-                          <span
-                            className="h-2 w-2 rounded-full bg-sage-500"
-                            aria-hidden="true"
-                          />
-                          Easy
-                        </span>
-                      </SelectItem>
-                      <SelectItem value="medium">
-                        <span className="flex items-center gap-2">
-                          <span
-                            className="h-2 w-2 rounded-full bg-amber"
-                            aria-hidden="true"
-                          />
-                          Medium
-                        </span>
-                      </SelectItem>
-                      <SelectItem value="hard">
-                        <span className="flex items-center gap-2">
-                          <span
-                            className="h-2 w-2 rounded-full bg-paprika"
-                            aria-hidden="true"
-                          />
-                          Hard
-                        </span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Image Upload */}
-            <fieldset className="min-w-0">
-              <legend className="mb-2 text-sm font-medium">Recipe Photo</legend>
-              <ImageUpload
-                value={imageUrl}
-                onChange={setImageUrl}
-                recipeContext={{
-                  title,
-                  description,
-                  ingredients: ingredients.filter((i) => i.text.trim()),
-                  instructions: instructions.filter((i) => i.text.trim()),
-                }}
-              />
-            </fieldset>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Time & Servings - Compact Row */}
-      <Card className="p-0">
-        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pt-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-              <Clock className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="font-display">Time & Servings</CardTitle>
-              <CardDescription>How long does it take to make?</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="relative">
-              <Label
-                htmlFor="prepTime"
-                className="text-sm font-medium mb-2 block"
-              >
-                Prep Time
-              </Label>
-              <div className="relative">
-                <Timer className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="prepTime"
-                  type="number"
-                  min="0"
-                  placeholder="30"
-                  value={prepTime}
-                  onChange={(e) => setPrepTime(e.target.value)}
-                  className="pl-10"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  min
-                </span>
-              </div>
-            </div>
-            <div className="relative">
-              <Label
-                htmlFor="cookTime"
-                className="text-sm font-medium mb-2 block"
-              >
-                Cook Time
-              </Label>
-              <div className="relative">
-                <Flame className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="cookTime"
-                  type="number"
-                  min="0"
-                  placeholder="45"
-                  value={cookTime}
-                  onChange={(e) => setCookTime(e.target.value)}
-                  className="pl-10"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  min
-                </span>
-              </div>
-            </div>
-            <div className="relative">
-              <Label
-                htmlFor="servings"
-                className="text-sm font-medium mb-2 block"
-              >
-                Servings
-              </Label>
-              <div className="relative">
-                <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  ref={servingsInputRef}
-                  id="servings"
-                  type="number"
-                  min="1"
-                  placeholder="4"
-                  value={servings}
-                  onChange={(e) => setServings(e.target.value)}
-                  className="pl-10"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  people
-                </span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Ingredients */}
-      <Card className="p-0">
-        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pt-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                <ListChecks className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="font-display">Ingredients</CardTitle>
-                <CardDescription>
-                  What you&apos;ll need to make this recipe
-                </CardDescription>
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addIngredient}
-            >
-              <Plus aria-hidden="true" />
-              Add
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="space-y-3">
-            {ingredients.map((ingredient, index) => (
-              <div
-                key={ingredient.id}
-                className="group flex gap-3 items-center p-3 rounded-xl bg-muted/30 border border-transparent hover:border-border/50 hover:bg-muted/50 transition-all duration-200"
-              >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                  {index + 1}
-                </span>
-                <div className="flex-1 grid gap-2 sm:grid-cols-12">
-                  <Input
-                    aria-label={`Ingredient ${index + 1} quantity`}
-                    placeholder="Qty"
-                    value={ingredient.amount || ""}
-                    onChange={(e) =>
-                      updateIngredient(ingredient.id, "amount", e.target.value)
-                    }
-                    className="sm:col-span-2 text-center"
-                  />
-                  <Select
-                    value={ingredient.unit || "none"}
-                    onValueChange={(value) =>
-                      updateIngredient(
-                        ingredient.id,
-                        "unit",
-                        value === "none" ? "" : value
-                      )
-                    }
-                  >
-                    <SelectTrigger
-                      aria-label={`Ingredient ${index + 1} unit`}
-                      className="w-full sm:col-span-4"
-                    >
-                      <SelectValue placeholder="Unit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {unitOptionsFor(ingredient.unit).map((unit) => (
-                        <SelectItem
-                          key={unit.value || "none"}
-                          value={unit.value || "none"}
-                        >
-                          {unit.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    aria-label={`Ingredient ${index + 1} name`}
-                    placeholder="Ingredient (e.g., all-purpose flour, sifted)"
-                    value={ingredient.text}
-                    onChange={(e) =>
-                      updateIngredient(ingredient.id, "text", e.target.value)
-                    }
-                    className="sm:col-span-6"
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => removeIngredient(ingredient.id)}
-                  disabled={ingredients.length === 1}
-                  aria-label={`Remove ingredient ${index + 1}`}
-                  // Hover-only controls are unreachable on touch devices and
-                  // invisible to keyboard users, so only fade on >= sm and
-                  // always reveal while something in the row has focus.
-                  className="text-muted-foreground hover:text-destructive transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
-                >
-                  <X className="h-4 w-4" aria-hidden="true" />
-                </Button>
-              </div>
-            ))}
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={addIngredient}
-            className="mt-4 w-full border border-dashed border-border hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-primary"
-          >
-            <Plus aria-hidden="true" />
-            Add another ingredient
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Nutrition */}
-      <Card className="p-0">
-        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pt-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                <Apple className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="font-display">Nutrition</CardTitle>
-                <CardDescription>
-                  Estimated nutritional values per serving
-                </CardDescription>
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={calculateNutrition}
-              disabled={isCalculatingNutrition || !canCalculateNutrition}
-            >
-              {isCalculatingNutrition ? (
-                <Loader2 className="animate-spin" aria-hidden="true" />
-              ) : (
                 <Sparkles aria-hidden="true" />
-              )}
-              {nutrition ? "Recalculate" : "Calculate"}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="p-6">
-          {!nutrition && !isCalculatingNutrition && (
-            <div className="text-center py-8 text-muted-foreground">
-              <Apple className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">
-                {ingredients.filter((i) => i.text.trim()).length === 0 ? (
-                  "Add ingredients to calculate nutrition"
-                ) : !servings ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={focusServingsField}
-                      className="rounded-sm font-medium text-primary underline-offset-4 transition-colors hover:text-primary/80 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    >
-                      Add servings
-                    </button>{" "}
-                    to calculate nutrition
-                  </>
-                ) : (
-                  'Click "Calculate" to estimate nutritional values'
-                )}
-              </p>
-            </div>
-          )}
-          {isCalculatingNutrition && (
-            <div className="text-center py-8">
-              <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">
-                Calculating nutrition...
-              </p>
-            </div>
-          )}
-          {nutrition && !isCalculatingNutrition && nutritionOutdated && (
-            <div
-              role="status"
-              className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-amber/30 bg-amber/10 p-3 text-sm"
-            >
-              <AlertTriangle
-                className="h-4 w-4 shrink-0 text-amber"
-                aria-hidden="true"
-              />
-              <p className="flex-1 text-foreground">
-                The ingredients or servings have changed since this was
-                calculated, so these numbers may be out of date.
-              </p>
-              {canCalculateNutrition ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={calculateNutrition}
-                >
-                  <Sparkles aria-hidden="true" />
-                  Recalculate
-                </Button>
-              ) : !servings ? (
-                <button
-                  type="button"
-                  onClick={focusServingsField}
-                  className="rounded-sm font-medium text-primary underline-offset-4 transition-colors hover:text-primary/80 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                >
-                  Add servings
-                </button>
-              ) : null}
-            </div>
-          )}
-          {nutrition && !isCalculatingNutrition && (
-            <NutritionDisplay
-              nutrition={nutrition}
-              servings={servings ? parseInt(servings) : null}
-              isEditable={true}
-              isEditing={isEditingNutrition}
-              onEdit={handleNutritionEdit}
-              onStartEdit={() => setIsEditingNutrition(true)}
-              onCancelEdit={() => setIsEditingNutrition(false)}
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Instructions */}
-      <Card className="p-0">
-        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pt-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                <UtensilsCrossed className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="font-display">Instructions</CardTitle>
-                <CardDescription>Step-by-step directions</CardDescription>
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addInstruction}
-            >
-              <Plus aria-hidden="true" />
-              Add Step
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="space-y-4">
-            {instructions.map((instruction, index) => (
-              <div
-                key={instruction.id}
-                className="group flex gap-4 items-start"
+                Recalculate
+              </Button>
+            ) : !servings ? (
+              <button
+                type="button"
+                onClick={focusServingsField}
+                className="rounded-sm font-medium text-primary underline-offset-4 transition-colors hover:text-primary-hover hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                <div className="flex flex-col items-center">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow-sm">
-                    {index + 1}
-                  </span>
-                  {index < instructions.length - 1 && (
-                    <div className="w-0.5 flex-1 bg-border mt-2 min-h-[20px]" />
-                  )}
-                </div>
-                <div className="flex-1 pb-4">
-                  <Textarea
-                    aria-label={`Step ${index + 1} instructions`}
-                    placeholder={`Describe step ${index + 1}...`}
-                    value={instruction.text}
-                    onChange={(e) =>
-                      updateInstruction(instruction.id, e.target.value)
-                    }
-                    className="resize-none"
-                    rows={2}
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => removeInstruction(instruction.id)}
-                  disabled={instructions.length === 1}
-                  aria-label={`Remove step ${index + 1}`}
-                  className="text-muted-foreground hover:text-destructive transition-opacity mt-1 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
-                >
-                  <X className="h-4 w-4" aria-hidden="true" />
-                </Button>
-              </div>
-            ))}
+                Add servings
+              </button>
+            ) : null}
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={addInstruction}
-            className="mt-2 w-full border border-dashed border-border hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-primary"
-          >
-            <Plus aria-hidden="true" />
-            Add another step
-          </Button>
-        </CardContent>
-      </Card>
+        )}
+        {nutrition && !isCalculatingNutrition && (
+          <NutritionDisplay
+            nutrition={nutrition}
+            servings={servings ? parseInt(servings) : null}
+            isEditable={true}
+            isEditing={isEditingNutrition}
+            onEdit={handleNutritionEdit}
+            onStartEdit={() => setIsEditingNutrition(true)}
+            onCancelEdit={() => setIsEditingNutrition(false)}
+          />
+        )}
+      </FormSection>
 
       {/* Visibility */}
-      <Card className="p-0">
-        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pt-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-              <Globe className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="font-display">Visibility</CardTitle>
-              <CardDescription>
-                You can always share a recipe by sending its link
-              </CardDescription>
-            </div>
+      <FormSection
+        id="visibility"
+        title="Visibility"
+        description="You can always share a recipe by sending its link."
+      >
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            checked={isPublic}
+            onChange={(e) => setIsPublic(e.target.checked)}
+            className="mt-0.5 size-5 shrink-0 cursor-pointer accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+          />
+          <span className="flex-1">
+            <span className="block font-medium text-foreground">
+              Make this recipe public
+            </span>
+            <span className="mt-0.5 block text-sm text-muted-foreground">
+              Show it on Browse and in search results so anyone can find it.
+              When it&apos;s not public, only people you send the link to can
+              open it.
+            </span>
+          </span>
+        </label>
+        {isEditing && initialData?.id && (
+          // The section brings its own top rule and padding; stretch it to
+          // the card's edges and line its text up with the rest.
+          <div className="-mx-5 mt-6 -mb-6 sm:-mx-6 [&>div]:px-5 [&>div]:py-5 sm:[&>div]:px-6">
+            <ResetLinkSection
+              recipeId={initialData.id}
+              onReset={setResetAddress}
+            />
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <label className="flex items-start gap-4 cursor-pointer p-4 rounded-xl transition-all duration-200">
-            <div className="pt-0.5">
-              <input
-                type="checkbox"
-                checked={isPublic}
-                onChange={(e) => setIsPublic(e.target.checked)}
-                className="h-5 w-5 rounded border-border text-primary focus:ring-primary/50 focus:ring-offset-0"
-              />
-            </div>
-            <div className="flex-1">
-              <p className="font-medium text-foreground">
-                Make this recipe public
-              </p>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Show it on Browse and in search results so anyone can find it.
-                When it&apos;s not public, only people you send the link to can
-                open it.
-              </p>
-            </div>
-          </label>
-          {isEditing && initialData?.id && (
-            <ResetLinkSection recipeId={initialData.id} onReset={setResetAddress} />
-          )}
-        </CardContent>
-      </Card>
+        )}
+      </FormSection>
 
-      {/* Submit Actions */}
-      <div className="flex items-center justify-between pt-4 border-t border-border">
-        <p className="text-sm text-muted-foreground">
-          <span className="text-destructive">*</span> Required fields
-        </p>
-        <div className="flex gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleCancel}
-            disabled={isSubmitting}
-            className="min-w-[100px]"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            isLoading={isSubmitting}
-            className="min-w-[140px]"
-          >
-            {!isSubmitting && <ChefHat aria-hidden="true" />}
-            {isEditing ? "Update Recipe" : "Create Recipe"}
-          </Button>
+      {/* Actions: pinned to the bottom of the screen on phones, so saving is
+          always one tap away on a long form. */}
+      <div className="sticky bottom-0 z-40 -mx-4 border-t border-border bg-background/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur supports-[backdrop-filter]:bg-background/85 sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pt-6 sm:pb-0 sm:backdrop-blur-none">
+        <div className="flex items-center justify-between gap-3">
+          <p className="hidden text-sm text-muted-foreground sm:block">
+            <span className="text-destructive" aria-hidden="true">
+              *
+            </span>{" "}
+            Required
+          </p>
+          <div className="flex flex-1 gap-3 sm:flex-none">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSubmitting}
+              className="flex-1 sm:flex-none"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              isLoading={isSubmitting}
+              className="flex-[2] sm:flex-none"
+            >
+              {isEditing ? "Save recipe" : "Create recipe"}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -1248,7 +1124,9 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       <AlertDialog open={discardDialogOpen} onOpenChange={setDiscardDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Discard your changes?</AlertDialogTitle>
+            <AlertDialogTitle className="font-display text-2xl font-normal">
+              Discard your changes?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {isEditing
                 ? "Your changes to this recipe haven't been saved and will be lost."
@@ -1271,7 +1149,9 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       <AlertDialog open={outdatedDialogOpen} onOpenChange={setOutdatedDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Nutrition may be out of date</AlertDialogTitle>
+            <AlertDialogTitle className="font-display text-2xl font-normal">
+              Nutrition may be out of date
+            </AlertDialogTitle>
             <AlertDialogDescription>
               The ingredients or servings changed after the nutrition was
               calculated, so the saved numbers may not match this recipe.
@@ -1297,5 +1177,101 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
         </AlertDialogContent>
       </AlertDialog>
     </form>
+  );
+}
+
+const DIFFICULTY_OPTIONS: Array<{
+  value: Difficulty;
+  label: string;
+  dot: string;
+}> = [
+  { value: "easy", label: "Easy", dot: "bg-success dark:bg-success-light" },
+  { value: "medium", label: "Medium", dot: "bg-warning dark:bg-warning-light" },
+  { value: "hard", label: "Hard", dot: "bg-danger dark:bg-danger-light" },
+];
+
+/**
+ * One section of the editor: a quiet card with a Gloock title, a line of
+ * guidance in slate, and an optional action on the right.
+ */
+function FormSection({
+  id,
+  title,
+  description,
+  action,
+  children,
+}: {
+  id: string;
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const titleId = `${id}-section-title`;
+  return (
+    <section aria-labelledby={titleId}>
+      <Card className="gap-0 py-0">
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 px-5 pt-6 sm:px-6">
+          <div className="min-w-0 flex-1 space-y-1">
+            <h2 id={titleId} className="text-[22px] leading-tight text-foreground">
+              {title}
+            </h2>
+            {description && (
+              <p className="text-sm text-muted-foreground">{description}</p>
+            )}
+          </div>
+          {action}
+        </div>
+        <div className="px-5 pt-5 pb-6 sm:px-6">{children}</div>
+      </Card>
+    </section>
+  );
+}
+
+/** A number input with its unit spelled out inside the field, in mono. */
+function NumberField({
+  ref,
+  id,
+  label,
+  suffix,
+  min,
+  placeholder,
+  value,
+  onChange,
+}: {
+  ref?: React.Ref<HTMLInputElement>;
+  id: string;
+  label: string;
+  suffix: string;
+  min: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const suffixId = `${id}-unit`;
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="relative">
+        <Input
+          ref={ref}
+          id={id}
+          type="number"
+          inputMode="numeric"
+          min={min}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          aria-describedby={suffixId}
+          className="pr-18 font-mono tabular"
+        />
+        <span
+          id={suffixId}
+          className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-sm text-muted-foreground"
+        >
+          {suffix}
+        </span>
+      </div>
+    </div>
   );
 }

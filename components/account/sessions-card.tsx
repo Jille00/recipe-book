@@ -3,15 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, LogOut, MonitorSmartphone } from "lucide-react";
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui";
+import { Loader2, LogOut } from "lucide-react";
+import { Button, Card, CardContent } from "@/components/ui";
+import { AccountCardHeader } from "./account-field";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,17 +59,22 @@ export function SessionsCard({ sessionCount }: { sessionCount: number | null }) 
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="font-display flex items-center gap-2">
-          <MonitorSmartphone className="h-5 w-5 text-primary" aria-hidden="true" />
-          Signed-in devices
-        </CardTitle>
-        <CardDescription>
-          Lost a phone or signed in on a shared computer? Sign out everywhere at once.
-        </CardDescription>
-      </CardHeader>
+      <AccountCardHeader
+        title="Signed-in devices"
+        description="Lost a phone or signed in on a shared computer? Sign out everywhere at once."
+      />
       <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">{devices}</p>
+        <p className="text-sm text-muted-foreground">
+          {sessionCount !== null && sessionCount > 1 ? (
+            <>
+              You&apos;re signed in on{" "}
+              <span className="font-mono text-foreground tabular">{sessionCount}</span>{" "}
+              devices or browsers.
+            </>
+          ) : (
+            devices
+          )}
+        </p>
         <AlertDialog
           open={open}
           onOpenChange={(next) => {
@@ -84,27 +83,29 @@ export function SessionsCard({ sessionCount }: { sessionCount: number | null }) 
         >
           <AlertDialogTrigger asChild>
             <Button variant="outline" className="shrink-0">
-              <LogOut className="h-4 w-4" aria-hidden="true" />
-              Sign Out Everywhere
+              <LogOut className="size-4" aria-hidden="true" />
+              Sign out everywhere
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle className="font-display">Sign out everywhere?</AlertDialogTitle>
+              <AlertDialogTitle className="font-display text-2xl font-normal">
+                Sign out everywhere?
+              </AlertDialogTitle>
               <AlertDialogDescription>
                 Every device and browser signed in to your account will be signed out,
                 including this one. You can sign in again straight away.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isSigningOut}>Stay Signed In</AlertDialogCancel>
+              <AlertDialogCancel disabled={isSigningOut}>Stay signed in</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleSignOutEverywhere}
                 disabled={isSigningOut}
                 className={buttonVariants({ variant: "default" })}
               >
-                {isSigningOut && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                {isSigningOut ? "Signing out..." : "Sign Out Everywhere"}
+                {isSigningOut && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+                {isSigningOut ? "Signing out..." : "Sign out everywhere"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

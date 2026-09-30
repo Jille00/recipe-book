@@ -43,7 +43,7 @@ export default async function CollectionPage({ params }: Props) {
   const recipes = await getCollectionRecipes(found.id, session.user.id);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
       <CollectionDetail
         collection={{ id: found.id, name: found.name }}
         recipes={recipes}

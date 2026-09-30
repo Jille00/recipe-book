@@ -6,6 +6,7 @@ import { Heart } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { compactButtonClass, compactLabelClass } from "./action-styles";
 
 type FavoriteChangeHandler = (recipeId: string, favorited: boolean) => void;
 
@@ -24,6 +25,8 @@ interface FavoriteButtonProps {
   variant?: "icon" | "button" | "glass";
   size?: "sm" | "md";
   className?: string;
+  /** "button" variant only: icon-only below `sm` (the recipe page's action row). */
+  compact?: boolean;
   /** Called once the server has confirmed the new state. */
   onChange?: (favorited: boolean) => void;
 }
@@ -34,6 +37,7 @@ export function FavoriteButton({
   variant = "icon",
   size = "md",
   className,
+  compact = false,
   onChange,
 }: FavoriteButtonProps) {
   const router = useRouter();
@@ -127,7 +131,7 @@ export function FavoriteButton({
           className={cn(
             iconSize,
             "transition-colors",
-            isFavorited ? "fill-paprika text-paprika dark:fill-paprika-300 dark:text-paprika-300" : "text-foreground"
+            isFavorited ? "fill-danger text-danger dark:fill-danger-light dark:text-danger-light" : "text-foreground"
           )}
         />
       </button>
@@ -140,16 +144,24 @@ export function FavoriteButton({
         type="button"
         onClick={handleToggle}
         disabled={isPending}
-        variant={isFavorited ? "default" : "outline"}
-        size="sm"
-        className={className}
+        // Outline either way: oranje belongs to the page's main action. The
+        // filled heart shows the state.
+        variant="outline"
+        size={compact ? "default" : "sm"}
+        className={cn(compact && compactButtonClass, className)}
         aria-pressed={isFavorited}
       >
         <Heart
           aria-hidden="true"
-          className={cn("h-4 w-4", isFavorited && "fill-current")}
+          className={cn(
+            "h-4 w-4 transition-colors",
+            isFavorited &&
+              "fill-danger text-danger dark:fill-danger-light dark:text-danger-light"
+          )}
         />
-        {isFavorited ? "Favorited" : "Favorite"}
+        <span className={cn(compact && compactLabelClass)}>
+          {isFavorited ? "Favorited" : "Favorite"}
+        </span>
       </Button>
     );
   }
@@ -172,7 +184,7 @@ export function FavoriteButton({
           iconSize,
           "transition-colors",
           isFavorited
-            ? "fill-paprika text-paprika dark:fill-paprika-300 dark:text-paprika-300"
+            ? "fill-danger text-danger dark:fill-danger-light dark:text-danger-light"
             : "text-muted-foreground hover:text-foreground"
         )}
       />

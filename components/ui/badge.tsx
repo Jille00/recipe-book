@@ -17,16 +17,14 @@ const badgeVariants = cva(
           "border-transparent bg-destructive text-primary-foreground [a&]:hover:bg-destructive-hover focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
         outline:
           "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-        // STYLE_GUIDE 04 difficulty badges: tinted background, dark text
-        // (success = Easy, warning = Medium, danger = Hard). All >= 4.5:1.
-        // Dark: a low tint with the lighter shade as text (STYLE_GUIDE 07),
-        // checked in lib/color-contrast.test.ts.
+        // Difficulty and status: a 10% tint of the status colour with the
+        // colour as text (>= 5.2:1 on white, >= 6.5:1 on night-card).
         success:
-          "border-transparent bg-sage-100 text-sage-700 [a&]:hover:bg-sage-200 dark:bg-sage-400/15 dark:text-sage-300 dark:[a&]:hover:bg-sage-400/25",
+          "border-transparent bg-success/10 text-success dark:bg-success-light/15 dark:text-success-light",
         warning:
-          "border-transparent bg-amber/15 text-amber-700 [a&]:hover:bg-amber/25 dark:text-amber-300",
+          "border-transparent bg-warning/10 text-warning dark:bg-warning-light/15 dark:text-warning-light",
         danger:
-          "border-transparent bg-paprika/10 text-paprika-700 [a&]:hover:bg-paprika/15 dark:bg-paprika/20 dark:text-paprika-300 dark:[a&]:hover:bg-paprika/30",
+          "border-transparent bg-danger/10 text-danger dark:bg-danger-light/15 dark:text-danger-light",
       },
     },
     defaultVariants: {

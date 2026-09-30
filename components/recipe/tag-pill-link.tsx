@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DelftTile } from "@/components/delft/delft-tile";
 import { cn } from "@/lib/utils";
 import { tagPath } from "@/lib/tag-pages";
 
@@ -9,21 +10,26 @@ interface TagPillLinkProps {
   className?: string;
 }
 
-/** A tag as a sage pill (STYLE_GUIDE 04 "Category tags") linking to its page. */
+/**
+ * A tag as a glaze pill with delft text (STYLE_GUIDE 04 "Tag pills") linking
+ * to its page. A tiny tile of the tag's motif leads, the same one the tag
+ * wears on /tags and in the /browse category pills.
+ */
 export function TagPillLink({ tag, count, className }: TagPillLinkProps) {
   return (
     <Link
       href={tagPath(tag.slug)}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full bg-sage-100 px-3.5 py-1.5 text-xs font-medium tracking-[0.02em] text-sage-700 transition-colors duration-(--duration-fast) hover:bg-sage-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        // 36px pill; the ::after stretches the hit area to 44px, which an 8px
+        // row gap leaves room for.
+        "relative inline-flex h-9 items-center gap-2 rounded-full bg-secondary pr-3.5 pl-1.5 text-[13px] font-medium text-primary transition-colors duration-(--duration-fast) after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] hover:bg-glaze-line focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:hover:bg-night-line",
         className
       )}
     >
+      <DelftTile seed={tag.slug} tags={[tag.slug]} className="size-6" />
       {tag.name}
       {count !== undefined && (
-        // Lighter weight rather than a lighter colour: sage-600 on sage-100
-        // falls short of 4.5:1 at this size.
-        <span className="font-normal tabular-nums">
+        <span className="font-mono text-xs tabular text-muted-foreground">
           <span className="sr-only">(</span>
           {count}
           <span className="sr-only"> {count === 1 ? "recipe" : "recipes"})</span>

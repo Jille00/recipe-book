@@ -31,26 +31,26 @@ export default async function SettingsPage() {
     .catch(() => null);
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-semibold text-foreground">Account</h1>
-          <p className="mt-1 text-muted-foreground">
-            Your sign-in details, your data, and your account
-          </p>
-        </div>
+    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+      <header className="mb-8 sm:mb-10">
+        <h1 className="text-4xl leading-[1.1] tracking-[-0.01em] text-foreground sm:text-[44px]">
+          Account
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          Your sign-in details, your data, and your account.
+        </p>
         <Link
           href="/profile"
-          className="group inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          className="group mt-3 -ml-1 inline-flex min-h-11 items-center gap-2 rounded-md px-1 text-sm font-medium text-primary transition-colors duration-(--duration-fast) hover:text-primary-hover"
         >
-          <User className="h-4 w-4" aria-hidden="true" />
+          <User className="size-4" aria-hidden="true" />
           Name, bio and units are on your profile
           <ArrowRight
-            className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+            className="size-4 transition-transform duration-(--duration-fast) group-hover:translate-x-0.5"
             aria-hidden="true"
           />
         </Link>
-      </div>
+      </header>
 
       <div className="space-y-6">
         <ChangeEmailCard
@@ -60,6 +60,11 @@ export default async function SettingsPage() {
         <ChangePasswordCard />
         <SessionsCard sessionCount={sessionCount} />
         <ExportDataCard />
+      </div>
+
+      {/* Kept apart from the everyday settings, so it isn't reached by
+          accident. */}
+      <div className="mt-12">
         <DeleteAccountCard />
       </div>
     </div>

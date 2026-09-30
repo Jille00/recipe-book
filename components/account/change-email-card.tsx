@@ -1,15 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Loader2, Mail, MailCheck } from "lucide-react";
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui";
+import { Loader2, MailCheck } from "lucide-react";
+import { Button, Card, CardContent } from "@/components/ui";
 import { changeEmail } from "@/lib/auth-client";
 import {
   authErrorMessage,
@@ -17,7 +10,13 @@ import {
   type ChangeEmailField,
   type FieldErrors,
 } from "@/lib/account-forms";
-import { AccountField, focusField, FormAlert } from "./account-field";
+import {
+  AccountCardHeader,
+  AccountField,
+  focusField,
+  FormAlert,
+  NoticePanel,
+} from "./account-field";
 
 interface ChangeEmailCardProps {
   currentEmail: string;
@@ -76,48 +75,41 @@ export function ChangeEmailCard({ currentEmail, emailVerified }: ChangeEmailCard
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="font-display flex items-center gap-2">
-          <Mail className="h-5 w-5 text-primary" aria-hidden="true" />
-          Email address
-        </CardTitle>
-        <CardDescription>
-          You sign in with <span className="font-medium text-foreground">{currentEmail}</span>.
-        </CardDescription>
-      </CardHeader>
+      <AccountCardHeader
+        title="Email address"
+        description={
+          <>
+            You sign in with{" "}
+            <span className="font-medium break-all text-foreground">{currentEmail}</span>.
+          </>
+        }
+      />
       <CardContent>
         {sentTo ? (
           <div className="space-y-4">
-            <div
+            <NoticePanel
               role="status"
-              className="rounded-xl border border-secondary/30 bg-secondary/10 p-5"
+              icon={<MailCheck aria-hidden="true" />}
+              title="Check your inbox"
             >
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary/20 text-secondary-foreground">
-                  <MailCheck className="h-5 w-5" aria-hidden="true" />
-                </div>
-                <div className="space-y-1">
-                  <p className="font-medium">Check your inbox</p>
-                  {emailVerified ? (
-                    <p className="text-sm text-muted-foreground">
-                      We sent a link to <span className="font-medium text-foreground">{currentEmail}</span>{" "}
-                      to approve the change. After that, we&apos;ll send one more link to{" "}
-                      <span className="font-medium text-foreground">{sentTo}</span> to confirm it.
-                      Your address stays the same until then.
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      We sent a link to <span className="font-medium text-foreground">{sentTo}</span>.
-                      Open it to confirm the new address.
-                    </p>
-                  )}
-                  <p className="text-sm text-muted-foreground">The links expire in 24 hours.</p>
-                </div>
-              </div>
-            </div>
+              {emailVerified ? (
+                <p className="text-sm text-muted-foreground">
+                  We sent a link to <span className="font-medium text-foreground">{currentEmail}</span>{" "}
+                  to approve the change. After that, we&apos;ll send one more link to{" "}
+                  <span className="font-medium text-foreground">{sentTo}</span> to confirm it.
+                  Your address stays the same until then.
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  We sent a link to <span className="font-medium text-foreground">{sentTo}</span>.
+                  Open it to confirm the new address.
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground">The links expire in 24 hours.</p>
+            </NoticePanel>
             <div className="flex justify-end">
               <Button type="button" variant="outline" onClick={() => setSentTo(null)}>
-                Use a Different Address
+                Use a different address
               </Button>
             </div>
           </div>
@@ -142,9 +134,9 @@ export function ChangeEmailCard({ currentEmail, emailVerified }: ChangeEmailCard
               required
             />
             <div className="flex justify-end">
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                {isSubmitting ? "Sending..." : "Change Email"}
+              <Button type="submit" variant="outline" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+                {isSubmitting ? "Sending..." : "Change email"}
               </Button>
             </div>
           </form>

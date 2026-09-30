@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowRight, FolderOpen } from "lucide-react";
-import { Card, CardContent } from "@/components/ui";
+import { Button } from "@/components/ui";
+import { DelftTile } from "@/components/delft/delft-tile";
+import { PageHeader } from "@/components/page/page-header";
+import { EmptyState } from "@/components/page/empty-state";
 import { getTagsWithRecipeCount } from "@/lib/db/queries/tags";
 import { tagPath } from "@/lib/tag-pages";
 import { SITE_OG_IMAGE } from "../../site-url";
@@ -29,74 +31,75 @@ export const metadata: Metadata = {
   },
 };
 
+function recipeCountLabel(count: number) {
+  return count === 1 ? "recipe" : "recipes";
+}
+
 export default async function TagsPage() {
   const tags = await getTagsWithRecipeCount();
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <h1 className="font-display text-3xl font-semibold text-foreground">
-          Categories
-        </h1>
-        <p className="mt-1 text-muted-foreground">{CATEGORIES_DESCRIPTION}</p>
-      </div>
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+      <PageHeader title="Categories" intro={CATEGORIES_DESCRIPTION} />
 
       {tags.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-muted">
-              <FolderOpen className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
-            </div>
-            <h2 className="font-display text-xl font-semibold text-foreground">
-              No categories yet
-            </h2>
-          </CardContent>
-        </Card>
+        <EmptyState
+          seed="categories-empty"
+          title="No categories yet"
+          action={
+            <Button asChild>
+              <Link href="/browse">Browse recipes</Link>
+            </Button>
+          }
+        >
+          Categories appear here once recipes are tagged.
+        </EmptyState>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        // A tile panel (STYLE_GUIDE 06): each category is its own tile, laid
+        // edge to edge in rows like a Delft frieze, with its name below.
+        <ul className="grid grid-cols-2 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
           {tags.map((tag) => {
-            const count = `${tag.recipeCount} recipe${tag.recipeCount !== 1 ? "s" : ""}`;
+            const tile = (
+              <DelftTile
+                seed={tag.slug}
+                tags={[tag.slug]}
+                className="aspect-square h-auto w-full"
+              />
+            );
 
-            // An empty category stays listed but isn't a link to a dead end.
+            // An empty category stays on the panel, dimmed, but isn't a link
+            // to a dead end.
             if (tag.recipeCount === 0) {
               return (
-                <li
-                  key={tag.id}
-                  className="flex items-center gap-4 rounded-xl border border-border bg-card/60 p-5"
-                >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted">
-                    <FolderOpen className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate font-display text-lg font-medium text-muted-foreground">
-                      {tag.name}
-                    </p>
-                    <p className="text-sm text-muted-foreground">No recipes yet</p>
-                  </div>
+                <li key={tag.id}>
+                  <div className="opacity-40">{tile}</div>
+                  <p className="mt-3 truncate px-2 font-display text-lg leading-[1.3] text-muted-foreground">
+                    {tag.name}
+                  </p>
+                  <p className="px-2 text-[13px] text-muted-foreground">
+                    No recipes yet
+                  </p>
                 </li>
               );
             }
 
             return (
               <li key={tag.id}>
-                {/* STYLE_GUIDE 04/05 card: soft shadow, lift on hover. */}
                 <Link
                   href={tagPath(tag.slug)}
-                  className="group flex items-center gap-4 rounded-xl border border-border bg-card p-5 shadow-soft transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lifted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  className="group block rounded-[2px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sage-100 transition-transform duration-300 ease-out group-hover:scale-110">
-                    <FolderOpen className="h-5 w-5 text-sage-700" aria-hidden="true" />
+                  {/* The tile lifts off the wall on hover (STYLE_GUIDE 05). */}
+                  <div className="relative transition-[translate,box-shadow] duration-(--duration-slow) ease-out group-hover:z-10 group-hover:-translate-y-1 group-hover:shadow-lifted">
+                    {tile}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-display text-lg font-medium text-foreground transition-colors group-hover:text-primary">
-                      {tag.name}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{count}</p>
-                  </div>
-                  <ArrowRight
-                    className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary"
-                    aria-hidden="true"
-                  />
+                  <p className="mt-3 truncate px-2 font-display text-lg leading-[1.3] text-foreground transition-colors duration-(--duration-fast) group-hover:text-primary">
+                    {tag.name}
+                  </p>
+                  <p className="px-2 text-[13px] text-muted-foreground">
+                    <span className="font-mono tabular">{tag.recipeCount}</span>{" "}
+                    {recipeCountLabel(tag.recipeCount)}
+                  </p>
                 </Link>
               </li>
             );

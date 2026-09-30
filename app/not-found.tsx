@@ -3,12 +3,11 @@ import type { Metadata } from "next";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Button, Card, CardContent } from "@/components/ui";
-import { ChefHat, Home, Search } from "lucide-react";
+import { DelftTile } from "@/components/delft/delft-tile";
 
 export const metadata: Metadata = {
-  title: "Page Not Found",
-  description:
-    "We could not find that page. Head back to the kitchen and try again.",
+  title: "Page not found",
+  description: "We couldn't find that page.",
 };
 
 export default function NotFound() {
@@ -21,35 +20,28 @@ export default function NotFound() {
         className="flex flex-1 items-center justify-center px-4 py-16 sm:px-6 lg:px-8"
       >
         <Card className="w-full max-w-xl">
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-              <ChefHat className="h-10 w-10 text-primary" />
-            </div>
+          <CardContent className="flex flex-col items-center justify-center px-6 py-14 text-center">
+            <DelftTile
+              seed="kookboek-404"
+              tags={["drinks"]}
+              className="size-28 rounded-[2px] shadow-soft"
+            />
 
-            <p className="font-display text-5xl font-semibold text-primary">
-              404
-            </p>
-            <h1 className="mt-4 font-display text-2xl font-semibold text-foreground">
+            <p className="mt-8 font-mono text-sm tabular text-muted-foreground">404</p>
+            <h1 className="mt-2 font-display text-[2.25rem] leading-[1.1] tracking-[-0.01em] text-foreground">
               This page isn&apos;t on the menu
             </h1>
             <p className="mt-3 max-w-md text-muted-foreground">
-              We looked through every drawer and cupboard, but this recipe
-              page has gone missing. It may have been removed, renamed, or it
-              was never here at all.
+              We checked every cupboard. The link may be old, or the recipe
+              was moved or made private.
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button asChild className="w-full sm:w-auto">
-                <Link href="/">
-                  <Home className="h-4 w-4" aria-hidden="true" />
-                  Back to Home
-                </Link>
+            <div className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+              <Button asChild>
+                <Link href="/">Back to home</Link>
               </Button>
-              <Button asChild variant="outline" className="w-full sm:w-auto">
-                <Link href="/browse">
-                  <Search className="h-4 w-4" aria-hidden="true" />
-                  Browse Recipes
-                </Link>
+              <Button asChild variant="outline">
+                <Link href="/browse">Browse recipes</Link>
               </Button>
             </div>
           </CardContent>

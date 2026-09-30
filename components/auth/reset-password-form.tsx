@@ -32,13 +32,13 @@ export function ResetPasswordForm() {
   if (!token || tokenError) {
     return (
       <div className="space-y-6">
-        <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-5">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/15 text-destructive">
-              <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+            <div className="mt-0.5 shrink-0 text-destructive">
+              <AlertTriangle className="size-5" aria-hidden="true" />
             </div>
             <div className="space-y-1">
-              <p className="font-medium">This link is invalid or has expired</p>
+              <p className="font-medium text-foreground">This link is invalid or has expired</p>
               <p className="text-sm text-muted-foreground">
                 Password reset links only work once and expire after 1 hour.
                 Request a new one to continue.
@@ -54,7 +54,7 @@ export function ResetPasswordForm() {
         <p className="text-center text-sm text-muted-foreground">
           <Link
             href="/login"
-            className="font-medium text-primary hover:text-primary/80 transition-colors"
+            className="rounded-sm font-medium text-primary underline-offset-4 transition-colors duration-(--duration-fast) hover:text-primary-hover hover:underline"
           >
             Back to sign in
           </Link>
@@ -66,13 +66,16 @@ export function ResetPasswordForm() {
   if (success) {
     return (
       <div className="space-y-6">
-        <div role="status" className="rounded-xl border border-secondary/30 bg-secondary/10 p-5">
+        <div
+          role="status"
+          className="rounded-lg border border-success/25 bg-success/10 p-4 dark:border-success-light/30 dark:bg-success-light/15"
+        >
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary/20 text-secondary-foreground">
-              <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+            <div className="mt-0.5 shrink-0 text-success dark:text-success-light">
+              <CheckCircle2 className="size-5" aria-hidden="true" />
             </div>
             <div className="space-y-1">
-              <p className="font-medium">Password updated</p>
+              <p className="font-medium text-foreground">Password updated</p>
               <p className="text-sm text-muted-foreground">
                 Your password has been changed. You can now sign in with your new password.
               </p>
@@ -149,7 +152,7 @@ export function ResetPasswordForm() {
       {errors.form && (
         <div
           role="alert"
-          className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
         >
           {errors.form}
         </div>
@@ -159,7 +162,7 @@ export function ResetPasswordForm() {
         <Label htmlFor="password">New password</Label>
         <div className="relative">
           <Lock
-            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
           />
           <Input
@@ -171,10 +174,10 @@ export function ResetPasswordForm() {
             required
             autoComplete="new-password"
             autoFocus
-            className="pl-10"
+            className="pl-11"
           />
         </div>
-        <p id="password-hint" className="text-xs text-muted-foreground">
+        <p id="password-hint" className="text-[13px] text-muted-foreground">
           {PASSWORD_RULES}
         </p>
         <FieldError id="password-error" message={errors.password} />
@@ -184,7 +187,7 @@ export function ResetPasswordForm() {
         <Label htmlFor="confirmPassword">Confirm new password</Label>
         <div className="relative">
           <Lock
-            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
           />
           <Input
@@ -195,7 +198,7 @@ export function ResetPasswordForm() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
             autoComplete="new-password"
-            className="pl-10"
+            className="pl-11"
           />
         </div>
         <FieldError id="confirmPassword-error" message={errors.confirmPassword} />
@@ -204,11 +207,11 @@ export function ResetPasswordForm() {
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
             Updating password...
           </>
         ) : (
-          "Reset Password"
+          "Reset password"
         )}
       </Button>
     </form>

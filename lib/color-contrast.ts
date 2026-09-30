@@ -42,7 +42,7 @@ export function contrastRatio(a: string | Rgb, b: string | Rgb): number {
 
 /**
  * The colour a translucent `fg` at `alpha` (0-1) produces over an opaque
- * `bg`, e.g. Tailwind's `bg-amber/15` over the page background.
+ * `bg`, e.g. Tailwind's `bg-success/10` over a white card.
  */
 export function blend(fg: string, bg: string, alpha: number): Rgb {
   const f = parseHex(fg);

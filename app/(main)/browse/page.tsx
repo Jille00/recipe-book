@@ -1,6 +1,8 @@
 import { headers } from "next/headers";
-import { ChefHat } from "lucide-react";
-import { Card, CardContent, Pagination } from "@/components/ui";
+import Link from "next/link";
+import { Button, Pagination } from "@/components/ui";
+import { PageHeader } from "@/components/page/page-header";
+import { EmptyState } from "@/components/page/empty-state";
 import { RecipeCard } from "@/components/recipe/recipe-card";
 import { BrowseFilters } from "@/components/browse/browse-filters";
 import { CategoryChips } from "@/components/browse/category-chips";
@@ -129,80 +131,93 @@ export default async function BrowsePage({ searchParams }: Props) {
     authorName: recipe.authorName,
   }));
 
-  return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="font-display text-3xl font-semibold text-foreground">
-          Browse Recipes
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          Discover delicious recipes from our community
-        </p>
-      </div>
+  const hasFilters = Object.keys(filters).length > 0;
 
-      {/* Category shortcuts */}
-      <CategoryChips
-        tags={topCategories(tags, CATEGORY_CHIP_COUNT)}
-        className="mb-6"
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+      <PageHeader
+        title="Browse recipes"
+        intro="Recipes shared by Kookboek cooks. Search by name or ingredient, or start from a category."
       />
 
-      {/* Filters */}
-      <div className="mb-8">
-        <BrowseFilters tags={tags} initialFilters={filters} initialSort={sort} />
-      </div>
+      {/* Search first: it is the page's main control. Category shortcuts sit
+          under it, and the result count shares a row with the sort order. */}
+      <BrowseFilters
+        tags={tags}
+        initialFilters={filters}
+        initialSort={sort}
+        categories={
+          <CategoryChips tags={topCategories(tags, CATEGORY_CHIP_COUNT)} />
+        }
+        summary={
+          recipes.length > 0 && (
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              <span className="font-mono tabular text-foreground">{total}</span>{" "}
+              {total === 1 ? "recipe" : "recipes"}
+              {currentPage > 1 && (
+                <>
+                  {" · page "}
+                  <span className="font-mono tabular">{currentPage}</span> of{" "}
+                  <span className="font-mono tabular">{totalPages}</span>
+                </>
+              )}
+            </p>
+          )
+        }
+      />
 
       {/* Results */}
-      {recipes.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted mb-6">
-              <ChefHat className="h-10 w-10 text-muted-foreground" />
+      <section aria-label="Results" className="mt-6">
+        {recipes.length === 0 ? (
+          <EmptyState
+            seed="browse-empty"
+            tags={["soups"]}
+            title={hasFilters ? "No recipes match" : "No public recipes yet"}
+            action={
+              hasFilters ? (
+                <Button asChild variant="outline">
+                  <Link href="/browse">Clear search and filters</Link>
+                </Button>
+              ) : (
+                <Button asChild variant="outline">
+                  <Link href="/recipes/new">Add a recipe</Link>
+                </Button>
+              )
+            }
+          >
+            {hasFilters
+              ? "Try fewer filters or a different word. A single ingredient often finds more."
+              : "Nobody has shared a recipe yet. Yours could be the first."}
+          </EmptyState>
+        ) : (
+          <>
+            {/* Recipe grid */}
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {recipesWithDetails.map((recipe) => (
+                <RecipeCard
+                  key={recipe.id}
+                  recipe={recipe}
+                  showAuthor
+                  showFavorite={!!session?.user}
+                  initialFavorited={recipe.isFavorited}
+                />
+              ))}
             </div>
-            <h2 className="font-display text-xl font-semibold text-foreground mb-2">
-              No recipes found
-            </h2>
-            <p className="text-muted-foreground max-w-md">
-              {Object.keys(filters).length > 0
-                ? "Try adjusting your filters or search terms to find what you're looking for."
-                : "There are no public recipes yet. Be the first to share one!"}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          {/* Results count */}
-          <p className="text-sm text-muted-foreground mb-6">
-            {total} recipe{total !== 1 ? "s" : ""} found
-            {currentPage > 1 && ` (page ${currentPage} of ${totalPages})`}
-          </p>
 
-          {/* Recipe grid */}
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {recipesWithDetails.map((recipe) => (
-              <RecipeCard
-                key={recipe.id}
-                recipe={recipe}
-                showAuthor
-                showFavorite={!!session?.user}
-                initialFavorited={recipe.isFavorited}
-              />
-            ))}
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-8">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                baseUrl="/browse"
-                searchParams={searchParamsRecord}
-              />
-            </div>
-          )}
-        </>
-      )}
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-10">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  baseUrl="/browse"
+                  searchParams={searchParamsRecord}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </section>
     </div>
   );
 }

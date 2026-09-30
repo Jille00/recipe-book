@@ -16,11 +16,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface ResetLinkSectionProps {
   recipeId: string;
   /** Called with the recipe's new address once the old one stops working. */
   onReset: (address: { code: string; slug: string }) => void;
+  /** Merged onto the section; it has no horizontal padding of its own. */
+  className?: string;
 }
 
 /**
@@ -28,7 +31,7 @@ interface ResetLinkSectionProps {
  * Browse, but anyone who already has its link can still open it; this is how
  * they lose access.
  */
-export function ResetLinkSection({ recipeId, onReset }: ResetLinkSectionProps) {
+export function ResetLinkSection({ recipeId, onReset, className }: ResetLinkSectionProps) {
   const [open, setOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
@@ -52,9 +55,14 @@ export function ResetLinkSection({ recipeId, onReset }: ResetLinkSectionProps) {
   };
 
   return (
-    <div className="flex flex-col gap-3 border-t border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+    <div
+      className={cn(
+        "flex flex-col gap-3 border-t border-border py-4 sm:flex-row sm:items-center sm:justify-between",
+        className
+      )}
+    >
       <div>
-        <p className="font-medium text-foreground">Reset link</p>
+        <p className="font-display text-lg font-normal text-foreground">Reset link</p>
         <p className="mt-0.5 text-sm text-muted-foreground">
           If the link reached people it shouldn&apos;t have, or the recipe used
           to be public, give it a new one. Everyone with the old link loses
@@ -75,7 +83,9 @@ export function ResetLinkSection({ recipeId, onReset }: ResetLinkSectionProps) {
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-display">Reset this recipe&apos;s link?</AlertDialogTitle>
+            <AlertDialogTitle className="font-display font-normal">
+              Reset this recipe&apos;s link?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               The current link stops working right away, including for people
               you sent it to. You can share the new link afterwards.

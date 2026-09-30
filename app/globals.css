@@ -7,9 +7,9 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   /* Loaded with next/font in app/layout.tsx, which sets these variables */
-  --font-sans: var(--font-dm-sans), system-ui, sans-serif;
-  --font-display: var(--font-fraunces), Georgia, serif;
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-hanken), system-ui, sans-serif;
+  --font-display: var(--font-gloock), Georgia, serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
 
   /* Semantic color mappings */
   --color-sidebar-ring: var(--sidebar-ring);
@@ -38,6 +38,10 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
+  --color-cta: var(--cta);
+  --color-cta-hover: var(--cta-hover);
+  --color-cta-foreground: var(--cta-foreground);
+  --color-surface: var(--surface);
   --color-destructive-hover: var(--destructive-hover);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
@@ -48,55 +52,37 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* Terracotta - Primary */
-  --color-terracotta-50: #fef7f4;
-  --color-terracotta-100: #fce8e0;
-  --color-terracotta-200: #f9d0c2;
-  --color-terracotta-300: #f4a98a;
-  --color-terracotta-400: #e8785a;
-  --color-terracotta-500: #c75d3a;
-  --color-terracotta-600: #a84a2d;
-  --color-terracotta-700: #8a3b23;
-  --color-terracotta-800: #6b2e1c;
-  --color-terracotta-900: #4a2015;
+  /* ── Kookboek palette: Delft (STYLE_GUIDE 02) ─────────────────────
+     Porcelain grounds, Delft cobalt ink, one Dutch-orange accent for the
+     main action on a page. Ratios are WCAG contrast, checked in
+     lib/color-contrast.test.ts. */
+  --color-porcelain: #f4f6fa; /* page */
+  --color-glaze: #e3e9f5; /* quiet surfaces, tag pills */
+  --color-glaze-line: #d4dcec; /* decorative lines and card edges */
+  --color-pewter: #737f9c; /* form-control edges: 4.00 on white, 3.29 on glaze */
+  --color-slate: #4f5b75; /* secondary text: 6.81 on white, 5.59 on glaze */
+  --color-ink: #141b2d; /* text: 17.15 on white */
+  --color-delft: #1d3c8c; /* brand, links, icons: 10.11 on white */
+  --color-delft-deep: #142b66;
+  --color-delft-light: #8fb1f2; /* delft on dark surfaces: 7.42 on night-card */
+  --color-oranje: #c24e12; /* main action: white on it 4.78 */
+  --color-oranje-deep: #a3410e; /* hover: white on it 6.33 */
+  --color-oranje-bright: #ff8a45; /* main action in dark: night on it 7.82 */
+  --color-night: #0d1428; /* dark page */
+  --color-night-card: #152040;
+  --color-night-muted: #1e2b52;
+  --color-night-line: #2a3a66;
+  --color-mist: #a5b2ce; /* dark secondary text: 7.51 on night-card */
 
-  /* Sage - Secondary */
-  --color-sage-50: #f6f8f5;
-  --color-sage-100: #e8eee4;
-  --color-sage-200: #d1dec8;
-  --color-sage-300: #b5c9a8;
-  --color-sage-400: #8fb07a;
-  --color-sage-500: #6b9456;
-  --color-sage-600: #567a45;
-  --color-sage-700: #435f36;
-
-  /* Warm Neutrals */
-  --color-cream: #fffcf8;
-  --color-parchment: #f7f3ed;
-  --color-linen: #ede8e0;
-  --color-sand: #d4ccc0;
-  --color-taupe: #a69e91;
-  /* Darker taupe for non-text UI (input borders, empty rating stars):
-     3.71:1 on cream, 3.43:1 on parchment (WCAG 1.4.11 needs 3:1). */
-  --color-taupe-600: #8a8276;
-  --color-stone: #7a7268;
-  --color-charcoal: #4a4640;
-  --color-graphite: #2d2a26;
-  --color-ink: #1a1816;
-
-  /* Accents */
-  --color-amber: #d4a43a;
-  --color-paprika: #c23d2e;
-  --color-espresso: #3d2e24;
-  /* Text-safe accent shades (STYLE_GUIDE 04 difficulty badges: "amber-700").
-     Both clear 4.5:1 on their own 10-15% tint over cream and parchment. */
-  --color-amber-700: #7a5c16;
-  --color-paprika-700: #a8352a;
-  /* Dark-mode text/icon shades (STYLE_GUIDE 07 "amber (lighter)", "paprika
-     (lighter)"): amber-300 is 7.27:1 and paprika-300 5.58:1 on their own
-     15-20% tint over the dark card (#242220). */
-  --color-amber-300: #e8c677;
-  --color-paprika-300: #f4897a;
+  /* Status (text-safe on white / on night-card) */
+  --color-success: #2b6e4f; /* 6.09 */
+  --color-success-light: #6fd3a2; /* 8.77 */
+  --color-warning: #8a5a00; /* 5.93 */
+  --color-warning-light: #f2c14e; /* 9.53 */
+  --color-danger: #b3261e; /* 6.54 */
+  --color-danger-deep: #8f1e18;
+  --color-danger-light: #ff8a80; /* 7.01 */
+  --color-gold: #d99a1c; /* rating stars (graphic, not text) */
 }
 
 /* Non-inline so the variables are emitted and usable in plain CSS too */
@@ -115,7 +101,8 @@
 }
 
 :root {
-  --radius: 0.5rem;
+  /* Glazed tiles have barely-softened corners */
+  --radius: 0.375rem;
 
   /* Durations (STYLE_GUIDE 05) - use as duration-(--duration-fast) */
   --duration-fast: 150ms;
@@ -123,102 +110,104 @@
   --duration-slow: 400ms;
   --duration-slower: 600ms;
 
-  /* Light Mode - Warm Paper Theme */
-  --background: #fffcf8;
-  --foreground: #1a1816;
-  --card: #f7f3ed;
-  --card-foreground: #1a1816;
-  --popover: #fffcf8;
-  --popover-foreground: #1a1816;
-  /* terracotta-600: cream on it is 5.58:1, and as text it is 5.16:1 on
-     parchment cards (terracotta-500 was 4.06:1 / 3.76:1 and failed AA). */
-  --primary: #a84a2d;
-  --primary-hover: #8a3b23; /* terracotta-700 */
-  --primary-foreground: #fffcf8;
-  --secondary: #e8eee4;
-  --secondary-foreground: #435f36;
-  --muted: #ede8e0;
-  /* A shade darker than stone (4.28:1 on parchment): 5.28:1 on parchment,
-     5.70:1 on cream, 4.78:1 on linen. */
-  --muted-foreground: #6b645b;
-  --accent: #f7f3ed;
-  --accent-foreground: #2d2a26;
-  --destructive: #c23d2e;
-  --destructive-hover: #a8352a; /* paprika-700 */
-  --border: #ede8e0;
-  /* Form control boundary: taupe-600, 3.71:1 on cream (linen was 1.19:1) */
-  --input: #8a8276;
-  /* Focus ring stays terracotta-500 (4.06:1 on cream, >= 3:1) */
-  --ring: #c75d3a;
+  /* Light: porcelain */
+  --background: #f4f6fa;
+  --foreground: #141b2d;
+  --card: #ffffff;
+  --card-foreground: #141b2d;
+  --popover: #ffffff;
+  --popover-foreground: #141b2d;
+  /* Delft: links, icons, selected states, secondary emphasis */
+  --primary: #1d3c8c;
+  --primary-hover: #142b66;
+  --primary-foreground: #ffffff;
+  /* Oranje: the one main action per page (Button default variant) */
+  --cta: #c24e12;
+  --cta-hover: #a3410e;
+  --cta-foreground: #ffffff;
+  /* A step off the page: tile ground, pills, quiet panels */
+  --surface: #e3e9f5;
+  --secondary: #e3e9f5;
+  --secondary-foreground: #1d3c8c;
+  --muted: #e3e9f5;
+  --muted-foreground: #4f5b75; /* 6.29 page / 6.81 card / 5.59 muted */
+  --accent: #e3e9f5;
+  --accent-foreground: #141b2d;
+  --destructive: #b3261e;
+  --destructive-hover: #8f1e18;
+  --border: #d4dcec;
+  --input: #737f9c; /* 3.70 page / 4.00 card */
+  --ring: #1d3c8c;
 
-  /* Charts - Earthy palette */
-  --chart-1: #c75d3a;
-  --chart-2: #6b9456;
-  --chart-3: #d4a43a;
-  --chart-4: #8a3b23;
-  --chart-5: #435f36;
+  --chart-1: #1d3c8c;
+  --chart-2: #c24e12;
+  --chart-3: #2b6e4f;
+  --chart-4: #8a5a00;
+  --chart-5: #5a73b8;
 
-  /* Sidebar */
-  --sidebar: #f7f3ed;
-  --sidebar-foreground: #1a1816;
-  --sidebar-primary: #a84a2d;
-  --sidebar-primary-foreground: #fffcf8;
-  --sidebar-accent: #ede8e0;
-  --sidebar-accent-foreground: #2d2a26;
-  --sidebar-border: #ede8e0;
-  --sidebar-ring: #c75d3a;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #141b2d;
+  --sidebar-primary: #1d3c8c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e3e9f5;
+  --sidebar-accent-foreground: #141b2d;
+  --sidebar-border: #d4dcec;
+  --sidebar-ring: #1d3c8c;
+
+  /* Delft tiles (components/delft) */
+  --tile-ground: #fbfcff;
+  --tile-ground-edge: #e8eef9;
+  --tile-paint: #1d3c8c;
+  --tile-line: #d4dcec;
 }
 
 .dark {
-  /* Dark Mode - Kitchen at Night (STYLE_GUIDE 07). Contrast is checked by
-     lib/color-contrast.test.ts; ratios below are against the page (#1a1816),
-     card/popover (#242220) and muted/accent (#2d2a26) surfaces. */
-  --background: #1a1816;
-  --foreground: #f5f2ed; /* 15.85 / 14.20 / 12.79 */
-  --card: #242220;
-  --card-foreground: #f5f2ed;
-  --popover: #242220;
-  --popover-foreground: #f5f2ed;
-  --primary: #e8785a; /* terracotta-400: 6.13 / 5.48 / 4.94 as text */
-  /* The guide maps hover to terracotta-500, but ink text on it is 4.26:1.
-     Lighten instead: terracotta-300, ink on it 9.18:1. */
-  --primary-hover: #f4a98a;
-  --primary-foreground: #1a1816; /* ink on terracotta-400: 6.13 */
-  --secondary: #2d2a26;
-  --secondary-foreground: #b5c9a8; /* 8.08 on secondary */
-  --muted: #2d2a26;
-  /* taupe, not the guide's stone: stone is 3.74 / 3.35 / 3.02 and fails AA.
-     taupe: 6.68 / 5.98 / 5.39. */
-  --muted-foreground: #a69e91;
-  --accent: #2d2a26;
-  --accent-foreground: #f5f2ed;
-  /* "Paprika (lighter)": ink on it 5.99, as text 5.99 / 5.36 / 4.83 and
-     4.65 on its own 10% tint over the card (#e85a4a was 4.07 on muted). */
-  --destructive: #ef6f5e;
-  --destructive-hover: #f4897a; /* paprika-300, ink on it 7.34 (was 3.37) */
-  /* Card and divider lines stay the guide's #3d3935; they are decorative. */
-  --border: #3d3935;
-  /* Form-control boundary needs 3:1 (WCAG 1.4.11): taupe-600 is
-     4.67 / 4.18 / 3.76 (#3d3935 was 1.55 on the page). */
-  --input: #8a8276;
-  --ring: #e8785a; /* 6.13 / 5.48 */
+  /* Dark: Delft at night. Ratios against page #0d1428 / card #152040. */
+  --background: #0d1428;
+  --foreground: #e7ecf6; /* 15.44 / 13.51 */
+  --card: #152040;
+  --card-foreground: #e7ecf6;
+  --popover: #152040;
+  --popover-foreground: #e7ecf6;
+  --primary: #8fb1f2; /* 7.42 on card */
+  --primary-hover: #b3caf6;
+  --primary-foreground: #0d1428; /* 8.48 */
+  --cta: #ff8a45;
+  --cta-hover: #ffa56f;
+  --cta-foreground: #0d1428; /* 7.82 */
+  --surface: #1e2b52;
+  --secondary: #1e2b52;
+  --secondary-foreground: #b3caf6;
+  --muted: #1e2b52;
+  --muted-foreground: #a5b2ce; /* 8.59 / 7.51 */
+  --accent: #1e2b52;
+  --accent-foreground: #e7ecf6;
+  --destructive: #ff8a80; /* 7.01 */
+  --destructive-hover: #ffaaa2;
+  --border: #2a3a66;
+  --input: #6f80a8; /* 4.64 page / 4.06 card / 3.50 muted */
+  --ring: #8fb1f2;
 
-  /* Charts - all >= 5.48:1 on the card */
-  --chart-1: #e8785a;
-  --chart-2: #8fb07a;
-  --chart-3: #d4a43a;
-  --chart-4: #f4a98a;
-  --chart-5: #b5c9a8;
+  --chart-1: #8fb1f2;
+  --chart-2: #ff8a45;
+  --chart-3: #6fd3a2;
+  --chart-4: #f2c14e;
+  --chart-5: #c9b6f5;
 
-  /* Sidebar */
-  --sidebar: #242220;
-  --sidebar-foreground: #f5f2ed;
-  --sidebar-primary: #e8785a;
-  --sidebar-primary-foreground: #1a1816;
-  --sidebar-accent: #2d2a26;
-  --sidebar-accent-foreground: #f5f2ed;
-  --sidebar-border: #3d3935;
-  --sidebar-ring: #e8785a;
+  --sidebar: #152040;
+  --sidebar-foreground: #e7ecf6;
+  --sidebar-primary: #8fb1f2;
+  --sidebar-primary-foreground: #0d1428;
+  --sidebar-accent: #1e2b52;
+  --sidebar-accent-foreground: #e7ecf6;
+  --sidebar-border: #2a3a66;
+  --sidebar-ring: #8fb1f2;
+
+  /* Tiles at night: cobalt ground, pale-blue paint */
+  --tile-ground: #16244b;
+  --tile-ground-edge: #101b3a;
+  --tile-paint: #9dbbf4;
+  --tile-line: #2a3a66;
 }
 
 @layer base {
@@ -226,44 +215,46 @@
     @apply border-border outline-ring/50;
   }
 
+  html {
+    /* Gloock ships one weight. Never let the browser fake a bold version of
+       it (or of anything else): a missing weight renders as the real one. */
+    font-synthesis-weight: none;
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
 
-  /* Typography */
+  /* Titles: Gloock, which only comes in regular. Size carries hierarchy. */
   h1,
   h2,
   h3 {
-    @apply font-display;
+    @apply font-display font-normal;
   }
 
   h1 {
-    @apply text-3xl font-semibold tracking-tight;
+    @apply text-3xl tracking-tight;
   }
 
   h2 {
-    @apply text-2xl font-semibold tracking-tight;
+    @apply text-2xl tracking-tight;
   }
 
   h3 {
-    @apply text-xl font-medium;
+    @apply text-xl;
+  }
+
+  /* Amounts, times and counts line up in columns */
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 }
 
-/* Grain Texture Overlay */
-.grain::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  opacity: 0.02;
-  pointer-events: none;
-  z-index: 1000;
-}
-
+/* In a layer so Tailwind utilities (border-*, bg-*) on the same element win. */
+@layer components {
 /* Glass Effect */
 .glass {
-  background: rgba(255, 252, 248, 0.8);
+  background: rgba(244, 246, 250, 0.82);
   backdrop-filter: blur(12px) saturate(1.5);
   border: 1px solid rgba(255, 255, 255, 0.5);
 }
@@ -274,21 +265,22 @@
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  color: var(--color-graphite);
+  color: var(--color-ink);
 }
 
 .dark .glass {
-  background: rgba(26, 24, 22, 0.8);
+  background: rgba(13, 20, 40, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Dark glass badge: ink at 85% keeps the light text >= 10:1 even over a
    pure-white photo. */
 .dark .glass-badge {
-  background: rgba(26, 24, 22, 0.85);
+  background: rgba(13, 20, 40, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   color: var(--foreground);
+}
 }
 
 /* Decorative Divider */
@@ -296,12 +288,11 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  color: var(--color-sand);
+  color: var(--color-glaze-line);
 }
 
-/* STYLE_GUIDE 07 dividers: #4a4640 (charcoal) in the dark */
 .dark .divider {
-  color: var(--color-charcoal);
+  color: var(--color-night-line);
 }
 
 .divider::before,
@@ -405,14 +396,28 @@
     margin: 1.5cm;
   }
 
+  /* Paper is always porcelain-white with black ink, whatever the screen
+     theme: reset the tokens so night colours never reach the printer. */
+  :root,
+  .dark {
+    --background: #fff;
+    --foreground: #000;
+    --card: #fff;
+    --card-foreground: #000;
+    --muted: #fff;
+    --muted-foreground: #333;
+    --primary: #000;
+    --border: #bbb;
+  }
+
   html,
   body {
     background: #fff !important;
     color: #000 !important;
   }
 
-  /* Paper needs no texture overlay */
-  .grain::before {
+  /* Delft tiles and tile walls are screen decoration: never print them. */
+  [data-delft] {
     display: none !important;
   }
 
@@ -464,11 +469,18 @@
   .bg-primary\/10,
   .bg-secondary\/30,
   .bg-muted,
+  .bg-secondary,
+  .bg-glaze,
   .bg-card,
   .bg-background,
-  .glass {
+  .glass,
+  [data-slot="badge"] {
     background: transparent !important;
     backdrop-filter: none !important;
+  }
+
+  [data-slot="badge"] {
+    border-color: #999 !important;
   }
 
   h1,

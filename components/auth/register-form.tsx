@@ -111,13 +111,13 @@ export function RegisterForm() {
   if (registeredEmail) {
     return (
       <div className="space-y-6">
-        <div className="rounded-xl border border-secondary/30 bg-secondary/10 p-5">
+        <div className="rounded-lg bg-muted p-4">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary/20 text-secondary-foreground">
-              <MailCheck className="h-5 w-5" aria-hidden="true" />
+            <div className="mt-0.5 shrink-0 text-primary">
+              <MailCheck className="size-5" aria-hidden="true" />
             </div>
             <div className="space-y-1">
-              <p className="font-medium">Confirm your email</p>
+              <p className="font-medium text-foreground">Confirm your email</p>
               <p className="text-sm text-muted-foreground">
                 We&apos;ve sent a link to{" "}
                 <span className="font-medium text-foreground">{registeredEmail}</span>.
@@ -155,7 +155,7 @@ export function RegisterForm() {
 
         <Link
           href="/login"
-          className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+          className="inline-flex min-h-11 items-center gap-2 rounded-sm text-sm font-medium text-primary underline-offset-4 transition-colors duration-(--duration-fast) hover:text-primary-hover hover:underline"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back to sign in
@@ -180,7 +180,7 @@ export function RegisterForm() {
       {errors.form && (
         <div
           role="alert"
-          className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
         >
           {errors.form}
         </div>
@@ -190,7 +190,7 @@ export function RegisterForm() {
         <Label htmlFor="name">Name</Label>
         <div className="relative">
           <User
-            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
           />
           <Input
@@ -201,7 +201,7 @@ export function RegisterForm() {
             onChange={(e) => setName(e.target.value)}
             required
             autoComplete="name"
-            className="pl-10"
+            className="pl-11"
           />
         </div>
         <FieldError id="name-error" message={errors.name} />
@@ -211,7 +211,7 @@ export function RegisterForm() {
         <Label htmlFor="email">Email</Label>
         <div className="relative">
           <Mail
-            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
           />
           <Input
@@ -222,7 +222,7 @@ export function RegisterForm() {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
-            className="pl-10"
+            className="pl-11"
           />
         </div>
         <FieldError id="email-error" message={errors.email} />
@@ -232,7 +232,7 @@ export function RegisterForm() {
         <Label htmlFor="password">Password</Label>
         <div className="relative">
           <Lock
-            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
           />
           <Input
@@ -243,20 +243,20 @@ export function RegisterForm() {
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="new-password"
-            className="pl-10"
+            className="pl-11"
           />
         </div>
-        <p id="password-hint" className="text-xs text-muted-foreground">
+        <p id="password-hint" className="text-[13px] text-muted-foreground">
           {PASSWORD_RULES}
         </p>
         <FieldError id="password-error" message={errors.password} />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="confirmPassword">Confirm Password</Label>
+        <Label htmlFor="confirmPassword">Confirm password</Label>
         <div className="relative">
           <Lock
-            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
           />
           <Input
@@ -267,7 +267,7 @@ export function RegisterForm() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
             autoComplete="new-password"
-            className="pl-10"
+            className="pl-11"
           />
         </div>
         <FieldError id="confirmPassword-error" message={errors.confirmPassword} />
@@ -276,11 +276,11 @@ export function RegisterForm() {
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
             Creating account...
           </>
         ) : (
-          "Create Account"
+          "Create account"
         )}
       </Button>
 
@@ -288,7 +288,7 @@ export function RegisterForm() {
         Already have an account?{" "}
         <Link
           href="/login"
-          className="font-medium text-primary hover:text-primary/80 transition-colors"
+          className="rounded-sm font-medium text-primary underline-offset-4 transition-colors duration-(--duration-fast) hover:text-primary-hover hover:underline"
         >
           Sign in
         </Link>

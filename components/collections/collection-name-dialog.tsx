@@ -77,7 +77,7 @@ export function CollectionNameDialog({
       <DialogContent className="rounded-xl bg-background sm:max-w-md">
         <form onSubmit={handleSubmit} noValidate className="grid gap-6">
           <DialogHeader>
-            <DialogTitle className="font-display text-xl font-semibold">
+            <DialogTitle className="font-display text-[22px] leading-[1.3] font-normal">
               {mode === "create" ? "New collection" : "Rename collection"}
             </DialogTitle>
             <DialogDescription>
@@ -88,7 +88,7 @@ export function CollectionNameDialog({
           </DialogHeader>
 
           <div className="grid gap-2">
-            <Label htmlFor={inputId} className="text-charcoal dark:text-foreground">
+            <Label htmlFor={inputId} className="text-foreground">
               Name
             </Label>
             <Input
@@ -105,7 +105,7 @@ export function CollectionNameDialog({
               aria-describedby={error ? `${inputId}-error` : undefined}
             />
             {error && (
-              <p id={`${inputId}-error`} className="text-[13px] text-destructive">
+              <p id={`${inputId}-error`} role="alert" className="text-[13px] text-destructive">
                 {error}
               </p>
             )}

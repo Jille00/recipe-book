@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui";
 import { CommentItem } from "./comment-item";
 import { CommentForm } from "./comment-form";
-import { MessageSquare, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import type { CommentWithUser } from "@/lib/db/queries/comments";
 
 interface CommentListProps {
@@ -120,16 +120,19 @@ export function CommentList({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <MessageSquare className="h-5 w-5 text-primary" aria-hidden="true" />
+      <div className="flex items-baseline gap-3">
         <h2
           ref={headingRef}
           tabIndex={-1}
-          className="font-display text-lg font-semibold text-foreground outline-none"
+          className="text-[1.75rem] leading-[1.2] text-foreground outline-none"
         >
           Comments
         </h2>
-        <span className="text-sm text-muted-foreground">({total})</span>
+        <span className="font-mono text-sm tabular text-muted-foreground">
+          <span className="sr-only">(</span>
+          {total}
+          <span className="sr-only">)</span>
+        </span>
       </div>
 
       {/* Comment Form */}
@@ -140,12 +143,13 @@ export function CommentList({
           onCommentAdded={handleCommentAdded}
         />
       ) : (
-        <div className="rounded-lg border border-border bg-muted/30 p-4 text-center">
+        <div className="rounded-lg bg-muted p-4 text-center">
           <p className="text-sm text-muted-foreground">
-            Please{" "}
             <Link
-              href={loginHref} className="text-primary hover:underline">
-              sign in
+              href={loginHref}
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Sign in
             </Link>{" "}
             to leave a comment.
           </p>
@@ -154,7 +158,7 @@ export function CommentList({
 
       {/* Comments List */}
       {comments.length > 0 ? (
-        <div ref={listRef} className="space-y-3">
+        <div ref={listRef} className="divide-y divide-border border-t border-border">
           {comments.map((comment) => (
             <CommentItem
               key={comment.id}
@@ -167,7 +171,7 @@ export function CommentList({
 
           {/* Load More Button */}
           {hasMore && (
-            <div className="text-center pt-2">
+            <div className="pt-4 text-center">
               <Button
                 variant="outline"
                 onClick={loadMore}
@@ -176,25 +180,24 @@ export function CommentList({
                 {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                    Loading...
+                    Loading…
                   </>
                 ) : (
-                  `Load More Comments (${total - comments.length} remaining)`
+                  <>
+                    Show more comments
+                    <span className="font-mono tabular text-muted-foreground">
+                      ({total - comments.length})
+                    </span>
+                  </>
                 )}
               </Button>
             </div>
           )}
         </div>
       ) : (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
-          <MessageSquare
-            className="mx-auto h-10 w-10 text-muted-foreground/30"
-            aria-hidden="true"
-          />
-          <p className="mt-2 text-sm text-muted-foreground">
-            No comments yet. Be the first to share your thoughts!
-          </p>
-        </div>
+        <p className="border-t border-border pt-6 text-sm text-muted-foreground">
+          No comments yet. Cooked it? Tell others how it went.
+        </p>
       )}
     </div>
   );

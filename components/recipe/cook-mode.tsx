@@ -47,9 +47,14 @@ import {
   tickTimer,
 } from "@/lib/cook-mode";
 import { cn } from "@/lib/utils";
+import { DelftTile } from "@/components/delft/delft-tile";
 
 interface CookModeProps {
   recipeId: string;
+  /** The recipe's share code: seeds its Delft tile, shown as a small mark. */
+  code?: string;
+  /** Tag slugs, which pick the tile's motif. */
+  tags?: readonly string[];
   title: string;
   /** Already scaled and unit-converted (recipe-detail's convertedIngredients) */
   ingredients: CookIngredient[];
@@ -93,7 +98,7 @@ function storeStep(recipeId: string, step: number | null) {
  * a tickable ingredient list, timers for the durations in each step, and the
  * screen kept awake while it is open.
  */
-export function CookMode({ recipeId, title, ingredients, instructions }: CookModeProps) {
+export function CookMode({ recipeId, code, tags, title, ingredients, instructions }: CookModeProps) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [showIngredients, setShowIngredients] = useState(false);
@@ -257,7 +262,8 @@ export function CookMode({ recipeId, title, ingredients, instructions }: CookMod
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        {/* The recipe page's one main action */}
+        <Button>
           <ChefHat className="h-4 w-4" aria-hidden="true" />
           Cook
         </Button>
@@ -269,19 +275,24 @@ export function CookMode({ recipeId, title, ingredients, instructions }: CookMod
           event.preventDefault();
           nextButtonRef.current?.focus();
         }}
-        className="inset-0 top-0 left-0 flex h-dvh w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 p-0 shadow-none sm:max-w-none"
+        // Always Delft at night: a calm, low-glare focus mode for the kitchen.
+        // `dark` swaps the tokens for everything inside.
+        className="dark inset-0 top-0 left-0 flex h-dvh w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 bg-background p-0 text-foreground shadow-none sm:max-w-none"
       >
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-border px-4 py-3 sm:px-6">
+          {code && (
+            <DelftTile seed={code} tags={tags} className="size-10 shrink-0 rounded-[2px]" />
+          )}
           <div className="min-w-0 flex-1">
-            <DialogTitle className="truncate font-display text-lg font-semibold text-foreground sm:text-xl">
+            <DialogTitle className="truncate font-display text-xl leading-tight font-normal text-foreground sm:text-2xl">
               {title}
             </DialogTitle>
             <DialogDescription className="sr-only">
               Cook mode shows one step at a time. Use the left and right arrow
               keys to move between steps, and Escape to exit.
             </DialogDescription>
-            <p className="text-sm text-muted-foreground" aria-hidden="true">
+            <p className="font-mono text-xs tabular text-muted-foreground" aria-hidden="true">
               Step {step + 1} of {stepCount}
             </p>
           </div>
@@ -308,18 +319,18 @@ export function CookMode({ recipeId, title, ingredients, instructions }: CookMod
         <Progress
           value={((step + 1) / stepCount) * 100}
           aria-label={`Step ${step + 1} of ${stepCount}`}
-          className="h-1 rounded-none"
+          className="h-1 rounded-none bg-primary/15"
         />
 
         {/* Finished timers */}
         {alerts.length > 0 && (
-          <div role="alert" className="space-y-2 border-b border-primary/30 bg-primary/10 px-4 py-3 sm:px-6">
+          <div role="alert" className="space-y-2 border-b border-warning-light/30 bg-warning-light/15 px-4 py-3 sm:px-6">
             {alerts.map((key) => {
               const stepIndex = Number(key.split(":")[0]);
               return (
                 <div key={key} className="flex flex-wrap items-center gap-3">
                   <BellRing
-                    className="h-5 w-5 shrink-0 text-primary motion-safe:animate-bounce"
+                    className="h-5 w-5 shrink-0 text-warning-light motion-safe:animate-bounce"
                     aria-hidden="true"
                   />
                   <p className="flex-1 font-medium text-foreground">
@@ -355,10 +366,10 @@ export function CookMode({ recipeId, title, ingredients, instructions }: CookMod
               key={step}
               className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10 sm:px-12 sm:py-16 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-300"
             >
-              <p className="text-sm font-semibold uppercase tracking-[0.02em] text-primary">
+              <p className="text-xs font-medium uppercase tracking-[0.06em] text-primary">
                 Step {step + 1} of {stepCount}
               </p>
-              <p className="font-display text-2xl leading-snug font-medium text-foreground sm:text-3xl sm:leading-snug lg:text-4xl lg:leading-tight">
+              <p className="max-w-[32ch] font-display text-[1.75rem] leading-[1.3] text-foreground sm:text-[2.25rem] lg:text-[2.75rem] lg:leading-[1.2]">
                 {splitByDurations(currentStep.text, currentStep.durations).map(
                   (segment, index) =>
                     segment.durationIndex === null ? (
@@ -366,7 +377,7 @@ export function CookMode({ recipeId, title, ingredients, instructions }: CookMod
                     ) : (
                       <span
                         key={index}
-                        className="rounded-md bg-primary/10 px-1 text-primary"
+                        className="rounded-[2px] bg-primary/15 px-1 text-primary"
                       >
                         {segment.text}
                       </span>
@@ -408,9 +419,7 @@ export function CookMode({ recipeId, title, ingredients, instructions }: CookMod
               )}
             >
               <div className="px-6 py-6">
-                <h2 className="mb-4 font-display text-xl font-semibold text-foreground">
-                  Ingredients
-                </h2>
+                <h2 className="mb-4 text-2xl text-foreground">Ingredients</h2>
                 <ul className="space-y-1">
                   {ingredients.map((ingredient, index) => {
                     const quantity = ingredientQuantity(ingredient);
@@ -422,7 +431,7 @@ export function CookMode({ recipeId, title, ingredients, instructions }: CookMod
                       <li key={key}>
                         <label
                           htmlFor={checkboxId}
-                          className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-accent"
+                          className="flex min-h-11 cursor-pointer items-start gap-3 rounded-md px-2 py-2.5 transition-colors hover:bg-accent"
                         >
                           <Checkbox
                             id={checkboxId}
@@ -438,7 +447,12 @@ export function CookMode({ recipeId, title, ingredients, instructions }: CookMod
                               isChecked && "line-through opacity-60"
                             )}
                           >
-                            {quantity && <span className="font-medium">{quantity} </span>}
+                            {quantity && (
+                              <span className="font-mono text-sm tabular text-primary">
+                                {quantity}
+                              </span>
+                            )}
+                            {quantity && " "}
                             {ingredient.text}
                           </span>
                         </label>
@@ -473,7 +487,7 @@ export function CookMode({ recipeId, title, ingredients, instructions }: CookMod
                 >
                   <Timer className="h-4 w-4" aria-hidden="true" />
                   Step {stepIndex + 1}
-                  <span className="font-display tabular-nums">
+                  <span className="font-mono tabular">
                     {timer.status === "done" ? "Done" : formatClock(remaining)}
                   </span>
                 </Button>
@@ -549,11 +563,11 @@ function StepTimer({ label, seconds, timer, now, onStart, onPause, onReset }: St
       role="group"
       aria-label={`Timer for ${label}`}
       className={cn(
-        "flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)]",
-        isDone && "border-primary bg-primary/5"
+        "flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card p-4",
+        isDone && "border-primary bg-primary/10"
       )}
     >
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/15">
         {isDone ? (
           <BellRing className="h-6 w-6 text-primary" aria-hidden="true" />
         ) : (
@@ -564,7 +578,7 @@ function StepTimer({ label, seconds, timer, now, onStart, onPause, onReset }: St
         <p
           role="timer"
           className={cn(
-            "font-display text-3xl font-semibold tabular-nums text-foreground",
+            "font-mono text-3xl font-medium tabular text-foreground",
             isDone && "text-primary"
           )}
         >

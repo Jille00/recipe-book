@@ -2,19 +2,11 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import { Button, Card, CardContent } from "@/components/ui";
+import { getPublicRecipes } from "@/lib/db/queries/search";
+import { Button } from "@/components/ui";
+import { RecipeTileWall, type WallRecipe } from "@/components/home/recipe-tile-wall";
 import { SITE_OG_IMAGE } from "../site-url";
-import {
-  ChefHat,
-  BookOpen,
-  Share2,
-  Heart,
-  Search,
-  Smartphone,
-  ArrowRight,
-  LayoutDashboard,
-  Plus,
-} from "lucide-react";
+import { Camera, ChefHat, Scale, ShoppingBasket } from "lucide-react";
 
 const HOME_DESCRIPTION =
   "Create, organize, and share your favorite recipes with friends and family. Your personal digital cookbook for all your culinary creations.";
@@ -41,173 +33,119 @@ export const metadata: Metadata = {
   },
 };
 
+const WALL_SIZE = 12;
+
+/** The newest public recipes for the hero wall. The page still renders without them. */
+async function getWallRecipes(userId: string | undefined): Promise<WallRecipe[]> {
+  try {
+    const { recipes } = await getPublicRecipes({}, WALL_SIZE, 0, userId);
+    return recipes.map(({ code, slug, title, tags }) => ({ code, slug, title, tags }));
+  } catch (error) {
+    console.error("Home: could not load recipes for the tile wall", error);
+    return [];
+  }
+}
+
+// What the app does, in its own words. A plain list, not a feature grid.
+const FEATURES = [
+  {
+    icon: Camera,
+    title: "Import from a photo or a link",
+    body: "Snap a cookbook page or paste a recipe URL. The ingredients and steps land in the form for you to check.",
+  },
+  {
+    icon: Scale,
+    title: "Scale and convert",
+    body: "Cooking for six instead of four? Amounts scale with the servings, and switch between metric and imperial units.",
+  },
+  {
+    icon: ShoppingBasket,
+    title: "One shopping list",
+    body: "Add a recipe's ingredients in one tap. The same items from different recipes are combined into one line.",
+  },
+  {
+    icon: ChefHat,
+    title: "Cook mode",
+    body: "One step at a time in large type, with timers, and the screen stays on while you cook.",
+  },
+] as const;
+
 export default async function HomePage() {
   // Signed-in visitors get a way back into their cookbook instead of sign-up
   // prompts. The main layout already resolves the session, so this page is
   // dynamic either way.
   const session = await auth.api.getSession({ headers: await headers() });
   const isSignedIn = !!session?.user;
-
-  const features = [
-    {
-      icon: ChefHat,
-      title: "Create Recipes",
-      description:
-        "Add your recipes with detailed ingredients, step-by-step instructions, and beautiful photos.",
-    },
-    {
-      icon: BookOpen,
-      title: "Stay Organized",
-      description:
-        "Organize recipes by categories and tags. Quickly find what you're looking for with powerful search.",
-    },
-    {
-      icon: Share2,
-      title: "Share Easily",
-      description:
-        "Generate shareable links for your recipes. Share with friends, family, or on social media.",
-    },
-    {
-      icon: Heart,
-      title: "Save Favorites",
-      description:
-        "Bookmark your favorite recipes for quick access. Build your personal collection of go-to dishes.",
-    },
-    {
-      icon: Search,
-      title: "Quick Search",
-      description:
-        "Find recipes instantly with full-text search. Filter by category, tags, or difficulty level.",
-    },
-    {
-      icon: Smartphone,
-      title: "Access Anywhere",
-      description:
-        "Use on any device. Your recipes are always with you, whether in the kitchen or at the store.",
-    },
-  ];
+  const wallRecipes = await getWallRecipes(session?.user?.id);
 
   return (
-    <div className="relative">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-secondary/10 to-background" />
-        <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
-          <div className="text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm text-muted-foreground mb-6">
-              <ChefHat className="h-4 w-4 text-primary" />
-              Your culinary journey starts here
-            </div>
-            <h1 className="font-display text-4xl font-semibold tracking-tight text-foreground sm:text-6xl">
-              Your Personal
-              <span className="block text-primary">Recipe Collection</span>
-            </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
-              Create, organize, and share your favorite recipes. Keep all your
-              culinary creations in one place and easily share them with friends
-              and family.
-            </p>
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-              {isSignedIn ? (
-                <>
-                  <Button asChild size="lg">
-                    <Link href="/dashboard">
-                      <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
-                      Go to Dashboard
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" size="lg">
-                    <Link href="/recipes/new">
-                      <Plus className="h-4 w-4" aria-hidden="true" />
-                      Add Recipe
-                    </Link>
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button asChild size="lg">
-                    <Link href="/register">
-                      Get Started Free
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" size="lg">
-                    <Link href="/browse">Browse Recipes</Link>
-                  </Button>
-                </>
-              )}
-            </div>
+    <div>
+      {/* Hero: the thesis is the wall. Every recipe gets its own tile. */}
+      <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:gap-16 lg:px-8 lg:py-24">
+        <div>
+          <h1 className="font-display text-[3.5rem] leading-[1.02] tracking-[-0.02em] text-foreground text-balance sm:text-[4.5rem]">
+            Every recipe gets its own tile.
+          </h1>
+          <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
+            Kookboek keeps the recipes you actually cook in one place, ready to
+            scale, shop for and share by link.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            {isSignedIn ? (
+              <Button asChild size="lg">
+                <Link href="/recipes/new">Add a recipe</Link>
+              </Button>
+            ) : (
+              <Button asChild size="lg">
+                <Link href="/register">Start your cookbook</Link>
+              </Button>
+            )}
+            <Button asChild variant="outline" size="lg">
+              <Link href="/browse">Browse recipes</Link>
+            </Button>
           </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-24 sm:py-32">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              Everything you need to manage your recipes
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-              Simple, powerful tools to keep your recipes organized and
-              accessible.
-            </p>
-          </div>
-
-          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature, index) => (
-              <Card
-                key={feature.title}
-                className="group hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
-                style={{ animationDelay: `${index * 100}ms` }}
+          {isSignedIn && (
+            <p className="mt-6 text-sm text-muted-foreground">
+              Or pick up where you left off on your{" "}
+              <Link
+                href="/dashboard"
+                className="font-medium text-primary underline-offset-4 hover:underline"
               >
-                <CardContent className="p-6">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                    <feature.icon className="h-6 w-6" />
-                  </div>
-                  <h3 className="mt-6 font-display text-lg font-semibold text-foreground">
-                    {feature.title}
-                  </h3>
-                  <p className="mt-2 text-muted-foreground">
-                    {feature.description}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                dashboard
+              </Link>
+              .
+            </p>
+          )}
         </div>
+
+        <RecipeTileWall recipes={wallRecipes} size={WALL_SIZE} columns={4} />
       </section>
 
-      {/* CTA Section (sign-up pitch, so only for visitors without an account) */}
-      {!isSignedIn && (
-        <section className="relative overflow-hidden bg-primary py-16">
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
-          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="text-center">
-              <h2 className="font-display text-3xl font-semibold tracking-tight text-primary-foreground sm:text-4xl">
-                Start your recipe collection today
-              </h2>
-              <p className="mx-auto mt-4 max-w-xl text-lg text-primary-foreground/80">
-                Kookboek is free to use. Create an account, add your first
-                recipe, and build a cookbook you will actually cook from.
-              </p>
-              <div className="mt-8">
-                <Button
-                  asChild
-                  size="lg"
-                  variant="secondary"
-                  className="bg-background text-foreground hover:bg-background/90"
-                >
-                  <Link href="/register">
-                    Create Free Account
-                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </Link>
-                </Button>
+      {/* What it does: four plain lines, divided like a recipe card. */}
+      <section
+        aria-labelledby="home-features"
+        className="border-t border-border bg-card"
+      >
+        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+          <h2 id="home-features" className="font-display text-[1.75rem] leading-tight text-foreground">
+            From the page to the pan
+          </h2>
+          <dl className="mt-8 grid gap-x-12 sm:grid-cols-2">
+            {FEATURES.map((feature) => (
+              <div
+                key={feature.title}
+                className="flex gap-4 border-t border-border py-6"
+              >
+                <feature.icon className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
+                <div>
+                  <dt className="font-medium text-foreground">{feature.title}</dt>
+                  <dd className="mt-1 text-muted-foreground">{feature.body}</dd>
+                </div>
               </div>
-            </div>
-          </div>
-        </section>
-      )}
+            ))}
+          </dl>
+        </div>
+      </section>
     </div>
   );
 }

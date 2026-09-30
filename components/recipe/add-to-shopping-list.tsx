@@ -15,6 +15,7 @@ import {
 } from "@/components/ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { withRecipeCode } from "./recipe-api";
+import { compactButtonClass, compactLabelClass } from "./action-styles";
 import {
   formatShoppingLine,
   ingredientToShoppingInput,
@@ -36,6 +37,8 @@ interface AddToShoppingListProps {
   ingredients: DisplayedIngredient[];
   isAuthenticated: boolean;
   className?: string;
+  /** Icon-only below `sm` (the recipe page's action row). */
+  compact?: boolean;
 }
 
 /**
@@ -49,6 +52,7 @@ export function AddToShoppingList({
   ingredients,
   isAuthenticated,
   className,
+  compact = false,
 }: AddToShoppingListProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -145,9 +149,14 @@ export function AddToShoppingList({
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={handleOpen} className={className}>
+      <Button
+        variant="outline"
+        size={compact ? "default" : "sm"}
+        onClick={handleOpen}
+        className={cn(compact && compactButtonClass, className)}
+      >
         <ShoppingBasket className="h-4 w-4" aria-hidden="true" />
-        Add to List
+        <span className={cn(compact && compactLabelClass)}>Add to list</span>
       </Button>
 
       <Dialog
@@ -158,7 +167,7 @@ export function AddToShoppingList({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-display text-xl">
+            <DialogTitle className="font-display text-2xl font-normal">
               Add to shopping list
             </DialogTitle>
             <DialogDescription>
@@ -168,7 +177,8 @@ export function AddToShoppingList({
 
           <div className="flex items-center justify-between border-b border-border pb-2">
             <span className="text-sm text-muted-foreground">
-              {selected.length} of {entries.length} selected
+              <span className="font-mono tabular">{selected.length}</span> of{" "}
+              <span className="font-mono tabular">{entries.length}</span> selected
             </span>
             <Button type="button" variant="ghost" size="sm" onClick={toggleAll}>
               {allSelected ? "Select none" : "Select all"}

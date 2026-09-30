@@ -2,15 +2,8 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Lock } from "lucide-react";
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui";
+import { Loader2 } from "lucide-react";
+import { Button, Card, CardContent } from "@/components/ui";
 import { changePassword } from "@/lib/auth-client";
 import {
   authErrorMessage,
@@ -19,7 +12,7 @@ import {
   type ChangePasswordField,
   type FieldErrors,
 } from "@/lib/account-forms";
-import { AccountField, focusField, FormAlert } from "./account-field";
+import { AccountCardHeader, AccountField, focusField, FormAlert } from "./account-field";
 
 const FIELD_ORDER = ["currentPassword", "newPassword", "confirmPassword"] as const;
 
@@ -83,15 +76,10 @@ export function ChangePasswordCard() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="font-display flex items-center gap-2">
-          <Lock className="h-5 w-5 text-primary" aria-hidden="true" />
-          Password
-        </CardTitle>
-        <CardDescription>
-          Changing your password signs you out on every other device.
-        </CardDescription>
-      </CardHeader>
+      <AccountCardHeader
+        title="Password"
+        description="Changing your password signs you out on every other device."
+      />
       <CardContent>
         <form ref={formRef} onSubmit={handleSubmit} noValidate className="space-y-5">
           <FormAlert message={formError} />
@@ -129,9 +117,9 @@ export function ChangePasswordCard() {
           />
 
           <div className="flex justify-end">
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-              {isSubmitting ? "Changing..." : "Change Password"}
+            <Button type="submit" variant="outline" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+              {isSubmitting ? "Changing..." : "Change password"}
             </Button>
           </div>
         </form>

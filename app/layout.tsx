@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { DM_Sans, Fraunces } from "next/font/google";
+import { Gloock, Hanken_Grotesk, IBM_Plex_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
@@ -10,21 +10,28 @@ import { UnitPreferencesProvider } from "@/contexts/unit-preferences-context";
 import { SITE_OG_IMAGE, SITE_URL } from "./site-url";
 
 // Self-hosted by next/font (no render-blocking request to Google). The
-// variables feed --font-sans / --font-display in globals.css.
-const fraunces = Fraunces({
+// variables feed --font-display / --font-sans / --font-mono in globals.css.
+// Gloock: titles only, like the lettering on a Delft plate. It has one weight.
+const gloock = Gloock({
   subsets: ["latin"],
-  // Variable font: all weights 400-700 plus the optical-size axis.
-  axes: ["opsz"],
-  style: ["normal", "italic"],
+  weight: "400",
   display: "swap",
-  variable: "--font-fraunces",
+  variable: "--font-gloock",
 });
 
-const dmSans = DM_Sans({
+// Hanken Grotesk: everything you read and press.
+const hanken = Hanken_Grotesk({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
   display: "swap",
-  variable: "--font-dm-sans",
+  variable: "--font-hanken",
+});
+
+// IBM Plex Mono: amounts, times and counts, so they line up.
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
+  variable: "--font-plex-mono",
 });
 
 export const metadata: Metadata = {
@@ -95,10 +102,10 @@ export default async function RootLayout({
     // before React hydrates, so the server markup never matches it.
     <html
       lang="en"
-      className={`${fraunces.variable} ${dmSans.variable}`}
+      className={`${gloock.variable} ${hanken.variable} ${plexMono.variable}`}
       suppressHydrationWarning
     >
-      <body className="min-h-screen antialiased grain">
+      <body className="min-h-screen antialiased">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

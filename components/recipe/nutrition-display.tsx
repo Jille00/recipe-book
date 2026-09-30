@@ -2,18 +2,7 @@
 
 import { useState } from "react";
 import { Badge, Button, Input, Label } from "@/components/ui";
-import {
-  Apple,
-  Beef,
-  Wheat,
-  Droplet,
-  Leaf,
-  Cookie,
-  AlertCircle,
-  Pencil,
-  X,
-  Check,
-} from "lucide-react";
+import { AlertCircle, Pencil, X, Check } from "lucide-react";
 import type { NutritionInfo } from "@/types/nutrition";
 
 interface NutritionDisplayProps {
@@ -30,14 +19,13 @@ interface NutritionDisplayProps {
   onCancelEdit?: () => void;
 }
 
-// Icon colours come from the palette / chart tokens (STYLE_GUIDE 01).
 const NUTRIENT_CONFIG = [
-  { key: "calories", label: "Calories", unit: "kcal", icon: Apple, color: "text-chart-1" },
-  { key: "protein", label: "Protein", unit: "g", icon: Beef, color: "text-chart-4" },
-  { key: "carbs", label: "Carbs", unit: "g", icon: Wheat, color: "text-amber-700 dark:text-amber-300" },
-  { key: "fat", label: "Fat", unit: "g", icon: Droplet, color: "text-chart-5" },
-  { key: "fiber", label: "Fiber", unit: "g", icon: Leaf, color: "text-chart-2" },
-  { key: "sugar", label: "Sugar", unit: "g", icon: Cookie, color: "text-paprika dark:text-paprika-300" },
+  { key: "calories", label: "Calories", unit: "kcal" },
+  { key: "protein", label: "Protein", unit: "g" },
+  { key: "carbs", label: "Carbs", unit: "g" },
+  { key: "fat", label: "Fat", unit: "g" },
+  { key: "fiber", label: "Fiber", unit: "g" },
+  { key: "sugar", label: "Sugar", unit: "g" },
 ] as const;
 
 type NutrientKey = (typeof NUTRIENT_CONFIG)[number]["key"];
@@ -172,16 +160,19 @@ export function NutritionDisplay({
             size="sm"
             onClick={onCancelEdit}
           >
-            <X className="h-4 w-4 mr-1" />
+            <X className="h-4 w-4" aria-hidden="true" />
             Cancel
           </Button>
+          {/* Secondary: this sits inside the recipe form, whose main action
+              (saving the recipe) owns the orange. */}
           <Button
             type="button"
+            variant="secondary"
             size="sm"
             onClick={handleSave}
             disabled={hasInvalid}
           >
-            <Check className="h-4 w-4 mr-1" />
+            <Check className="h-4 w-4" aria-hidden="true" />
             Save
           </Button>
         </div>
@@ -191,36 +182,45 @@ export function NutritionDisplay({
 
   return (
     <div className="space-y-4">
-      {/* Nutrient Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        {NUTRIENT_CONFIG.map(({ key, label, unit, icon: Icon, color }) => {
+      {/* Nutrients: label over a Plex Mono value */}
+      <dl className="grid grid-cols-3 gap-x-4 gap-y-5 sm:grid-cols-6">
+        {NUTRIENT_CONFIG.map(({ key, label, unit }) => {
           const value = nutrition[key];
           return (
-            <div
-              key={key}
-              className="flex flex-col items-center p-3 rounded-xl bg-muted/30 border border-border/50"
-            >
-              <Icon className={`h-5 w-5 ${color} mb-1.5`} />
-              <span className="text-lg font-semibold text-foreground">
-                {value !== null ? (key === "calories" ? Math.round(value) : value.toFixed(1)) : "—"}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {label} {value !== null && `(${unit})`}
-              </span>
+            <div key={key}>
+              <dt className="text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">
+                {label}
+              </dt>
+              <dd className="mt-1 whitespace-nowrap">
+                {value !== null && value !== undefined ? (
+                  <>
+                    <span className="font-mono text-xl tabular text-foreground">
+                      {key === "calories" ? Math.round(value) : value.toFixed(1)}
+                    </span>
+                    <span className="ml-1 text-sm text-muted-foreground">{unit}</span>
+                  </>
+                ) : (
+                  <span className="font-mono text-xl text-muted-foreground">
+                    <span aria-hidden="true">—</span>
+                    <span className="sr-only">Unknown</span>
+                  </span>
+                )}
+              </dd>
             </div>
           );
         })}
-      </div>
+      </dl>
 
       {/* Footer with confidence and edit button */}
-      <div className="flex items-center justify-between pt-2 border-t border-border/50">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
+        <div className="flex flex-wrap items-center gap-3">
           <Badge variant={CONFIDENCE_BADGE_VARIANT[nutrition.confidence]}>
             {nutrition.confidence.charAt(0).toUpperCase() + nutrition.confidence.slice(1)} confidence
           </Badge>
           {servings ? (
             <span className="text-xs text-muted-foreground">
-              per serving (based on {servings} servings)
+              Per serving, for{" "}
+              <span className="font-mono tabular">{servings}</span> servings
             </span>
           ) : null}
         </div>
@@ -231,7 +231,7 @@ export function NutritionDisplay({
             size="sm"
             onClick={onStartEdit}
           >
-            <Pencil className="h-3.5 w-3.5 mr-1" />
+            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
             Edit
           </Button>
         )}
@@ -239,9 +239,9 @@ export function NutritionDisplay({
 
       {/* Warnings */}
       {nutrition.warnings && nutrition.warnings.length > 0 && (
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-amber/10 border border-amber/40">
-          <AlertCircle className="h-4 w-4 text-amber-700 dark:text-amber-300 mt-0.5 shrink-0" aria-hidden="true" />
-          <div className="text-sm text-amber-700 dark:text-amber-300">
+        <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-warning dark:border-warning-light/30 dark:bg-warning-light/15 dark:text-warning-light">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <div className="text-sm">
             {nutrition.warnings.map((warning, i) => (
               <p key={i}>{warning}</p>
             ))}

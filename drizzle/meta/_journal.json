@@ -57,6 +57,13 @@
       "when": 1790775290679,
       "tag": "0007_shared_rate_limits_and_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790782055502,
+      "tag": "0008_collections_shopping_list_handles",
+      "breakpoints": true
     }
   ]
 }

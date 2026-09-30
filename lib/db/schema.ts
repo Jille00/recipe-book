@@ -11,6 +11,7 @@ import {
   primaryKey,
   check,
   bigint,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -127,6 +128,9 @@ export const profile = pgTable("profile", {
   bio: text("bio"),
   website: text("website"),
   location: text("location"),
+  // Public profile address, /u/{handle}. Lowercase letters, digits and "-";
+  // null until the person picks one.
+  handle: text("handle").unique(),
   // Empty until the person picks a unit system; the app then follows their locale.
   preferences: jsonb("preferences").default({}),
   createdAt: timestamp("created_at").defaultNow(),
@@ -173,6 +177,11 @@ export const recipe = pgTable(
     // Legacy: replaced by `code`. Kept only so old /r/{token} links still
     // resolve; nothing writes it any more.
     shareToken: text("share_token").unique(),
+    // Set when this recipe was saved as a copy of someone else's. Kept (as
+    // null) when the original is deleted.
+    copiedFromId: uuid("copied_from_id").references((): AnyPgColumn => recipe.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
@@ -225,6 +234,66 @@ export const favorite = pgTable(
     // Cascading deletes of a recipe look favorites up by recipe.
     index("idx_favorite_recipe_id").on(table.recipeId),
     unique("favorite_user_recipe_unique").on(table.userId, table.recipeId),
+  ]
+);
+
+// A user's named groups of recipes ("Weeknight dinners"). A collection can hold
+// any recipe the owner can open: their own, public ones, or link-only ones
+// they were sent.
+export const collection = pgTable(
+  "collection",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_collection_user_created").on(table.userId, table.createdAt),
+    check("collection_name_length", sql`char_length(${table.name}) between 1 and 100`),
+  ]
+);
+
+export const collectionRecipe = pgTable(
+  "collection_recipe",
+  {
+    collectionId: uuid("collection_id")
+      .notNull()
+      .references(() => collection.id, { onDelete: "cascade" }),
+    recipeId: uuid("recipe_id")
+      .notNull()
+      .references(() => recipe.id, { onDelete: "cascade" }),
+    addedAt: timestamp("added_at").defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.collectionId, table.recipeId] }),
+    index("idx_collection_recipe_recipe_id").on(table.recipeId),
+  ]
+);
+
+// One line on a user's shopping list. Lines added from a recipe remember it
+// (for "from: Lasagne"); the text is copied, so editing the recipe later
+// doesn't change the list.
+export const shoppingListItem = pgTable(
+  "shopping_list_item",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    recipeId: uuid("recipe_id").references(() => recipe.id, { onDelete: "set null" }),
+    text: text("text").notNull(),
+    amount: text("amount"),
+    unit: text("unit"),
+    checked: boolean("checked").notNull().default(false),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_shopping_list_item_user_created").on(table.userId, table.createdAt),
+    check("shopping_list_item_text_length", sql`char_length(${table.text}) between 1 and 500`),
   ]
 );
 

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { CONFIRM_EMAIL_PATH, withConfirmationLanding } from "./auth-links";
+import {
+  CONFIRM_EMAIL_PATH,
+  EMAIL_CHANGE_PARAM,
+  isEmailChangeToken,
+  parseEmailChangeStage,
+  withConfirmationLanding,
+} from "./auth-links";
 
 const BASE = "https://www.kookboek.app/api/auth/verify-email";
 
@@ -86,5 +92,78 @@ describe("withConfirmationLanding", () => {
   it("does not duplicate the callbackURL parameter", () => {
     const result = new URL(withConfirmationLanding(link("/recipes")));
     expect(result.searchParams.getAll("callbackURL")).toHaveLength(1);
+  });
+});
+
+describe("withConfirmationLanding for an email change", () => {
+  const stageOf = (result: string) =>
+    new URL(callbackOf(result)!, "https://www.kookboek.app").searchParams.get(EMAIL_CHANGE_PARAM);
+
+  it("marks the landing with the stage and keeps the destination", () => {
+    const result = withConfirmationLanding(link("/settings"), { emailChange: "approved" });
+    expect(new URL(callbackOf(result)!, "https://x.test").pathname).toBe(CONFIRM_EMAIL_PATH);
+    expect(stageOf(result)).toBe("approved");
+    expect(nextOf(result)).toBe("/settings");
+  });
+
+  it("marks the landing when there is no destination", () => {
+    const result = withConfirmationLanding(link("/"), { emailChange: "done" });
+    expect(callbackOf(result)).toBe("/confirm-email?change=done");
+  });
+
+  // better-auth builds the second link from the landing of the first one.
+  it("replaces the stage on an existing confirmation callback", () => {
+    const first = withConfirmationLanding(link("/settings"), { emailChange: "approved" });
+    const second = withConfirmationLanding(link(callbackOf(first)!), { emailChange: "done" });
+    expect(stageOf(second)).toBe("done");
+    expect(nextOf(second)).toBe("/settings");
+    expect(new URL(callbackOf(second)!, "https://x.test").searchParams.getAll("change")).toHaveLength(1);
+  });
+
+  it("still drops an external destination", () => {
+    const result = withConfirmationLanding(link("https://evil.com"), { emailChange: "approved" });
+    expect(result).not.toContain("evil");
+    expect(stageOf(result)).toBe("approved");
+  });
+});
+
+describe("parseEmailChangeStage", () => {
+  it.each([
+    ["approved", "approved"],
+    ["done", "done"],
+    ["other", null],
+    [undefined, null],
+    [["done"], null],
+  ])("parses %j", (value, expected) => {
+    expect(parseEmailChangeStage(value)).toBe(expected);
+  });
+});
+
+describe("isEmailChangeToken", () => {
+  const jwt = (payload: object) => {
+    const encode = (value: object) =>
+      Buffer.from(JSON.stringify(value)).toString("base64url");
+    return `${encode({ alg: "HS256" })}.${encode(payload)}.signature`;
+  };
+
+  it("recognises a change-email token", () => {
+    expect(
+      isEmailChangeToken(
+        jwt({ email: "old@example.com", updateTo: "new@example.com", requestType: "change-email-verification" })
+      )
+    ).toBe(true);
+  });
+
+  it("treats a sign-up confirmation token as not a change", () => {
+    expect(isEmailChangeToken(jwt({ email: "jo@example.com" }))).toBe(false);
+  });
+
+  it("decodes base64url payloads that need padding and use - or _", () => {
+    // "ÿÿ" style bytes produce - and _ in base64url.
+    expect(isEmailChangeToken(jwt({ updateTo: "ÿþ@example.com?>>" }))).toBe(true);
+  });
+
+  it.each(["", "not-a-jwt", "a.%%%.c", "a.bnVsbA.c"])("returns false for %j", (token) => {
+    expect(isEmailChangeToken(token)).toBe(false);
   });
 });

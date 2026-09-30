@@ -205,3 +205,57 @@ export function buildVerificationEmail({
 
   return { subject: "Confirm your email for Kookboek", html, text };
 }
+
+/**
+ * Sent to the account's current address when someone asks to move the account
+ * to `newEmail`. Nothing changes until this is approved, so a person who got
+ * hold of a signed-in session can't quietly take the account over.
+ */
+export function buildEmailChangeApprovalEmail({
+  name,
+  newEmail,
+  url,
+}: {
+  name?: string | null;
+  newEmail: string;
+  url: string;
+}) {
+  const { html, text } = renderActionEmail({
+    heading: "Approve your new email",
+    name,
+    paragraphs: [
+      `Someone asked to change the email address of your Kookboek account to ${newEmail}.`,
+      "If that was you, click the button below to approve it. We'll then send a link to the new address to finish the change. This link expires in 24 hours.",
+    ],
+    buttonLabel: "Approve change",
+    url,
+    footnote:
+      "If you didn't ask for this, ignore this email and your address stays the same. You may want to change your password.",
+  });
+
+  return { subject: "Approve the email change for your Kookboek account", html, text };
+}
+
+/** Sent to the new address once the current one has approved the change. */
+export function buildEmailChangeVerificationEmail({
+  name,
+  url,
+}: {
+  name?: string | null;
+  url: string;
+}) {
+  const { html, text } = renderActionEmail({
+    heading: "Confirm your new email",
+    name,
+    paragraphs: [
+      "Confirm this address to finish moving your Kookboek account to it. Until then you keep signing in with your old address.",
+      "Click the button below to confirm. This link expires in 24 hours.",
+    ],
+    buttonLabel: "Confirm new email",
+    url,
+    footnote:
+      "If you didn't ask to use this address for Kookboek, you can safely ignore this email.",
+  });
+
+  return { subject: "Confirm your new email for Kookboek", html, text };
+}

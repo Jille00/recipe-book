@@ -29,6 +29,8 @@ import { NutritionDisplay } from "./nutrition-display";
 import { FavoriteButton } from "./favorite-button";
 import { ServingsSelector } from "./servings-selector";
 import { RatingsCommentsSection } from "./ratings-comments-section";
+import { CookMode } from "./cook-mode";
+import { PrintButton } from "./print-button";
 import type { RecipeWithDetails, RatingStats } from "@/types/recipe";
 import type { CommentWithUser } from "@/lib/db/queries/comments";
 import { toast } from "sonner";
@@ -272,7 +274,7 @@ export function RecipeDetail({
       {/* Header */}
       <header className="mb-8">
         {isOwner && (
-          <div className="mb-6">
+          <div className="mb-6 print:hidden">
             <Link
               href="/recipes"
               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
@@ -289,10 +291,17 @@ export function RecipeDetail({
               {recipe.title}
             </h1>
             <div className="flex flex-wrap items-center gap-2 print:hidden">
+              <CookMode
+                recipeId={recipe.id}
+                title={recipe.title}
+                ingredients={convertedIngredients}
+                instructions={convertedInstructions}
+              />
               <Button variant="outline" size="sm" onClick={handleShare}>
                 <Share2 className="h-4 w-4" aria-hidden="true" />
                 Share
               </Button>
+              <PrintButton />
               {isOwner && (
                 <>
                   <Button asChild variant="outline" size="sm">
@@ -369,7 +378,7 @@ export function RecipeDetail({
               </Badge>
             )}
             {isOwner && (
-              <Badge variant="secondary">
+              <Badge variant="secondary" className="print:hidden">
                 {recipe.isPublic ? (
                   <>
                     <Globe className="h-3 w-3 mr-1" aria-hidden="true" />
@@ -414,7 +423,7 @@ export function RecipeDetail({
           />
         </div>
       ) : (
-        <div className="relative mb-8 aspect-video overflow-hidden rounded-2xl bg-muted flex items-center justify-center">
+        <div className="relative mb-8 aspect-video overflow-hidden rounded-2xl bg-muted flex items-center justify-center print:hidden">
           <ChefHat className="h-16 w-16 text-muted-foreground/30" aria-hidden="true" />
         </div>
       )}
@@ -498,7 +507,7 @@ export function RecipeDetail({
           </CardHeader>
           <CardContent className="p-6">
             {nutritionOutdated && (
-              <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber/30 bg-amber/10 p-3 text-sm">
+              <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber/30 bg-amber/10 p-3 text-sm print:hidden">
                 <AlertTriangle
                   className="mt-0.5 h-4 w-4 shrink-0 text-amber"
                   aria-hidden="true"
@@ -648,7 +657,7 @@ export function RecipeDetail({
       {/* Anyone viewing this page holds its link, so everyone can rate and
           comment. The code proves that to the API for unlisted recipes. */}
       {initialRatingStats && (
-        <div className="mt-8">
+        <div className="mt-8 print:hidden">
           <RatingsCommentsSection
             code={recipe.code}
             recipeId={recipe.id}

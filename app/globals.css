@@ -393,6 +393,10 @@
   button,
   [role="button"],
   [role="dialog"],
+  [role="alertdialog"],
+  [data-slot="dialog-overlay"],
+  [data-slot="sheet-overlay"],
+  [data-slot="alert-dialog-overlay"],
   [role="menu"],
   [data-slot="dropdown-menu-content"],
   [data-sonner-toaster],
@@ -466,10 +470,10 @@
     page-break-inside: avoid;
   }
 
-  /* Step numbers keep their circle as an outline */
-  ol > li > span:first-child {
-    border: 1px solid #000 !important;
-    background: transparent !important;
+  /* Ingredients ticked off on screen still need buying for the next cook */
+  .line-through {
+    text-decoration: none !important;
+    opacity: 1 !important;
   }
 
   img {

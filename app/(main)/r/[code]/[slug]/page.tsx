@@ -6,6 +6,8 @@ import { auth } from "@/lib/auth";
 import { getRecipeByCode } from "@/lib/db/queries/recipes";
 import { getRecipeRatingStats, getUserRating } from "@/lib/db/queries/ratings";
 import { getRecipeComments } from "@/lib/db/queries/comments";
+import { getCopiedFrom } from "@/lib/db/queries/recipe-copies";
+import { canLinkToOriginal } from "@/lib/recipe-copy";
 import { RecipeDetail } from "@/components/recipe/recipe-detail";
 import { RecipeJsonLd } from "@/components/seo/recipe-json-ld";
 import { recipePath } from "@/lib/recipe-url";
@@ -83,11 +85,18 @@ export default async function RecipePage({ params }: Props) {
 
   const isOwner = viewerId === recipe.userId;
 
-  const [ratingStats, userRating, commentsData] = await Promise.all([
+  const [ratingStats, userRating, commentsData, copiedFrom] = await Promise.all([
     getRecipeRatingStats(recipe.id),
     viewerId ? getUserRating(viewerId, recipe.id) : Promise.resolve(null),
     getRecipeComments(recipe.id, { limit: 10, offset: 0 }),
+    getCopiedFrom(recipe.id),
   ]);
+  // The original's link carries its code: only show it to viewers who could
+  // open the original anyway.
+  const adaptedFrom =
+    copiedFrom && canLinkToOriginal(copiedFrom, viewerId)
+      ? { title: copiedFrom.title, href: recipePath(copiedFrom) }
+      : null;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -109,6 +118,7 @@ export default async function RecipePage({ params }: Props) {
         initialUserRating={userRating}
         initialComments={commentsData.comments}
         initialCommentTotal={commentsData.total}
+        adaptedFrom={adaptedFrom}
       />
     </div>
   );

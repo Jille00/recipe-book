@@ -33,13 +33,28 @@ import {
   X,
   ChevronDown,
   Search,
+  Tags,
+  FolderOpen,
+  ShoppingBasket,
+  Settings,
 } from "lucide-react";
 
 const navigation = [
   { name: "Home", href: "/", icon: Home },
   { name: "Browse", href: "/browse", icon: Search },
+  { name: "Categories", href: "/tags", icon: Tags },
   { name: "My Recipes", href: "/recipes", auth: true, icon: UtensilsCrossed },
   { name: "Favorites", href: "/favorites", auth: true, icon: Heart },
+];
+
+// The signed-in menu (desktop dropdown and the mobile panel).
+const accountLinks = [
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "New Recipe", href: "/recipes/new", icon: Plus },
+  { name: "Collections", href: "/collections", icon: FolderOpen },
+  { name: "Shopping List", href: "/shopping-list", icon: ShoppingBasket },
+  { name: "Profile", href: "/profile", icon: User },
+  { name: "Account Settings", href: "/settings", icon: Settings },
 ];
 
 const MOBILE_MENU_ID = "mobile-navigation";
@@ -256,25 +271,15 @@ export function Header({ initialUser }: HeaderProps) {
                     <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard" className="flex items-center gap-2">
-                      <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
-                      Dashboard
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/recipes/new" className="flex items-center gap-2">
-                      <Plus className="h-4 w-4" aria-hidden="true" />
-                      New Recipe
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile" className="flex items-center gap-2">
-                      <User className="h-4 w-4" aria-hidden="true" />
-                      Profile
-                    </Link>
-                  </DropdownMenuItem>
+                <DropdownMenuContent align="end" className="w-52">
+                  {accountLinks.map((item) => (
+                    <DropdownMenuItem key={item.href} asChild>
+                      <Link href={item.href} className="flex items-center gap-2">
+                        <item.icon className="h-4 w-4" aria-hidden="true" />
+                        {item.name}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={handleSignOut}
@@ -379,30 +384,18 @@ export function Header({ initialUser }: HeaderProps) {
                   </div>
                 </div>
 
-                <Link
-                  href="/dashboard"
-                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
-                  onClick={() => closeMobileMenu()}
-                >
-                  <LayoutDashboard className="h-5 w-5" aria-hidden="true" />
-                  Dashboard
-                </Link>
-                <Link
-                  href="/recipes/new"
-                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
-                  onClick={() => closeMobileMenu()}
-                >
-                  <Plus className="h-5 w-5" aria-hidden="true" />
-                  New Recipe
-                </Link>
-                <Link
-                  href="/profile"
-                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
-                  onClick={() => closeMobileMenu()}
-                >
-                  <User className="h-5 w-5" aria-hidden="true" />
-                  Profile
-                </Link>
+                {accountLinks.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={isActivePath(pathname, item.href) ? "page" : undefined}
+                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                    onClick={() => closeMobileMenu()}
+                  >
+                    <item.icon className="h-5 w-5" aria-hidden="true" />
+                    {item.name}
+                  </Link>
+                ))}
 
                 <Separator className="my-2" />
 

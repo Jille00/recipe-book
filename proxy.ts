@@ -5,7 +5,15 @@ import { buildContentSecurityPolicy, createNonce } from "@/lib/csp";
 
 // Every authenticated page. /browse, /r/..., the auth pages and the home page
 // stay public.
-const PROTECTED_PREFIXES = ["/dashboard", "/favorites", "/profile", "/settings", "/recipes", "/shopping-list"];
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/favorites",
+  "/profile",
+  "/settings",
+  "/recipes",
+  "/shopping-list",
+  "/collections",
+];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(

@@ -31,6 +31,9 @@ import { AddToShoppingList } from "./add-to-shopping-list";
 import { ServingsSelector } from "./servings-selector";
 import { RatingsCommentsSection } from "./ratings-comments-section";
 import { TagPillLink } from "./tag-pill-link";
+import { SaveToCollection } from "./save-to-collection";
+import { SaveCopyButton } from "./save-copy-button";
+import { AdaptedFrom, type AdaptedFromInfo } from "./adapted-from";
 import type { RecipeWithDetails, RatingStats } from "@/types/recipe";
 import type { CommentWithUser } from "@/lib/db/queries/comments";
 import { toast } from "sonner";
@@ -73,6 +76,8 @@ interface RecipeDetailProps {
   initialCommentTotal?: number;
   /** Shown as pills linking to each tag's page. */
   tags?: { id: string; name: string; slug: string }[];
+  /** Set for a copy whose original the viewer may open. */
+  adaptedFrom?: AdaptedFromInfo | null;
 }
 
 export function RecipeDetail({
@@ -87,6 +92,7 @@ export function RecipeDetail({
   initialComments = [],
   initialCommentTotal = 0,
   tags = [],
+  adaptedFrom = null,
 }: RecipeDetailProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -299,6 +305,19 @@ export function RecipeDetail({
                 Share
               </Button>
               <AddToShoppingList recipeId={recipe.id} code={recipe.code} ingredients={convertedIngredients} isAuthenticated={isAuthenticated} />
+              <SaveToCollection
+                recipeId={recipe.id}
+                code={recipe.code}
+                isAuthenticated={isAuthenticated}
+                isListable={Boolean(recipe.isPublic) || isOwner}
+              />
+              {!isOwner && (
+                <SaveCopyButton
+                  recipeId={recipe.id}
+                  code={recipe.code}
+                  isAuthenticated={isAuthenticated}
+                />
+              )}
               {isOwner && (
                 <>
                   <Button asChild variant="outline" size="sm">
@@ -360,6 +379,7 @@ export function RecipeDetail({
               )}
             </div>
           </div>
+          {adaptedFrom && <AdaptedFrom origin={adaptedFrom} />}
           {recipe.description && (
             <p className="text-lg text-muted-foreground max-w-2xl">
               {recipe.description}

@@ -2,6 +2,9 @@ import { eq, and, or, sql, desc, ilike, lte, gte, inArray } from "drizzle-orm";
 import { db, recipe, user, recipeTag, favorite } from "@/lib/db";
 import type { Ingredient, Instruction, Difficulty, RecipeCardData } from "@/types/recipe";
 import type { NutritionInfo } from "@/types/nutrition";
+import { ratingStatsSubquery } from "./ratings";
+import { toRatingStats } from "@/lib/rating-stats";
+import { DEFAULT_BROWSE_SORT, type BrowseSort } from "@/lib/browse-sort";
 
 export interface SearchFilters {
   query?: string;
@@ -147,7 +150,8 @@ export async function getPublicRecipes(
   filters: SearchFilters,
   limit = 12,
   offset = 0,
-  userId?: string
+  userId?: string,
+  sort: BrowseSort = DEFAULT_BROWSE_SORT
 ): Promise<PublicRecipesResult> {
   const conditions = [];
 
@@ -211,6 +215,24 @@ export async function getPublicRecipes(
 
   const total = Number(countResult[0]?.count ?? 0);
 
+  const ratingStats = ratingStatsSubquery();
+
+  // Every order ends on created_at and id so pages never overlap or skip.
+  const newestFirst = [desc(recipe.createdAt), desc(recipe.id)];
+  const orderBy = {
+    newest: newestFirst,
+    "top-rated": [
+      sql`${ratingStats.averageRating} desc nulls last`,
+      sql`${ratingStats.totalRatings} desc nulls last`,
+      ...newestFirst,
+    ],
+    // Same total the card's time badge shows; no time at all sorts last.
+    quickest: [
+      sql`nullif(coalesce(${recipe.prepTimeMinutes}, 0) + coalesce(${recipe.cookTimeMinutes}, 0), 0) asc nulls last`,
+      ...newestFirst,
+    ],
+  }[sort];
+
   // Get paginated results
   const results = await db
     .select({
@@ -230,6 +252,8 @@ export async function getPublicRecipes(
       updatedAt: recipe.updatedAt,
       authorName: user.name,
       favoriteId: favorite.id,
+      averageRating: ratingStats.averageRating,
+      totalRatings: ratingStats.totalRatings,
     })
     .from(recipe)
     .leftJoin(user, eq(recipe.userId, user.id))
@@ -239,18 +263,20 @@ export async function getPublicRecipes(
         ? and(eq(favorite.recipeId, recipe.id), eq(favorite.userId, userId))
         : sql`false`
     )
+    .leftJoin(ratingStats, eq(ratingStats.recipeId, recipe.id))
     .where(and(...conditions))
-    .orderBy(desc(recipe.createdAt), desc(recipe.id))
+    .orderBy(...orderBy)
     .limit(limit)
     .offset(offset);
 
   return {
-    recipes: results.map((r) => ({
+    recipes: results.map(({ averageRating, totalRatings, ...r }) => ({
       ...r,
           difficulty: r.difficulty as Difficulty | null,
         // Share tokens are owner-only capabilities; never include them in listings.
       isOwn: false,
       isFavorited: r.favoriteId !== null,
+      ratingStats: toRatingStats(averageRating, totalRatings),
     })),
     total,
   };

@@ -6,6 +6,8 @@ interface RecipeJsonLdProps {
   url: string;
   /** Already loaded by the recipe page; only emitted once someone has rated. */
   ratingStats?: RatingStats;
+  /** Tag names, emitted as keywords and categories. */
+  tags?: string[];
 }
 
 function formatDuration(minutes: number | null): string | undefined {
@@ -17,7 +19,12 @@ function formatDuration(minutes: number | null): string | undefined {
   return `PT${mins}M`;
 }
 
-export function RecipeJsonLd({ recipe, url, ratingStats }: RecipeJsonLdProps) {
+export function RecipeJsonLd({
+  recipe,
+  url,
+  ratingStats,
+  tags = [],
+}: RecipeJsonLdProps) {
   const totalTime =
     (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
 
@@ -39,6 +46,8 @@ export function RecipeJsonLd({ recipe, url, ratingStats }: RecipeJsonLdProps) {
     cookTime: formatDuration(recipe.cookTimeMinutes),
     totalTime: totalTime > 0 ? formatDuration(totalTime) : undefined,
     recipeYield: recipe.servings ? `${recipe.servings} servings` : undefined,
+    keywords: tags.length > 0 ? tags.join(", ") : undefined,
+    recipeCategory: tags.length > 0 ? tags : undefined,
     recipeIngredient: recipe.ingredients.map((ing) => {
       if (ing.amount && ing.unit) {
         return `${ing.amount} ${ing.unit} ${ing.text}`;

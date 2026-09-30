@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { getRecipeByCode } from "@/lib/db/queries/recipes";
 import { getRecipeRatingStats, getUserRating } from "@/lib/db/queries/ratings";
 import { getRecipeComments } from "@/lib/db/queries/comments";
+import { getTagsForRecipe } from "@/lib/db/queries/tags";
 import { RecipeDetail } from "@/components/recipe/recipe-detail";
 import { RecipeJsonLd } from "@/components/seo/recipe-json-ld";
 import { recipePath } from "@/lib/recipe-url";
@@ -83,10 +84,11 @@ export default async function RecipePage({ params }: Props) {
 
   const isOwner = viewerId === recipe.userId;
 
-  const [ratingStats, userRating, commentsData] = await Promise.all([
+  const [ratingStats, userRating, commentsData, tags] = await Promise.all([
     getRecipeRatingStats(recipe.id),
     viewerId ? getUserRating(viewerId, recipe.id) : Promise.resolve(null),
     getRecipeComments(recipe.id, { limit: 10, offset: 0 }),
+    getTagsForRecipe(recipe.id),
   ]);
 
   return (
@@ -97,6 +99,7 @@ export default async function RecipePage({ params }: Props) {
           recipe={recipe}
           url={absoluteUrl(recipePath(recipe))}
           ratingStats={ratingStats}
+          tags={tags.map((tag) => tag.name)}
         />
       )}
       <RecipeDetail
@@ -109,6 +112,7 @@ export default async function RecipePage({ params }: Props) {
         initialUserRating={userRating}
         initialComments={commentsData.comments}
         initialCommentTotal={commentsData.total}
+        tags={tags}
       />
     </div>
   );

@@ -1,5 +1,6 @@
 import { isUuid, parsePaginationParam } from "@/lib/api-utils";
 import type { SearchFilters } from "@/lib/db/queries/search";
+import { DEFAULT_BROWSE_SORT, isBrowseSort, type BrowseSort } from "@/lib/browse-sort";
 
 export const MAX_BROWSE_PAGE = 1000;
 const MAX_QUERY_LENGTH = 100;
@@ -18,6 +19,7 @@ export interface BrowseSearchParams {
   cookTime?: RawParam;
   minServings?: RawParam;
   maxServings?: RawParam;
+  sort?: RawParam;
   page?: RawParam;
 }
 
@@ -72,7 +74,19 @@ export function parseBrowseFilters(params: BrowseSearchParams): SearchFilters {
   return filters;
 }
 
-/** Whether any filter would actually apply, ignoring invalid values. */
+/** The listing order; anything unknown falls back to newest first. */
+export function parseBrowseSort(value: RawParam): BrowseSort {
+  const raw = first(value);
+  return isBrowseSort(raw) ? raw : DEFAULT_BROWSE_SORT;
+}
+
+/**
+ * Whether any filter would actually apply, ignoring invalid values. A
+ * non-default sort counts too: it is another permutation of the same listing.
+ */
 export function hasActiveBrowseFilters(params: BrowseSearchParams): boolean {
-  return Object.keys(parseBrowseFilters(params)).length > 0;
+  return (
+    Object.keys(parseBrowseFilters(params)).length > 0 ||
+    parseBrowseSort(params.sort) !== DEFAULT_BROWSE_SORT
+  );
 }

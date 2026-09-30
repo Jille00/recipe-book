@@ -1,7 +1,6 @@
-import { eq, and, desc, sql } from "drizzle-orm";
-import { db, tag, recipeTag, recipe, user } from "@/lib/db";
-import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
-import type { NutritionInfo } from "@/types/nutrition";
+import { eq, and, sql } from "drizzle-orm";
+import { db, tag, recipeTag, recipe } from "@/lib/db";
+import { getPublicRecipes, type PublicRecipesResult } from "./search";
 
 export async function getAllTags() {
   return db
@@ -30,64 +29,42 @@ export async function getTagBySlug(slug: string) {
   return results[0] || null;
 }
 
+/**
+ * Every tag with how many *public* recipes carry it (private and unlisted
+ * recipes must not show up, not even as a count), and when the newest of
+ * those last changed, for the sitemap.
+ */
 export async function getTagsWithRecipeCount() {
   const tags = await db
     .select({
       id: tag.id,
       name: tag.name,
       slug: tag.slug,
-      recipeCount: sql<number>`count(${recipeTag.recipeId})::int`,
+      recipeCount: sql<number>`count(${recipe.id})::int`,
+      lastModified: sql<Date | null>`max(${recipe.updatedAt})`.mapWith(
+        recipe.updatedAt
+      ),
     })
     .from(tag)
     .leftJoin(recipeTag, eq(tag.id, recipeTag.tagId))
+    .leftJoin(
+      recipe,
+      and(eq(recipeTag.recipeId, recipe.id), eq(recipe.isPublic, true))
+    )
     .groupBy(tag.id, tag.name, tag.slug)
     .orderBy(tag.name);
 
   return tags;
 }
 
+/** A tag's page of public recipes: /browse filtered to that one tag. */
 export async function getPublicRecipesByTag(
-  tagSlug: string,
-  limit = 50,
-  offset = 0
-) {
-  const recipes = await db
-    .select({
-      id: recipe.id,
-      userId: recipe.userId,
-      title: recipe.title,
-      slug: recipe.slug,
-      description: recipe.description,
-      ingredients: recipe.ingredients,
-      instructions: recipe.instructions,
-      prepTimeMinutes: recipe.prepTimeMinutes,
-      cookTimeMinutes: recipe.cookTimeMinutes,
-      servings: recipe.servings,
-      difficulty: recipe.difficulty,
-      imageUrl: recipe.imageUrl,
-      nutrition: recipe.nutrition,
-      isPublic: recipe.isPublic,
-      code: recipe.code,
-      createdAt: recipe.createdAt,
-      updatedAt: recipe.updatedAt,
-      authorName: user.name,
-    })
-    .from(recipe)
-    .innerJoin(recipeTag, eq(recipe.id, recipeTag.recipeId))
-    .innerJoin(tag, eq(recipeTag.tagId, tag.id))
-    .leftJoin(user, eq(recipe.userId, user.id))
-    .where(and(eq(tag.slug, tagSlug), eq(recipe.isPublic, true)))
-    .orderBy(desc(recipe.createdAt))
-    .limit(limit)
-    .offset(offset);
-
-  return recipes.map((r) => ({
-    ...r,
-    ingredients: r.ingredients as Ingredient[],
-    instructions: r.instructions as Instruction[],
-    difficulty: r.difficulty as Difficulty | null,
-    nutrition: r.nutrition as NutritionInfo | null,
-  }));
+  tagId: string,
+  limit = 12,
+  offset = 0,
+  userId?: string
+): Promise<PublicRecipesResult> {
+  return getPublicRecipes({ tagIds: [tagId] }, limit, offset, userId);
 }
 
 export async function getTagsForRecipe(recipeId: string) {

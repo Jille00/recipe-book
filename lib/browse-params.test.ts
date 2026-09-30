@@ -3,6 +3,7 @@ import {
   hasActiveBrowseFilters,
   parseBrowseFilters,
   parseBrowsePage,
+  parseBrowseSort,
 } from "./browse-params";
 
 const TAG_A = "11111111-1111-4111-8111-111111111111";
@@ -72,5 +73,31 @@ describe("hasActiveBrowseFilters", () => {
   it("ignores params that parse to nothing", () => {
     expect(hasActiveBrowseFilters({ tags: "vegan", prepTime: "0" })).toBe(false);
     expect(hasActiveBrowseFilters({ q: "soup" })).toBe(true);
+  });
+
+  it("counts a sort only when it is not the default", () => {
+    expect(hasActiveBrowseFilters({ sort: "newest" })).toBe(false);
+    expect(hasActiveBrowseFilters({ sort: "bogus" })).toBe(false);
+    expect(hasActiveBrowseFilters({ sort: "top-rated" })).toBe(true);
+    expect(hasActiveBrowseFilters({ sort: "quickest" })).toBe(true);
+  });
+});
+
+describe("parseBrowseSort", () => {
+  it.each([
+    [undefined, "newest"],
+    ["", "newest"],
+    ["newest", "newest"],
+    ["top-rated", "top-rated"],
+    ["quickest", "quickest"],
+    ["Top-Rated", "newest"],
+    ["oldest", "newest"],
+    [["quickest", "top-rated"], "quickest"],
+  ] as const)("parses %j as %s", (raw, expected) => {
+    expect(parseBrowseSort(raw as string | string[] | undefined)).toBe(expected);
+  });
+
+  it("is not a search filter", () => {
+    expect(parseBrowseFilters({ sort: "top-rated" })).toEqual({});
   });
 });

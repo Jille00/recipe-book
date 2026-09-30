@@ -29,6 +29,7 @@ import { NutritionDisplay } from "./nutrition-display";
 import { FavoriteButton } from "./favorite-button";
 import { ServingsSelector } from "./servings-selector";
 import { RatingsCommentsSection } from "./ratings-comments-section";
+import { TagPillLink } from "./tag-pill-link";
 import type { RecipeWithDetails, RatingStats } from "@/types/recipe";
 import type { CommentWithUser } from "@/lib/db/queries/comments";
 import { toast } from "sonner";
@@ -69,6 +70,8 @@ interface RecipeDetailProps {
   initialUserRating?: number | null;
   initialComments?: CommentWithUser[];
   initialCommentTotal?: number;
+  /** Shown as pills linking to each tag's page. */
+  tags?: { id: string; name: string; slug: string }[];
 }
 
 export function RecipeDetail({
@@ -82,6 +85,7 @@ export function RecipeDetail({
   initialUserRating,
   initialComments = [],
   initialCommentTotal = 0,
+  tags = [],
 }: RecipeDetailProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -358,6 +362,15 @@ export function RecipeDetail({
             <p className="text-lg text-muted-foreground max-w-2xl">
               {recipe.description}
             </p>
+          )}
+          {tags.length > 0 && (
+            <ul aria-label="Tags" className="flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <li key={tag.id}>
+                  <TagPillLink tag={tag} />
+                </li>
+              ))}
+            </ul>
           )}
           <div className="flex flex-wrap items-center gap-2">
             {recipe.difficulty && (

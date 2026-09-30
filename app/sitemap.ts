@@ -1,5 +1,7 @@
 import { MetadataRoute } from "next";
 import { getPublicRecipesForSitemap } from "@/lib/db/queries/recipes";
+import { getTagsWithRecipeCount } from "@/lib/db/queries/tags";
+import { tagPath, tagsWithRecipes } from "@/lib/tag-pages";
 import { SITE_URL } from "./site-url";
 import { recipePath } from "@/lib/recipe-url";
 
@@ -8,13 +10,24 @@ import { recipePath } from "@/lib/recipe-url";
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const publicRecipes = await getPublicRecipesForSitemap();
+  const [publicRecipes, tags] = await Promise.all([
+    getPublicRecipesForSitemap(),
+    getTagsWithRecipeCount(),
+  ]);
 
   const recipeUrls: MetadataRoute.Sitemap = publicRecipes.map((recipe) => ({
     url: `${SITE_URL}${recipePath(recipe)}`,
     lastModified: recipe.updatedAt || new Date(),
     changeFrequency: "weekly",
     priority: 0.8,
+  }));
+
+  // Only categories with a public recipe; an empty one is noindexed anyway.
+  const tagUrls: MetadataRoute.Sitemap = tagsWithRecipes(tags).map((tag) => ({
+    url: `${SITE_URL}${tagPath(tag.slug)}`,
+    lastModified: tag.lastModified || new Date(),
+    changeFrequency: "weekly",
+    priority: 0.7,
   }));
 
   // Auth screens are intentionally left out: they carry no indexable content
@@ -32,7 +45,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.9,
     },
+    {
+      url: `${SITE_URL}/tags`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
   ];
 
-  return [...staticPages, ...recipeUrls];
+  return [...staticPages, ...tagUrls, ...recipeUrls];
 }

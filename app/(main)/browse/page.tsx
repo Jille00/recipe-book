@@ -3,20 +3,24 @@ import { ChefHat } from "lucide-react";
 import { Card, CardContent, Pagination } from "@/components/ui";
 import { RecipeCard } from "@/components/recipe/recipe-card";
 import { BrowseFilters } from "@/components/browse/browse-filters";
-import { getAllTags } from "@/lib/db/queries/tags";
+import { CategoryChips } from "@/components/browse/category-chips";
+import { getTagsWithRecipeCount } from "@/lib/db/queries/tags";
 import { getPublicRecipes } from "@/lib/db/queries/search";
 import { auth } from "@/lib/auth";
 import {
   hasActiveBrowseFilters,
   parseBrowseFilters,
   parseBrowsePage,
+  parseBrowseSort,
   type BrowseSearchParams,
 } from "@/lib/browse-params";
 import { SITE_OG_IMAGE } from "../../site-url";
 import type { Metadata } from "next";
 import type { RecipeCardData } from "@/types/recipe";
+import { topCategories } from "@/lib/tag-pages";
 
 const PAGE_SIZE = 12;
+const CATEGORY_CHIP_COUNT = 8;
 
 const BROWSE_DESCRIPTION =
   "Browse and search through our collection of delicious recipes";
@@ -74,15 +78,18 @@ export default async function BrowsePage({ searchParams }: Props) {
   const requestedPage = parseBrowsePage(params.page);
 
   const filters = parseBrowseFilters(params);
+  const sort = parseBrowseSort(params.sort);
 
-  // Fetch tags and recipes in parallel
+  // Fetch tags and recipes in parallel. The counted tags serve both the
+  // filter list and the category shortcuts.
   const [tags, firstResult] = await Promise.all([
-    getAllTags(),
+    getTagsWithRecipeCount(),
     getPublicRecipes(
       filters,
       PAGE_SIZE,
       (requestedPage - 1) * PAGE_SIZE,
-      session?.user?.id
+      session?.user?.id,
+      sort
     ),
   ]);
 
@@ -100,7 +107,8 @@ export default async function BrowsePage({ searchParams }: Props) {
             filters,
             PAGE_SIZE,
             (currentPage - 1) * PAGE_SIZE,
-            session?.user?.id
+            session?.user?.id,
+            sort
           )
         ).recipes;
 
@@ -113,6 +121,7 @@ export default async function BrowsePage({ searchParams }: Props) {
     cookTime: params.cookTime,
     minServings: params.minServings,
     maxServings: params.maxServings,
+    sort: params.sort,
   };
 
   const recipesWithDetails: RecipeCardData[] = recipes.map((recipe) => ({
@@ -132,9 +141,15 @@ export default async function BrowsePage({ searchParams }: Props) {
         </p>
       </div>
 
+      {/* Category shortcuts */}
+      <CategoryChips
+        tags={topCategories(tags, CATEGORY_CHIP_COUNT)}
+        className="mb-6"
+      />
+
       {/* Filters */}
       <div className="mb-8">
-        <BrowseFilters tags={tags} initialFilters={filters} />
+        <BrowseFilters tags={tags} initialFilters={filters} initialSort={sort} />
       </div>
 
       {/* Results */}

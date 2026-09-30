@@ -1,8 +1,11 @@
 import { eq, and, or, desc, sql } from "drizzle-orm";
 import { db, favorite, recipe, user } from "@/lib/db";
 import type { Difficulty } from "@/types/recipe";
+import { ratingStatsSubquery } from "./ratings";
+import { toRatingStats } from "@/lib/rating-stats";
 
 export async function getUserFavorites(userId: string) {
+  const ratingStats = ratingStatsSubquery();
   const favorites = await db
     .select({
       id: recipe.id,
@@ -21,10 +24,13 @@ export async function getUserFavorites(userId: string) {
       updatedAt: recipe.updatedAt,
       authorName: user.name,
       favoritedAt: favorite.createdAt,
+      averageRating: ratingStats.averageRating,
+      totalRatings: ratingStats.totalRatings,
     })
     .from(favorite)
     .innerJoin(recipe, eq(favorite.recipeId, recipe.id))
     .leftJoin(user, eq(recipe.userId, user.id))
+    .leftJoin(ratingStats, eq(ratingStats.recipeId, recipe.id))
     .where(
       and(
         eq(favorite.userId, userId),
@@ -35,11 +41,12 @@ export async function getUserFavorites(userId: string) {
     )
     .orderBy(desc(favorite.createdAt));
 
-  return favorites.map((r) => ({
+  return favorites.map(({ averageRating, totalRatings, ...r }) => ({
     ...r,
     difficulty: r.difficulty as Difficulty | null,
     // Never hand another user's share token to a viewer.
     isFavorited: true,
+    ratingStats: toRatingStats(averageRating, totalRatings),
   }));
 }
 

@@ -9,7 +9,6 @@ import { getRecipeById } from "@/lib/db/queries/recipes";
 import {
   addShoppingListItems,
   clearShoppingList,
-  countShoppingListItems,
   getShoppingList,
   setShoppingListItemsChecked,
 } from "@/lib/db/queries/shopping-list";
@@ -86,8 +85,8 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    const existing = await countShoppingListItems(userId);
-    if (existing + items.length > MAX_LIST_ITEMS) {
+    const created = await addShoppingListItems(userId, items, source);
+    if (created === null) {
       return NextResponse.json(
         {
           error: `Your shopping list can hold ${MAX_LIST_ITEMS} items. Clear some items first.`,
@@ -95,8 +94,6 @@ export async function POST(request: NextRequest) {
         { status: 409 }
       );
     }
-
-    const created = await addShoppingListItems(userId, items, source);
     return NextResponse.json({ items: created }, { status: 201 });
   } catch (error) {
     console.error("Error adding to shopping list:", error);

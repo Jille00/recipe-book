@@ -12,6 +12,8 @@ import {
   check,
   bigint,
   type AnyPgColumn,
+  numeric,
+  customType,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -144,6 +146,12 @@ export const tag = pgTable("tag", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+const tsvector = customType<{ data: string }>({
+  dataType() {
+    return "tsvector";
+  },
+});
+
 export const recipe = pgTable(
   "recipe",
   {
@@ -182,6 +190,16 @@ export const recipe = pgTable(
     copiedFromId: uuid("copied_from_id").references((): AnyPgColumn => recipe.id, {
       onDelete: "set null",
     }),
+    // Kept current by a trigger on `rating` (migration 0009), so list pages
+    // read two columns instead of aggregating every rating on each request.
+    ratingAverage: numeric("rating_average", { precision: 3, scale: 2 }),
+    ratingCount: integer("rating_count").notNull().default(0),
+    // Full-text search over title (weight A), description (B) and ingredient
+    // text (C). The 'simple' config: recipes are in Dutch and English, and
+    // stemming for the wrong language does more harm than none.
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      sql`setweight(to_tsvector('simple', coalesce(title, '')), 'A') || setweight(to_tsvector('simple', coalesce(description, '')), 'B') || setweight(to_tsvector('simple', coalesce(jsonb_path_query_array(ingredients, '$[*].text')::text, '')), 'C')`
+    ),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
@@ -196,6 +214,7 @@ export const recipe = pgTable(
     // the public "slug + is_public" lookup. This one can.
     index("idx_recipe_slug").on(table.slug),
     index("idx_recipe_created_at").on(table.createdAt),
+    index("idx_recipe_search_vector").using("gin", table.searchVector),
     unique("recipe_user_slug_unique").on(table.userId, table.slug),
   ]
 );

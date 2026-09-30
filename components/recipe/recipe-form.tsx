@@ -76,6 +76,7 @@ import {
 } from "@/lib/recipe-import/apply-to-form";
 import { useBeforeUnload } from "@/hooks/use-before-unload";
 import { useLinkNavigationGuard } from "@/hooks/use-link-navigation-guard";
+import { useHistoryGuard } from "@/hooks/use-history-guard";
 
 // The import dialog (and its image and HEIC helpers) is only needed once
 // someone opens it, so it is split into its own chunk.
@@ -251,7 +252,8 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
   // mounted so it can animate closed.
   const [importModalMounted, setImportModalMounted] = useState(false);
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
-  // Where a held-back link click was going; null means Cancel (go back).
+  // Where a held-back link click was going; null means Cancel or the
+  // browser's Back button (go back).
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   // Set when the link was reset here: the page we came from no longer exists.
   const [resetAddress, setResetAddress] = useState<{ code: string; slug: string } | null>(null);
@@ -286,6 +288,10 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
   useBeforeUnload(isDirty && !leaveAllowed);
   useLinkNavigationGuard(isDirty && !leaveAllowed, (href) => {
     setPendingHref(href);
+    setDiscardDialogOpen(true);
+  });
+  const historyGuard = useHistoryGuard(isDirty && !leaveAllowed, () => {
+    setPendingHref(null);
     setDiscardDialogOpen(true);
   });
 
@@ -550,11 +556,15 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       const data = await response.json();
       // Saved: navigating away is no longer losing anything. flushSync drops
       // the beforeunload guard before navigation starts.
+      const onGuardEntry = historyGuard.release();
       flushSync(() => setLeaveAllowed(true));
       toast.success(isEditing ? "Recipe updated" : "Recipe created");
       // Land on the recipe's one address, which is also its share link. The
       // form stays disabled while that page loads.
-      router.push(recipePath(data));
+      // Replace the Back-button guard's extra entry rather than leaving it
+      // behind as a second copy of this form.
+      if (onGuardEntry) router.replace(recipePath(data));
+      else router.push(recipePath(data));
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -570,14 +580,19 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
 
   // `href`: where a held-back link was going; null leaves the way Cancel does.
   const leave = (href: string | null) => {
-    flushSync(() => setLeaveAllowed(true));
-    if (href) {
-      router.push(href);
-    } else if (resetAddress) {
-      router.push(recipePath(resetAddress));
-    } else {
-      router.back();
+    const target = href ?? (resetAddress ? recipePath(resetAddress) : null);
+    if (!target) {
+      // Steps over the Back-button guard's extra entry when it is there. It
+      // must stop guarding before leaveAllowed does (or it would consume the
+      // entry itself); the traversal is async, so flushSync still lands first.
+      historyGuard.back();
+      flushSync(() => setLeaveAllowed(true));
+      return;
     }
+    const onGuardEntry = historyGuard.release();
+    flushSync(() => setLeaveAllowed(true));
+    if (onGuardEntry) router.replace(target);
+    else router.push(target);
   };
 
   const handleCancel = () => {

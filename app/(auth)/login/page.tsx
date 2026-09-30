@@ -70,7 +70,7 @@ export default async function LoginPage({ searchParams }: Props) {
               &ldquo;Cooking is like love. It should be entered into with abandon or
               not at all.&rdquo;
             </p>
-            <p className="mt-4 text-muted-foreground">— Harriet Van Horne</p>
+            <p className="mt-4 text-charcoal dark:text-muted-foreground">— Harriet Van Horne</p>
           </div>
         </div>
       </div>

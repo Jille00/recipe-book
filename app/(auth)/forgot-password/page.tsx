@@ -45,7 +45,7 @@ export default function ForgotPasswordPage() {
             <p className="font-display text-4xl font-semibold text-foreground/80">
               &ldquo;No one is born a great cook, one learns by doing.&rdquo;
             </p>
-            <p className="mt-4 text-muted-foreground">— Julia Child</p>
+            <p className="mt-4 text-charcoal dark:text-muted-foreground">— Julia Child</p>
           </div>
         </div>
       </div>

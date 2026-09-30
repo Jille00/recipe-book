@@ -1,4 +1,4 @@
-import { and, asc, count, eq, inArray } from "drizzle-orm";
+import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
 import { db, recipe, shoppingListItem } from "@/lib/db";
 import { recipePath } from "@/lib/recipe-url";
 import type { ShoppingListItem } from "@/lib/shopping-list/merge";
@@ -78,40 +78,46 @@ export async function getShoppingList(userId: string): Promise<ShoppingListItem[
   });
 }
 
-export async function countShoppingListItems(userId: string): Promise<number> {
-  const [row] = await db
-    .select({ value: count() })
-    .from(shoppingListItem)
-    .where(eq(shoppingListItem.userId, userId));
-  return row?.value ?? 0;
-}
-
 /**
- * Adds items to the caller's list. Callers MUST have checked that the user may
- * open `recipe` (canAccessRecipe) and that the list has room.
+ * Adds items to the caller's list, or returns null when they would take it
+ * past MAX_LIST_ITEMS. Callers MUST have checked that the user may open
+ * `recipe` (canAccessRecipe).
  */
 export async function addShoppingListItems(
   userId: string,
   items: ValidShoppingListInput[],
   source: { id: string; title: string; href: string | null } | null = null
-): Promise<ShoppingListItem[]> {
+): Promise<ShoppingListItem[] | null> {
   if (items.length === 0) return [];
   // One timestamp per batch would tie the order; stagger by a millisecond so
   // the list keeps the recipe's ingredient order.
   const base = Date.now();
-  const rows = await db
-    .insert(shoppingListItem)
-    .values(
-      items.map((item, index) => ({
-        userId,
-        recipeId: source?.id ?? null,
-        text: item.text,
-        amount: item.amount,
-        unit: item.unit,
-        createdAt: new Date(base + index),
-      }))
-    )
-    .returning(itemColumns);
+  const rows = await db.transaction(async (tx) => {
+    // One add per user at a time, so two at once can't both pass the room
+    // check below and together go past the cap. The lock ends with the
+    // transaction, which suits the transaction pooler.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`shopping-list:${userId}`}))`);
+    const [{ value: existing }] = await tx
+      .select({ value: count() })
+      .from(shoppingListItem)
+      .where(eq(shoppingListItem.userId, userId));
+    if (existing + items.length > MAX_LIST_ITEMS) return null;
+
+    return tx
+      .insert(shoppingListItem)
+      .values(
+        items.map((item, index) => ({
+          userId,
+          recipeId: source?.id ?? null,
+          text: item.text,
+          amount: item.amount,
+          unit: item.unit,
+          createdAt: new Date(base + index),
+        }))
+      )
+      .returning(itemColumns);
+  });
+  if (rows === null) return null;
 
   return rows
     .map((row) => toItem(row, source ? { title: source.title, href: source.href } : undefined))

@@ -30,7 +30,7 @@ export default async function RegisterPage() {
               &ldquo;The kitchen is the heart of every home, for the most
               part.&rdquo;
             </p>
-            <p className="mt-4 text-muted-foreground">— Debi Mazar</p>
+            <p className="mt-4 text-charcoal dark:text-muted-foreground">— Debi Mazar</p>
           </div>
         </div>
       </div>

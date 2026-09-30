@@ -96,22 +96,3 @@ export async function deleteRating(
 
   return result.length > 0;
 }
-
-/**
- * Average and count per rated recipe, as a derived table for list queries to
- * left-join on `recipeId`: one grouped scan per page instead of a stats query
- * per card. Unrated recipes join to nulls (see toRatingStats).
- */
-export function ratingStatsSubquery() {
-  return db
-    .select({
-      recipeId: rating.recipeId,
-      averageRating: sql<string>`avg(${rating.value})::numeric(3,2)`.as(
-        "average_rating"
-      ),
-      totalRatings: sql<number>`count(*)::int`.as("total_ratings"),
-    })
-    .from(rating)
-    .groupBy(rating.recipeId)
-    .as("rating_stats");
-}

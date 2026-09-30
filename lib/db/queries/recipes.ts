@@ -3,7 +3,6 @@ import { db, recipe, user, recipeTag, favorite, profile } from "@/lib/db";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils/slug";
 import type { Ingredient, Instruction, Difficulty, RecipeCardData } from "@/types/recipe";
 import type { NutritionInfo } from "@/types/nutrition";
-import { ratingStatsSubquery } from "./ratings";
 import { toRatingStats } from "@/lib/rating-stats";
 
 export interface RecipeWithDetails {
@@ -34,7 +33,6 @@ export async function getRecipesByUserId(
   userId: string,
   limit?: number
 ): Promise<RecipeCardData[]> {
-  const ratingStats = ratingStatsSubquery();
   const recipes = await db
     .select({
       id: recipe.id,
@@ -52,12 +50,11 @@ export async function getRecipesByUserId(
       createdAt: recipe.createdAt,
       updatedAt: recipe.updatedAt,
       favoriteId: favorite.id,
-      averageRating: ratingStats.averageRating,
-      totalRatings: ratingStats.totalRatings,
+      averageRating: recipe.ratingAverage,
+      totalRatings: recipe.ratingCount,
     })
     .from(recipe)
     .leftJoin(favorite, and(eq(favorite.recipeId, recipe.id), eq(favorite.userId, userId)))
-    .leftJoin(ratingStats, eq(ratingStats.recipeId, recipe.id))
     .where(eq(recipe.userId, userId))
     .orderBy(desc(recipe.createdAt), desc(recipe.id))
     .limit(limit ?? Number.MAX_SAFE_INTEGER);

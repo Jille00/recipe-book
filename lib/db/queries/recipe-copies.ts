@@ -31,7 +31,12 @@ export async function copyRecipe(
       })
       .from(recipe)
       .where(eq(recipe.id, sourceId))
-      .limit(1);
+      .limit(1)
+      // The copy reuses the original's photo URL. Holding a share lock until
+      // the copy is committed makes a concurrent delete (or photo change) of
+      // the original wait, so its "is this photo still used?" check sees the
+      // copy and keeps the file. A delete that got in first leaves no source.
+      .for("share");
     if (!source) return null;
 
     const existingSlugs = await tx

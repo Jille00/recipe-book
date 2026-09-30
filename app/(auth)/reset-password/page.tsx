@@ -49,7 +49,7 @@ export default function ResetPasswordPage() {
             <p className="font-display text-4xl font-semibold text-foreground/80">
               &ldquo;A recipe has no soul. You, as the cook, must bring soul to the recipe.&rdquo;
             </p>
-            <p className="mt-4 text-muted-foreground">— Thomas Keller</p>
+            <p className="mt-4 text-charcoal dark:text-muted-foreground">— Thomas Keller</p>
           </div>
         </div>
       </div>

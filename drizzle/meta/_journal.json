@@ -64,6 +64,13 @@
       "when": 1790782055502,
       "tag": "0008_collections_shopping_list_handles",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790797367525,
+      "tag": "0009_rating_aggregates_and_search",
+      "breakpoints": true
     }
   ]
 }

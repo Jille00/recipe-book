@@ -152,7 +152,7 @@ export default async function ConfirmEmailPage({ searchParams }: Props) {
             <p className="font-display text-4xl font-semibold text-foreground/80">
               &ldquo;People who love to eat are always the best people.&rdquo;
             </p>
-            <p className="mt-4 text-muted-foreground">— Julia Child</p>
+            <p className="mt-4 text-charcoal dark:text-muted-foreground">— Julia Child</p>
           </div>
         </div>
       </div>

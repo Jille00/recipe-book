@@ -1,7 +1,8 @@
 import { getStorageClient } from "@/lib/supabase/storage";
 import { isStorableImageType, sanitizeImage } from "@/lib/image/sanitize-image";
 
-const BUCKET = "recipe-images";
+export const RECIPE_IMAGES_BUCKET = "recipe-images";
+const BUCKET = RECIPE_IMAGES_BUCKET;
 
 export type StoreRecipeImageResult =
   | { ok: true; url: string }

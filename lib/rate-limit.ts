@@ -40,6 +40,8 @@ export const RATE_LIMITS = {
   upload: { limit: 30, windowMs: 60_000 },
   // Link import - makes outbound requests to the given site (and its photo).
   "import:recipe-url": { limit: 10, windowMs: 60_000 },
+  // Data export - reads every row the user owns; nobody needs it often.
+  "account:export": { limit: 5, windowMs: 60 * 60_000 },
 } as const satisfies Record<string, RateLimitRule>;
 
 const DAY_MS = 24 * 60 * 60 * 1000;

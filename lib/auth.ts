@@ -7,12 +7,14 @@ import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import {
+  buildEmailChangeApprovalEmail,
+  buildEmailChangeVerificationEmail,
   buildPasswordResetEmail,
   buildVerificationEmail,
   sendEmail,
 } from "@/lib/email";
 
-import { withConfirmationLanding } from "@/lib/auth-links";
+import { isEmailChangeToken, withConfirmationLanding } from "@/lib/auth-links";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -55,11 +57,15 @@ export const auth = betterAuth({
     },
   },
   emailVerification: {
-    sendVerificationEmail: async ({ user, url }) => {
-      const email = buildVerificationEmail({
-        name: user.name,
-        url: withConfirmationLanding(url),
-      });
+    sendVerificationEmail: async ({ user, url, token }) => {
+      // Also sends the second link of an email change (see user.changeEmail
+      // below), in which case `user.email` is already the new address.
+      const email = isEmailChangeToken(token)
+        ? buildEmailChangeVerificationEmail({
+            name: user.name,
+            url: withConfirmationLanding(url, { emailChange: "done" }),
+          })
+        : buildVerificationEmail({ name: user.name, url: withConfirmationLanding(url) });
       await sendEmail({ to: user.email, ...email });
     },
     sendOnSignUp: true,
@@ -72,6 +78,41 @@ export const auth = betterAuth({
     // People often confirm later than they sign up; a day is friendlier than
     // better-auth's one-hour default.
     expiresIn: 60 * 60 * 24,
+  },
+  user: {
+    // Changing the address takes two links: the current address approves the
+    // change, then the new address confirms it (sent by sendVerificationEmail
+    // above). Only then is the email updated.
+    changeEmail: {
+      enabled: true,
+      sendChangeEmailConfirmation: async ({ user, newEmail, url }) => {
+        const email = buildEmailChangeApprovalEmail({
+          name: user.name,
+          newEmail,
+          url: withConfirmationLanding(url, { emailChange: "approved" }),
+        });
+        await sendEmail({ to: user.email, ...email });
+      },
+    },
+    // The password is required by the hook below. Database rows go with the
+    // user row (every user_id foreign key cascades); photos live in storage
+    // and are removed here first.
+    deleteUser: {
+      enabled: true,
+      beforeDelete: async (user) => {
+        try {
+          // Loaded on demand: it pulls in the storage client and image code,
+          // which no other auth request needs.
+          const { removeUserImages } = await import("@/lib/account-images");
+          await removeUserImages(user.id);
+        } catch (error) {
+          console.error("Removing photos before account deletion failed:", error);
+          throw new APIError("INTERNAL_SERVER_ERROR", {
+            message: "We couldn't remove your photos, so nothing was deleted. Please try again.",
+          });
+        }
+      },
+    },
   },
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days
@@ -98,6 +139,11 @@ export const auth = betterAuth({
       // Sends email to an address, so keep it tight.
       "/send-verification-email": { window: 60 * 60, max: 5 },
       "/reset-password": { window: 60 * 60, max: 10 },
+      // These check the current password, so brake guessing like sign-in.
+      "/change-password": { window: 60, max: 10 },
+      "/delete-user": { window: 60, max: 10 },
+      // Sends email to the account's address.
+      "/change-email": { window: 60 * 60, max: 5 },
     },
   },
   // better-auth itself only checks a minimum password length and accepts a
@@ -118,6 +164,15 @@ export const auth = betterAuth({
         case "/reset-password":
         case "/change-password":
           reject(passwordProblem(body.newPassword));
+          break;
+        case "/delete-user":
+          // better-auth would otherwise delete a recently signed-in account
+          // without a password, so a borrowed session could do it.
+          reject(
+            typeof body.password === "string" && body.password.length > 0
+              ? null
+              : "Enter your password to delete your account"
+          );
           break;
         case "/update-user":
           if ("name" in body) reject(nameProblem(body.name));

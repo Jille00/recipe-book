@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildPasswordResetEmail, buildVerificationEmail } from "./email";
+import {
+  buildEmailChangeApprovalEmail,
+  buildEmailChangeVerificationEmail,
+  buildPasswordResetEmail,
+  buildVerificationEmail,
+} from "./email";
 
 const URL_WITH_QUERY = "https://www.kookboek.app/reset-password?token=abc&callbackURL=%2F";
 
@@ -17,6 +22,21 @@ const builders = [
     subject: "Confirm your email for Kookboek",
     heading: "Confirm your email",
     button: "Confirm email",
+  },
+  {
+    label: "buildEmailChangeApprovalEmail",
+    build: (args: { name?: string | null; url: string }) =>
+      buildEmailChangeApprovalEmail({ ...args, newEmail: "new@example.com" }),
+    subject: "Approve the email change for your Kookboek account",
+    heading: "Approve your new email",
+    button: "Approve change",
+  },
+  {
+    label: "buildEmailChangeVerificationEmail",
+    build: buildEmailChangeVerificationEmail,
+    subject: "Confirm your new email for Kookboek",
+    heading: "Confirm your new email",
+    button: "Confirm new email",
   },
 ] as const;
 
@@ -92,6 +112,16 @@ describe("email copy", () => {
   it("tells the reader how long the verification link lasts", () => {
     const { text } = buildVerificationEmail({ url: "https://www.kookboek.app/x" });
     expect(text).toContain("expires in 24 hours");
+  });
+
+  it("names the requested address in the approval email, escaped in the HTML", () => {
+    const { html, text } = buildEmailChangeApprovalEmail({
+      url: "https://www.kookboek.app/x",
+      newEmail: '"><img src=x>@evil.test',
+    });
+    expect(text).toContain('to "><img src=x>@evil.test.');
+    expect(html).not.toContain("<img");
+    expect(html).toContain("&quot;&gt;&lt;img src=x&gt;@evil.test");
   });
 
   it("leaves apostrophes in the copy readable", () => {

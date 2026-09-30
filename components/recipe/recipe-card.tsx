@@ -5,6 +5,7 @@ import { Clock, Users, ChefHat, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { FavoriteButton } from "./favorite-button";
 import { recipePath } from "@/lib/recipe-url";
+import { profilePath } from "@/lib/handle";
 
 interface RecipeCardProps {
   recipe: RecipeCardData;
@@ -138,7 +139,18 @@ export function RecipeCard({
         {showAuthor && recipe.authorName && (
           <div className="mt-3">
             <span className="text-xs text-muted-foreground">
-              by {recipe.authorName}
+              by{" "}
+              {recipe.authorHandle ? (
+                // z-20 lifts it above the title's stretched-link overlay.
+                <Link
+                  href={profilePath(recipe.authorHandle)}
+                  className="relative z-20 font-medium underline decoration-muted-foreground/60 underline-offset-2 transition-colors hover:text-primary hover:decoration-primary focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {recipe.authorName}
+                </Link>
+              ) : (
+                recipe.authorName
+              )}
             </span>
           </div>
         )}

@@ -14,17 +14,19 @@ const badgeVariants = cva(
         secondary:
           "border-transparent bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
         destructive:
-          "border-transparent bg-destructive text-primary-foreground [a&]:hover:bg-destructive-hover focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "border-transparent bg-destructive text-primary-foreground [a&]:hover:bg-destructive-hover focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
         outline:
           "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         // STYLE_GUIDE 04 difficulty badges: tinted background, dark text
         // (success = Easy, warning = Medium, danger = Hard). All >= 4.5:1.
+        // Dark: a low tint with the lighter shade as text (STYLE_GUIDE 07),
+        // checked in lib/color-contrast.test.ts.
         success:
-          "border-transparent bg-sage-100 text-sage-700 [a&]:hover:bg-sage-200",
+          "border-transparent bg-sage-100 text-sage-700 [a&]:hover:bg-sage-200 dark:bg-sage-400/15 dark:text-sage-300 dark:[a&]:hover:bg-sage-400/25",
         warning:
-          "border-transparent bg-amber/15 text-amber-700 [a&]:hover:bg-amber/25",
+          "border-transparent bg-amber/15 text-amber-700 [a&]:hover:bg-amber/25 dark:text-amber-300",
         danger:
-          "border-transparent bg-paprika/10 text-paprika-700 [a&]:hover:bg-paprika/15",
+          "border-transparent bg-paprika/10 text-paprika-700 [a&]:hover:bg-paprika/15 dark:bg-paprika/20 dark:text-paprika-300 dark:[a&]:hover:bg-paprika/30",
       },
     },
     defaultVariants: {

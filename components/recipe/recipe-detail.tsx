@@ -55,6 +55,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { useRecipeUnitSystem } from "@/hooks/use-unit-preferences";
+import { profilePath } from "@/lib/handle";
 import { useRecipeScaling } from "@/hooks/use-recipe-scaling";
 import { recipePath, recipeEditPath } from "@/lib/recipe-url";
 import { nutritionBasisKey } from "@/lib/utils/nutrition-inputs";
@@ -712,9 +713,18 @@ export function RecipeDetail({
         <div className="mt-8 border-t border-border pt-6">
           <p className="text-muted-foreground">
             Recipe by{" "}
-            <span className="font-medium text-foreground">
-              {recipe.authorName}
-            </span>
+            {recipe.authorHandle ? (
+              <Link
+                href={profilePath(recipe.authorHandle)}
+                className="font-medium text-foreground underline decoration-muted-foreground/60 underline-offset-4 transition-colors hover:text-primary hover:decoration-primary"
+              >
+                {recipe.authorName}
+              </Link>
+            ) : (
+              <span className="font-medium text-foreground">
+                {recipe.authorName}
+              </span>
+            )}
           </p>
         </div>
       )}

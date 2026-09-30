@@ -60,3 +60,48 @@ describe("RecipeJsonLd", () => {
     expect(data).not.toHaveProperty("recipeCategory");
   });
 });
+
+describe("RecipeJsonLd author", () => {
+  const baseRecipe = {
+    id: "1",
+    userId: "u1",
+    title: "Bread",
+    slug: "bread",
+    description: null,
+    ingredients: [],
+    instructions: [],
+    prepTimeMinutes: null,
+    cookTimeMinutes: null,
+    servings: null,
+    difficulty: null,
+    imageUrl: null,
+    nutrition: null,
+    isPublic: true,
+    code: "abc123",
+    createdAt: null,
+    updatedAt: null,
+    authorName: "Jille",
+  };
+
+  function authorOf(recipe: typeof baseRecipe & { authorHandle?: string | null }) {
+    const element = RecipeJsonLd({ recipe, url: "https://example.com/r/abc123/bread" });
+    const html = (element.props as { dangerouslySetInnerHTML: { __html: string } })
+      .dangerouslySetInnerHTML.__html;
+    return JSON.parse(html).author;
+  }
+
+  it("links the Person to the public profile when the author has a handle", () => {
+    expect(authorOf({ ...baseRecipe, authorHandle: "jille" })).toEqual({
+      "@type": "Person",
+      name: "Jille",
+      url: expect.stringMatching(/^https:\/\/.+\/u\/jille$/),
+    });
+  });
+
+  it("leaves url out without a handle", () => {
+    expect(authorOf({ ...baseRecipe, authorHandle: null })).toEqual({
+      "@type": "Person",
+      name: "Jille",
+    });
+  });
+});

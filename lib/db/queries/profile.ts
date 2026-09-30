@@ -18,6 +18,7 @@ export async function upsertProfile(
     bio?: string | null;
     website?: string | null;
     location?: string | null;
+    handle?: string | null;
   }
 ) {
   // Use upsert to avoid race condition

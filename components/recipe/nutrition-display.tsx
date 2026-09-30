@@ -34,10 +34,10 @@ interface NutritionDisplayProps {
 const NUTRIENT_CONFIG = [
   { key: "calories", label: "Calories", unit: "kcal", icon: Apple, color: "text-chart-1" },
   { key: "protein", label: "Protein", unit: "g", icon: Beef, color: "text-chart-4" },
-  { key: "carbs", label: "Carbs", unit: "g", icon: Wheat, color: "text-amber-700" },
+  { key: "carbs", label: "Carbs", unit: "g", icon: Wheat, color: "text-amber-700 dark:text-amber-300" },
   { key: "fat", label: "Fat", unit: "g", icon: Droplet, color: "text-chart-5" },
   { key: "fiber", label: "Fiber", unit: "g", icon: Leaf, color: "text-chart-2" },
-  { key: "sugar", label: "Sugar", unit: "g", icon: Cookie, color: "text-paprika" },
+  { key: "sugar", label: "Sugar", unit: "g", icon: Cookie, color: "text-paprika dark:text-paprika-300" },
 ] as const;
 
 type NutrientKey = (typeof NUTRIENT_CONFIG)[number]["key"];
@@ -240,8 +240,8 @@ export function NutritionDisplay({
       {/* Warnings */}
       {nutrition.warnings && nutrition.warnings.length > 0 && (
         <div className="flex items-start gap-2 p-3 rounded-lg bg-amber/10 border border-amber/40">
-          <AlertCircle className="h-4 w-4 text-amber-700 mt-0.5 shrink-0" aria-hidden="true" />
-          <div className="text-sm text-amber-700">
+          <AlertCircle className="h-4 w-4 text-amber-700 dark:text-amber-300 mt-0.5 shrink-0" aria-hidden="true" />
+          <div className="text-sm text-amber-700 dark:text-amber-300">
             {nutrition.warnings.map((warning, i) => (
               <p key={i}>{warning}</p>
             ))}

@@ -17,7 +17,9 @@ import {
   AvatarImage,
   AvatarFallback,
 } from "@/components/ui";
-import { User, Globe, MapPin, Scale, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { User, Globe, MapPin, Scale, Loader2, AtSign, ArrowRight } from "lucide-react";
+import { profilePath, validateHandle } from "@/lib/handle";
 import { useUnitPreferences } from "@/hooks/use-unit-preferences";
 import { useSession } from "@/lib/auth-client";
 import type { UnitSystem } from "@/types/units";
@@ -32,7 +34,8 @@ async function readErrorMessage(response: Response): Promise<string> {
   if (response.status === 401) {
     return "Your session has expired. Please sign in again.";
   }
-  if (response.status !== 400) return fallback;
+  // 409: the handle belongs to someone else; the message says so.
+  if (response.status !== 400 && response.status !== 409) return fallback;
   try {
     const data = await response.json();
     return typeof data?.error === "string" && data.error ? data.error : fallback;
@@ -52,6 +55,7 @@ interface ProfileFormProps {
     bio?: string | null;
     website?: string | null;
     location?: string | null;
+    handle?: string | null;
   } | null;
 }
 
@@ -68,7 +72,11 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
     bio: profile?.bio || "",
     website: profile?.website || "",
     location: profile?.location || "",
+    handle: profile?.handle || "",
   });
+  const [handleError, setHandleError] = useState<string | null>(null);
+  // The address the profile is live at: what was last saved, not the draft.
+  const savedHandle = profile?.handle || null;
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -77,12 +85,35 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Handles are lowercase; typing capitals (or a leading "@") is forgiven so
+  // the field shows exactly what will be saved.
+  const handleHandleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.toLowerCase().replace(/^@/, "");
+    setFormData((prev) => ({ ...prev, handle: value }));
+    if (handleError) setHandleError(null);
+  };
+
+  /** Same rules as the API; an empty field clears the handle. */
+  const checkHandle = (): boolean => {
+    if (!formData.handle.trim()) {
+      setHandleError(null);
+      return true;
+    }
+    const result = validateHandle(formData.handle);
+    setHandleError(result.ok ? null : result.error);
+    return result.ok;
+  };
+
   const handleUnitSystemChange = (system: UnitSystem) => {
     setGlobalPreference(system);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!checkHandle()) {
+      document.getElementById("handle")?.focus();
+      return;
+    }
     setIsSubmitting(true);
 
     try {
@@ -93,7 +124,13 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
       });
 
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response));
+        const message = await readErrorMessage(response);
+        // A taken handle is shown on the field as well as in the toast.
+        if (response.status === 409) {
+          setHandleError(message);
+          document.getElementById("handle")?.focus();
+        }
+        throw new Error(message);
       }
 
       toast.success("Profile updated successfully");
@@ -124,7 +161,8 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
     formData.name !== (user.name || "") ||
     formData.bio !== (profile?.bio || "") ||
     formData.website !== (profile?.website || "") ||
-    formData.location !== (profile?.location || "");
+    formData.location !== (profile?.location || "") ||
+    formData.handle !== (profile?.handle || "");
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -136,7 +174,8 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
             Profile
           </CardTitle>
           <CardDescription>
-            Your public profile information
+            Your name, bio, location and website are shown on your public
+            profile once you pick a handle
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -165,6 +204,50 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
               onChange={handleInputChange}
               placeholder="Your name"
             />
+          </div>
+
+          {/* Handle: the public profile address, /u/{handle} */}
+          <div className="space-y-2">
+            <Label htmlFor="handle" className="flex items-center gap-2">
+              <AtSign className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              Handle
+            </Label>
+            <Input
+              id="handle"
+              name="handle"
+              value={formData.handle}
+              onChange={handleHandleChange}
+              onBlur={checkHandle}
+              placeholder="e.g. jille-bakes"
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              maxLength={31}
+              aria-invalid={handleError ? true : undefined}
+              aria-describedby={handleError ? "handle-hint handle-error" : "handle-hint"}
+            />
+            <p id="handle-hint" className="text-sm text-muted-foreground">
+              Your public page with your public recipes:{" "}
+              <span className="font-medium text-foreground break-all">
+                /u/{formData.handle.trim() || "your-handle"}
+              </span>
+              . 3 to 30 lowercase letters, numbers or hyphens. Leave empty to
+              have no public page.
+            </p>
+            {handleError && (
+              <p id="handle-error" role="alert" className="text-[13px] text-destructive">
+                {handleError}
+              </p>
+            )}
+            {savedHandle && (
+              <Link
+                href={profilePath(savedHandle)}
+                className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:text-primary-hover hover:underline"
+              >
+                View your public profile
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            )}
           </div>
 
           {/* Bio */}

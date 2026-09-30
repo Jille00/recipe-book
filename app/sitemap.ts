@@ -4,16 +4,27 @@ import { getTagsWithRecipeCount } from "@/lib/db/queries/tags";
 import { tagPath, tagsWithRecipes } from "@/lib/tag-pages";
 import { SITE_URL } from "./site-url";
 import { recipePath } from "@/lib/recipe-url";
+import { getPublicProfilesForSitemap } from "@/lib/db/queries/public-profiles";
+import { profilePath } from "@/lib/handle";
 
 // The sitemap has no dynamic API of its own, so without this it would be
 // generated once per deploy and never pick up newly published recipes.
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [publicRecipes, tags] = await Promise.all([
+  const [publicRecipes, tags, publicProfiles] = await Promise.all([
     getPublicRecipesForSitemap(),
     getTagsWithRecipeCount(),
+    // Only people with a handle and at least one public recipe.
+    getPublicProfilesForSitemap(),
   ]);
+
+  const profileUrls: MetadataRoute.Sitemap = publicProfiles.map((p) => ({
+    url: `${SITE_URL}${profilePath(p.handle)}`,
+    lastModified: p.lastModified || new Date(),
+    changeFrequency: "weekly",
+    priority: 0.6,
+  }));
 
   const recipeUrls: MetadataRoute.Sitemap = publicRecipes.map((recipe) => ({
     url: `${SITE_URL}${recipePath(recipe)}`,
@@ -53,5 +64,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  return [...staticPages, ...tagUrls, ...recipeUrls];
+  return [...staticPages, ...tagUrls, ...recipeUrls, ...profileUrls];
 }

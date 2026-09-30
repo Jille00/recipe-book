@@ -7,6 +7,9 @@ import {
   updateUserName,
   getProfileByUserId,
 } from "@/lib/db/queries/profile";
+import { isHandleTaken } from "@/lib/db/queries/public-profiles";
+import { validateHandle } from "@/lib/handle";
+import { isUniqueViolation } from "@/lib/public-profile";
 
 // Validation schema for profile updates
 const profileUpdateSchema = z.object({
@@ -39,7 +42,11 @@ const profileUpdateSchema = z.object({
     .trim()
     .optional()
     .nullable(),
+  // Checked with validateHandle below; "" or null clears the handle.
+  handle: z.string().max(100, "Handle is too long").optional().nullable(),
 });
+
+const HANDLE_TAKEN = "That handle is already taken. Please pick another";
 
 export async function PUT(request: Request) {
   try {
@@ -81,6 +88,24 @@ export async function PUT(request: Request) {
     const data = validationResult.data;
     const { name } = data;
 
+    // Handle: validated and lowercased before anything is written, so a
+    // taken or invalid handle does not leave a half-saved profile behind.
+    let handle: string | null | undefined;
+    if ("handle" in data) {
+      if (!data.handle || !data.handle.trim()) {
+        handle = null;
+      } else {
+        const result = validateHandle(data.handle);
+        if (!result.ok) {
+          return NextResponse.json({ error: result.error }, { status: 400 });
+        }
+        if (await isHandleTaken(result.handle, session.user.id)) {
+          return NextResponse.json({ error: HANDLE_TAKEN }, { status: 409 });
+        }
+        handle = result.handle;
+      }
+    }
+
     // Update user name if changed
     if (name && name !== session.user.name) {
       await updateUserName(session.user.id, name);
@@ -92,11 +117,13 @@ export async function PUT(request: Request) {
       bio?: string | null;
       website?: string | null;
       location?: string | null;
+      handle?: string | null;
     } = {};
 
     if ("bio" in data) profileUpdates.bio = data.bio || null;
     if ("website" in data) profileUpdates.website = data.website || null;
     if ("location" in data) profileUpdates.location = data.location || null;
+    if (handle !== undefined) profileUpdates.handle = handle;
 
     const profile =
       Object.keys(profileUpdates).length > 0
@@ -105,6 +132,11 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ success: true, profile });
   } catch (error) {
+    // Two people claiming the same handle at once: the check above passed
+    // for both, the unique index stops the second.
+    if (isUniqueViolation(error)) {
+      return NextResponse.json({ error: HANDLE_TAKEN }, { status: 409 });
+    }
     console.error("Failed to update profile:", error);
     return NextResponse.json(
       { error: "Failed to update profile" },

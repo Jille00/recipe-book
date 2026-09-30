@@ -127,7 +127,7 @@ export function FavoriteButton({
           className={cn(
             iconSize,
             "transition-colors",
-            isFavorited ? "fill-paprika text-paprika" : "text-foreground"
+            isFavorited ? "fill-paprika text-paprika dark:fill-paprika-300 dark:text-paprika-300" : "text-foreground"
           )}
         />
       </button>
@@ -172,7 +172,7 @@ export function FavoriteButton({
           iconSize,
           "transition-colors",
           isFavorited
-            ? "fill-paprika text-paprika"
+            ? "fill-paprika text-paprika dark:fill-paprika-300 dark:text-paprika-300"
             : "text-muted-foreground hover:text-foreground"
         )}
       />

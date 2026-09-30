@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { DM_Sans, Fraunces } from "next/font/google";
+import { ThemeProvider } from "next-themes";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -85,15 +86,31 @@ export default async function RootLayout({
   // Reading the request makes every page render per request, which the CSP
   // nonce (proxy.ts) needs: a page prerendered at build time would carry no
   // nonce, and the browser would block its scripts.
-  await headers();
+  // The same nonce goes on next-themes' inline no-flash script, which the
+  // CSP's script-src 'nonce-...' would otherwise block.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   return (
-    <html lang="en" className={`${fraunces.variable} ${dmSans.variable}`}>
+    // suppressHydrationWarning: next-themes sets the theme class on <html>
+    // before React hydrates, so the server markup never matches it.
+    <html
+      lang="en"
+      className={`${fraunces.variable} ${dmSans.variable}`}
+      suppressHydrationWarning
+    >
       <body className="min-h-screen antialiased grain">
-        <UnitPreferencesProvider>
-          {children}
-          <Toaster />
-        </UnitPreferencesProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+          nonce={nonce}
+        >
+          <UnitPreferencesProvider>
+            {children}
+            <Toaster />
+          </UnitPreferencesProvider>
+        </ThemeProvider>
         <SpeedInsights />
         <Analytics />
       </body>

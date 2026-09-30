@@ -83,6 +83,7 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
   const [items, setItems] = useState(initialItems);
   const [mode, setMode] = useState<ViewMode>("recipe");
   const [newItem, setNewItem] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -228,11 +229,14 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
       await ensureOk(res, "Failed to add item");
       const data: { items: ShoppingListItem[] } = await res.json();
       setItems((current) => [...current, ...data.items]);
-      setNewItem("");
+      // Clear it unless the next item is already being typed.
+      setNewItem((current) => (current.trim() === text ? "" : current));
     } catch (error) {
       handleFailure(error, "Failed to add item");
     } finally {
       setIsAdding(false);
+      // Ready for the next item without clicking back into the field.
+      inputRef.current?.focus();
     }
   };
 
@@ -300,7 +304,9 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
           placeholder="Add an item, e.g. 2 lemons"
           maxLength={MAX_ITEM_TEXT_LENGTH}
           autoComplete="off"
-          disabled={isAdding}
+          // Not disabled while saving: a disabled input drops focus, and
+          // anything typed next for the following item would be lost.
+          ref={inputRef}
         />
         <Button type="submit" className="h-12" isLoading={isAdding} disabled={!newItem.trim()}>
           {!isAdding && <Plus className="h-4 w-4" aria-hidden="true" />}

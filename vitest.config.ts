@@ -11,6 +11,6 @@ export default defineConfig({
     // DOM can opt in with a `// @vitest-environment jsdom` comment.
     environment: "node",
     include: ["**/*.test.ts", "**/*.test.tsx"],
-    exclude: ["node_modules/**", ".next/**"],
+    exclude: ["node_modules/**", ".next/**", ".claude/**"],
   },
 });

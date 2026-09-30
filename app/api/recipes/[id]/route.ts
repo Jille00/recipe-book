@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getRecipeById, updateRecipe, deleteRecipe } from "@/lib/db/queries/recipes";
+import {
+  getRecipeById,
+  updateRecipe,
+  deleteRecipe,
+  isImageUrlInUse,
+} from "@/lib/db/queries/recipes";
+import { deleteRecipeImage } from "@/lib/supabase/recipe-images";
 import { recipeUpdateSchema } from "@/lib/utils/validation";
 import {
   invalidBodyResponse,
@@ -82,6 +88,7 @@ export async function PUT(
       );
     }
 
+    const before = await getRecipeById(id);
     const recipe = await updateRecipe(id, session.user.id, validationResult.data);
 
     if (!recipe) {
@@ -90,6 +97,9 @@ export async function PUT(
         { status: 404 }
       );
     }
+
+    // A replaced or removed photo would otherwise stay in storage forever.
+    await removeImageIfUnused(before?.imageUrl, recipe.imageUrl, session.user.id);
 
     return NextResponse.json(recipe);
   } catch (error) {
@@ -118,6 +128,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const before = await getRecipeById(id);
     const deleted = await deleteRecipe(id, session.user.id);
 
     if (!deleted) {
@@ -127,6 +138,8 @@ export async function DELETE(
       );
     }
 
+    await removeImageIfUnused(before?.imageUrl, null, session.user.id);
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting recipe:", error);
@@ -134,5 +147,20 @@ export async function DELETE(
       { error: "Failed to delete recipe" },
       { status: 500 }
     );
+  }
+}
+
+async function removeImageIfUnused(
+  previous: string | null | undefined,
+  current: string | null | undefined,
+  ownerId: string
+) {
+  if (!previous || previous === current) return;
+  try {
+    if (await isImageUrlInUse(previous)) return;
+    await deleteRecipeImage(previous, ownerId);
+  } catch (error) {
+    // The recipe change already succeeded; an orphaned photo is harmless.
+    console.error("Cleaning up recipe image failed:", error);
   }
 }

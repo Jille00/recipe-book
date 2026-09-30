@@ -123,7 +123,7 @@ export async function searchRecipes(
     .from(recipe)
     .leftJoin(user, eq(recipe.userId, user.id))
     .where(and(...conditions))
-    .orderBy(desc(recipe.createdAt))
+    .orderBy(desc(recipe.createdAt), desc(recipe.id))
     .limit(limit)
     .offset(offset);
 
@@ -243,7 +243,7 @@ export async function getPublicRecipes(
         : sql`false`
     )
     .where(and(...conditions))
-    .orderBy(desc(recipe.createdAt))
+    .orderBy(desc(recipe.createdAt), desc(recipe.id))
     .limit(limit)
     .offset(offset);
 

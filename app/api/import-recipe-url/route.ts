@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const userId = session.user.id;
 
     // Every call makes outbound requests, so it is limited even without AI.
-    const limited = enforceRateLimit("import:recipe-url", userId);
+    const limited = await enforceRateLimit("import:recipe-url", userId);
     if (limited) return limited;
 
     let json: unknown;
@@ -86,8 +86,8 @@ export async function POST(request: NextRequest) {
           timeoutMs: IMAGE_TIMEOUT_MS,
           accept: "image/webp,image/png,image/jpeg,image/gif;q=0.9,*/*;q=0.1",
         }),
-      beforeAiFallback: () => {
-        const aiLimited = enforceRateLimit("ai:import-recipe-text", userId);
+      beforeAiFallback: async () => {
+        const aiLimited = await enforceRateLimit("ai:import-recipe-text", userId);
         if (aiLimited) throw new AiRateLimitedError(aiLimited);
       },
       extractFromText: extractRecipeFromText,

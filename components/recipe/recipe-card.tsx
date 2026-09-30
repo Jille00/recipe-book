@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { RecipeWithDetails } from "@/types/recipe";
 import { Clock, Users, ChefHat, Star } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { FavoriteButton } from "./favorite-button";
 import { recipePath } from "@/lib/recipe-url";
 
@@ -11,6 +12,13 @@ interface RecipeCardProps {
   showFavorite?: boolean;
   initialFavorited?: boolean;
 }
+
+// STYLE_GUIDE 04 difficulty badges: Easy sage, Medium amber, Hard paprika.
+const DIFFICULTY_BADGE_VARIANT = {
+  easy: "success",
+  medium: "warning",
+  hard: "danger",
+} as const;
 
 export function RecipeCard({
   recipe,
@@ -26,41 +34,42 @@ export function RecipeCard({
   const link = recipePath(recipe);
   const totalTime =
     (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
+  const difficultyVariant = recipe.difficulty
+    ? DIFFICULTY_BADGE_VARIANT[recipe.difficulty]
+    : undefined;
 
   return (
     // The card is the hover group and the positioning context. The link is a
     // "stretched link" on the title: its ::after overlay makes the whole card
     // clickable without nesting the favorite <button> inside an <a>.
-    <article className="group relative overflow-hidden rounded-xl border border-border bg-card transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1">
+    // STYLE_GUIDE 04/05 card: soft shadow -> lifted shadow and a 4px lift on
+    // hover, 0.3s with the guide's ease-out.
+    <article className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lifted">
       {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden bg-muted">
         {recipe.imageUrl ? (
           <Image
             src={recipe.imageUrl}
-            alt={recipe.title}
+            // Decorative: the title right below already names the recipe.
+            alt=""
             fill
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           />
         ) : (
           <div className="flex h-full items-center justify-center">
-            <ChefHat className="h-12 w-12 text-muted-foreground/50" />
+            <ChefHat
+              className="h-12 w-12 text-muted-foreground/50"
+              aria-hidden="true"
+            />
           </div>
         )}
 
-        {/* Time Badge - Glass Effect */}
+        {/* Time Badge - glass, top-right over the image (STYLE_GUIDE 04) */}
         {totalTime > 0 && (
-          <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-full glass px-2.5 py-1 text-xs font-medium">
+          <div className="glass-badge absolute top-3 right-3 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium tracking-[0.02em]">
             <Clock className="h-3.5 w-3.5" aria-hidden="true" />
             {totalTime} min
-          </div>
-        )}
-
-        {/* Difficulty Badge - Glass Effect for readability */}
-        {recipe.difficulty && (
-          <div className="absolute top-3 right-3 rounded-full glass px-2.5 py-1 text-xs font-medium">
-            {recipe.difficulty.charAt(0).toUpperCase() +
-              recipe.difficulty.slice(1)}
           </div>
         )}
 
@@ -114,6 +123,16 @@ export function RecipeCard({
             </span>
           )}
         </div>
+
+        {/* Difficulty - tag-style pill with the guide's difficulty colours */}
+        {recipe.difficulty && difficultyVariant && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Badge variant={difficultyVariant} className="px-3.5 py-1.5">
+              {recipe.difficulty.charAt(0).toUpperCase() +
+                recipe.difficulty.slice(1)}
+            </Badge>
+          </div>
+        )}
 
         {/* Author */}
         {showAuthor && recipe.authorName && (

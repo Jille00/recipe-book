@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useSyncExternalStore } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { Separator } from "@/components/ui";
 import { Github } from "lucide-react";
 
@@ -27,7 +28,25 @@ function CopyrightYear() {
   return <>{year}</>;
 }
 
-export function Footer() {
+const FOOTER_LINK =
+  "text-sm text-muted-foreground transition-colors hover:text-primary";
+
+interface FooterProps {
+  /**
+   * Whether the server saw a session. Lets the account links render correctly
+   * on the first paint; the client session takes over once it resolves (so
+   * signing out updates the footer too). Omit it where no session is at hand.
+   */
+  initialSignedIn?: boolean;
+}
+
+export function Footer({ initialSignedIn }: FooterProps) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const hasServerValue = initialSignedIn !== undefined;
+  const sessionResolved = !isLoading || hasServerValue;
+  const isSignedIn =
+    isLoading && hasServerValue ? !!initialSignedIn : isAuthenticated;
+
   return (
     <footer className="border-t border-border bg-card print:hidden">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -51,18 +70,14 @@ export function Footer() {
 
           {/* Navigation */}
           <div>
-            <h3 className="font-display font-semibold text-foreground">Navigation</h3>
+            <h2 className="font-display text-base font-semibold text-foreground">
+              Navigation
+            </h2>
             <nav aria-label="Footer navigation" className="mt-4 flex flex-col gap-2">
-              <Link
-                href="/"
-                className="text-sm text-muted-foreground transition-colors hover:text-primary"
-              >
+              <Link href="/" className={FOOTER_LINK}>
                 Home
               </Link>
-              <Link
-                href="/browse"
-                className="text-sm text-muted-foreground transition-colors hover:text-primary"
-              >
+              <Link href="/browse" className={FOOTER_LINK}>
                 Browse Recipes
               </Link>
             </nav>
@@ -70,26 +85,32 @@ export function Footer() {
 
           {/* Account */}
           <div>
-            <h3 className="font-display font-semibold text-foreground">Account</h3>
+            <h2 className="font-display text-base font-semibold text-foreground">
+              Account
+            </h2>
             <nav aria-label="Account" className="mt-4 flex flex-col gap-2">
-              <Link
-                href="/login"
-                className="text-sm text-muted-foreground transition-colors hover:text-primary"
-              >
-                Log In
-              </Link>
-              <Link
-                href="/register"
-                className="text-sm text-muted-foreground transition-colors hover:text-primary"
-              >
-                Sign Up
-              </Link>
-              <Link
-                href="/dashboard"
-                className="text-sm text-muted-foreground transition-colors hover:text-primary"
-              >
-                Dashboard
-              </Link>
+              {!sessionResolved ? null : isSignedIn ? (
+                <>
+                  <Link href="/dashboard" className={FOOTER_LINK}>
+                    Dashboard
+                  </Link>
+                  <Link href="/recipes" className={FOOTER_LINK}>
+                    My Recipes
+                  </Link>
+                  <Link href="/profile" className={FOOTER_LINK}>
+                    Profile
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link href="/login" className={FOOTER_LINK}>
+                    Sign In
+                  </Link>
+                  <Link href="/register" className={FOOTER_LINK}>
+                    Sign Up
+                  </Link>
+                </>
+              )}
             </nav>
           </div>
         </div>

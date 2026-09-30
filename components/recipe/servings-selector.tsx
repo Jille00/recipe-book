@@ -30,20 +30,20 @@ export function ServingsSelector({
       <CardContent className="py-4 text-center">
         <div className="mb-2 flex justify-center">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-            <Users className="h-5 w-5 text-primary" />
+            <Users className="h-5 w-5 text-primary" aria-hidden="true" />
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-2">
+        {/* 44px icon buttons (size="icon") meet the touch-target minimum */}
+        <div className="flex items-center justify-center gap-1">
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={onDecrement}
             disabled={scaledServings <= minServings}
-            className="h-8 w-8 p-0"
             aria-label="Decrease servings"
           >
-            <Minus className="h-4 w-4" />
+            <Minus className="h-4 w-4" aria-hidden="true" />
           </Button>
 
           <span className="min-w-[2ch] text-center font-display text-2xl font-semibold text-foreground">
@@ -52,13 +52,12 @@ export function ServingsSelector({
 
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={onIncrement}
             disabled={scaledServings >= maxServings}
-            className="h-8 w-8 p-0"
             aria-label="Increase servings"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
 
@@ -76,9 +75,9 @@ export function ServingsSelector({
             variant="ghost"
             size="sm"
             onClick={onReset}
-            className="mt-2 text-xs text-muted-foreground hover:text-foreground"
+            className="mt-2 text-xs"
           >
-            <RotateCcw className="mr-1 h-3 w-3" />
+            <RotateCcw className="mr-1 h-3 w-3" aria-hidden="true" />
             Reset
           </Button>
         )}

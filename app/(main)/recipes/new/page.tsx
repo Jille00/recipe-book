@@ -18,7 +18,7 @@ export default async function NewRecipePage() {
   const session = await auth.api.getSession({ headers: headersList });
 
   if (!session?.user) {
-    redirect("/login");
+    redirect(`/login?callbackUrl=${encodeURIComponent("/recipes/new")}`);
   }
 
   const tags = await getAllTags();
@@ -29,7 +29,7 @@ export default async function NewRecipePage() {
           href="/recipes"
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-4"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back to recipes
         </Link>
         <h1 className="font-display text-3xl font-semibold text-foreground">

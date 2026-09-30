@@ -10,9 +10,20 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
   CardDescription,
 } from "@/components/ui";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { buttonVariants } from "@/components/ui/button";
 import { UnitToggle } from "./unit-toggle";
 import { NutritionDisplay } from "./nutrition-display";
 import { FavoriteButton } from "./favorite-button";
@@ -33,6 +44,7 @@ import {
   Link2,
   Utensils,
   Apple,
+  Loader2,
 } from "lucide-react";
 import { useRecipeUnitSystem } from "@/hooks/use-unit-preferences";
 import { useRecipeScaling } from "@/hooks/use-recipe-scaling";
@@ -71,6 +83,7 @@ export function RecipeDetail({
 }: RecipeDetailProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   // Check-off state keyed by ingredient identity (not list position), so a tick
   // always belongs to the ingredient it was put on.
   const [checkedIngredients, setCheckedIngredients] = useState<
@@ -169,9 +182,10 @@ export function RecipeDetail({
     return `${fallback} (${res.status})`;
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (event: React.MouseEvent) => {
+    // Keep the dialog open, showing progress, until the request settles.
+    event.preventDefault();
     if (isDeleting) return;
-    if (!confirm("Are you sure you want to delete this recipe?")) return;
 
     setIsDeleting(true);
     try {
@@ -194,6 +208,7 @@ export function RecipeDetail({
         error instanceof Error ? error.message : "Failed to delete recipe"
       );
       setIsDeleting(false);
+      setConfirmDeleteOpen(false);
     }
   };
 
@@ -255,7 +270,7 @@ export function RecipeDetail({
               href="/recipes"
               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               Back to recipes
             </Link>
           </div>
@@ -266,28 +281,68 @@ export function RecipeDetail({
             <h1 className="font-display text-3xl font-semibold text-foreground sm:text-4xl tracking-tight">
               {recipe.title}
             </h1>
-            <div className="flex gap-2 print:hidden">
+            <div className="flex flex-wrap items-center gap-2 print:hidden">
               <Button variant="outline" size="sm" onClick={handleShare}>
                 <Share2 className="h-4 w-4" aria-hidden="true" />
                 Share
               </Button>
               {isOwner && (
                 <>
-                  <Link href={recipeEditPath(recipe)}>
-                    <Button variant="outline" size="sm">
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={recipeEditPath(recipe)}>
                       <Pencil className="h-4 w-4" aria-hidden="true" />
                       Edit
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleDelete}
-                    isLoading={isDeleting}
-                  >
-                    {!isDeleting && <Trash2 className="h-4 w-4" aria-hidden="true" />}
-                    Delete
+                    </Link>
                   </Button>
+                  {/* Set apart from Edit, and quieter than it, so it is hard to
+                      hit by accident; the dialog still asks before deleting. */}
+                  <span aria-hidden="true" className="mx-2 h-6 w-px bg-border" />
+                  <AlertDialog
+                    open={confirmDeleteOpen}
+                    onOpenChange={(open) => {
+                      // Don't let Escape or Cancel close it mid-request.
+                      if (!isDeleting) setConfirmDeleteOpen(open);
+                    }}
+                  >
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={isDeleting}
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="font-display">
+                          Delete &ldquo;{recipe.title}&rdquo;?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          The recipe, its photo, ratings and comments will be
+                          removed for good, and links to it will stop working.
+                          This can&apos;t be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>
+                          Keep Recipe
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleDelete}
+                          disabled={isDeleting}
+                          className={buttonVariants({ variant: "destructive" })}
+                        >
+                          {isDeleting && (
+                            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                          )}
+                          {isDeleting ? "Deleting..." : "Delete Recipe"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </>
               )}
             </div>
@@ -346,12 +401,14 @@ export function RecipeDetail({
             alt={recipe.title}
             fill
             className="object-cover"
+            // The article is capped at max-w-4xl (896px).
+            sizes="(max-width: 896px) 100vw, 896px"
             priority
           />
         </div>
       ) : (
         <div className="relative mb-8 aspect-video overflow-hidden rounded-2xl bg-muted flex items-center justify-center">
-          <ChefHat className="h-16 w-16 text-muted-foreground/30" />
+          <ChefHat className="h-16 w-16 text-muted-foreground/30" aria-hidden="true" />
         </div>
       )}
 
@@ -362,7 +419,7 @@ export function RecipeDetail({
             <CardContent className="py-4">
               <div className="flex justify-center mb-2">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Clock className="h-5 w-5 text-primary" />
+                  <Clock className="h-5 w-5 text-primary" aria-hidden="true" />
                 </div>
               </div>
               <p className="text-2xl font-display font-semibold text-foreground">
@@ -377,7 +434,7 @@ export function RecipeDetail({
             <CardContent className="py-4">
               <div className="flex justify-center mb-2">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Timer className="h-5 w-5 text-primary" />
+                  <Timer className="h-5 w-5 text-primary" aria-hidden="true" />
                 </div>
               </div>
               <p className="text-2xl font-display font-semibold text-foreground">
@@ -392,7 +449,7 @@ export function RecipeDetail({
             <CardContent className="py-4">
               <div className="flex justify-center mb-2">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Utensils className="h-5 w-5 text-primary" />
+                  <Utensils className="h-5 w-5 text-primary" aria-hidden="true" />
                 </div>
               </div>
               <p className="text-2xl font-display font-semibold text-foreground">
@@ -420,10 +477,12 @@ export function RecipeDetail({
           <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pt-8">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                <Apple className="h-5 w-5 text-primary" />
+                <Apple className="h-5 w-5 text-primary" aria-hidden="true" />
               </div>
               <div>
-                <CardTitle className="font-display">Nutrition</CardTitle>
+                <h2 className="font-display leading-none font-semibold">
+                  Nutrition
+                </h2>
                 <CardDescription>
                   Estimated values per serving
                 </CardDescription>
@@ -433,7 +492,9 @@ export function RecipeDetail({
           <CardContent className="p-6">
             <NutritionDisplay
               nutrition={nutrition}
-              servings={scaledServings}
+              // Values are per serving of the recipe as written, so they
+              // don't follow the servings selector.
+              servings={recipe.servings}
               isEditable={false}
             />
           </CardContent>
@@ -471,7 +532,7 @@ export function RecipeDetail({
                     <label
                       htmlFor={checkboxId}
                       className={cn(
-                        "cursor-pointer text-muted-foreground",
+                        "cursor-pointer text-foreground",
                         isChecked && "line-through opacity-60"
                       )}
                     >
@@ -482,7 +543,7 @@ export function RecipeDetail({
                             {ingredient.converted.displayAmount}{" "}
                             {ingredient.converted.unit}
                           </span>{" "}
-                          <span className="text-xs text-muted-foreground/70">
+                          <span className="text-xs text-muted-foreground">
                             {/* The same scaled amount in the recipe's own unit. */}
                             (
                             {(ingredient.wasScaled && ingredient.scaledAmount) ||
@@ -503,7 +564,7 @@ export function RecipeDetail({
                               just noise, so only note a real change. */}
                           {ingredient.scaledAmount !==
                             ingredient.originalAmount && (
-                            <span className="text-xs text-muted-foreground/70">
+                            <span className="text-xs text-muted-foreground">
                               (was {ingredient.originalAmount}){" "}
                             </span>
                           )}
@@ -537,10 +598,13 @@ export function RecipeDetail({
           <ol className="space-y-6">
             {convertedInstructions.map((instruction, index) => (
               <li key={index} className="flex gap-4">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                {/* Step number: Fraunces 600, 24px/24px (style guide). */}
+                <span
+                  className="w-8 shrink-0 pt-0.5 text-right font-display text-2xl leading-6 font-semibold text-primary"
+                >
                   {index + 1}
                 </span>
-                <p className="pt-1 text-muted-foreground leading-relaxed">
+                <p className="text-foreground leading-relaxed">
                   {instruction.convertedText}
                 </p>
               </li>

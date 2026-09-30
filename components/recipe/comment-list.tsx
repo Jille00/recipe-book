@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { toast } from "sonner";
@@ -40,6 +40,11 @@ export function CommentList({
   // `comments.length` broke as soon as a comment was added (it skipped one) or
   // deleted (it refetched a rendered comment and duplicated its key).
   const [serverOffset, setServerOffset] = useState(initialComments.length);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  // After a delete, where focus goes: the comment that took the removed one's
+  // place (or the one before it), or the heading once none are left.
+  const focusAfterDeleteRef = useRef<string | null>(null);
 
   const loadMore = useCallback(async () => {
     if (isLoading || !hasMore) return;
@@ -84,20 +89,46 @@ export function CommentList({
 
   // Only rendered comments can be deleted, so the removed row is always one we
   // had already fetched: the pagination cursor moves back with it.
-  const handleCommentDeleted = useCallback((commentId: string) => {
-    setComments((prev) => prev.filter((c) => c.id !== commentId));
-    setServerOffset((prev) => Math.max(0, prev - 1));
-    setTotal((prev) => Math.max(0, prev - 1));
-  }, []);
+  const handleCommentDeleted = useCallback(
+    (commentId: string) => {
+      const index = comments.findIndex((c) => c.id === commentId);
+      const remaining = comments.filter((c) => c.id !== commentId);
+      focusAfterDeleteRef.current =
+        (remaining[index] ?? remaining[index - 1])?.id ?? "heading";
+
+      setComments(remaining);
+      setServerOffset((prev) => Math.max(0, prev - 1));
+      setTotal((prev) => Math.max(0, prev - 1));
+    },
+    [comments]
+  );
+
+  useEffect(() => {
+    const target = focusAfterDeleteRef.current;
+    if (!target) return;
+    focusAfterDeleteRef.current = null;
+
+    const next =
+      target === "heading"
+        ? null
+        : listRef.current?.querySelector<HTMLElement>(
+            `[data-comment-id="${CSS.escape(target)}"]`
+          );
+    (next ?? headingRef.current)?.focus();
+  }, [comments]);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <MessageSquare className="h-5 w-5 text-primary" />
-        <h3 className="font-display text-lg font-semibold text-foreground">
+        <MessageSquare className="h-5 w-5 text-primary" aria-hidden="true" />
+        <h2
+          ref={headingRef}
+          tabIndex={-1}
+          className="font-display text-lg font-semibold text-foreground outline-none"
+        >
           Comments
-        </h3>
+        </h2>
         <span className="text-sm text-muted-foreground">({total})</span>
       </div>
 
@@ -123,7 +154,7 @@ export function CommentList({
 
       {/* Comments List */}
       {comments.length > 0 ? (
-        <div className="space-y-3">
+        <div ref={listRef} className="space-y-3">
           {comments.map((comment) => (
             <CommentItem
               key={comment.id}
@@ -144,7 +175,7 @@ export function CommentList({
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                     Loading...
                   </>
                 ) : (
@@ -156,7 +187,10 @@ export function CommentList({
         </div>
       ) : (
         <div className="rounded-lg border border-dashed border-border p-8 text-center">
-          <MessageSquare className="mx-auto h-10 w-10 text-muted-foreground/30" />
+          <MessageSquare
+            className="mx-auto h-10 w-10 text-muted-foreground/30"
+            aria-hidden="true"
+          />
           <p className="mt-2 text-sm text-muted-foreground">
             No comments yet. Be the first to share your thoughts!
           </p>

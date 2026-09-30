@@ -1,6 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import Image from "next/image";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { RegisterForm } from "@/components/auth/register-form";
 
 export const metadata: Metadata = {
@@ -9,7 +12,13 @@ export const metadata: Metadata = {
   alternates: { canonical: "/register" },
 };
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  // Already signed in: there is no account to create.
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (session?.user) {
+    redirect("/dashboard");
+  }
+
   return (
     <div className="min-h-screen flex">
       {/* Left side - Image */}

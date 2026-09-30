@@ -1,12 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { resetPassword } from "@/lib/auth-client";
 import { Button, Input, Label } from "@/components/ui";
 import { resetPasswordSchema } from "@/lib/utils/validation";
 import { Loader2, Lock, CheckCircle2, AlertTriangle } from "lucide-react";
+
+/** Mirrors resetPasswordSchema and lib/auth-rules.ts, so the rules are known before the first attempt. */
+const PASSWORD_RULES =
+  "8 to 128 characters, with an uppercase letter, a lowercase letter, and a number.";
+
+/** Fields in the order they appear, so focus lands on the first bad one. */
+const FIELD_ORDER = ["password", "confirmPassword"] as const;
+type ResetField = (typeof FIELD_ORDER)[number];
 
 export function ResetPasswordForm() {
   const router = useRouter();
@@ -19,6 +27,7 @@ export function ResetPasswordForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   if (!token || tokenError) {
     return (
@@ -26,7 +35,7 @@ export function ResetPasswordForm() {
         <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/15 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
+              <AlertTriangle className="h-5 w-5" aria-hidden="true" />
             </div>
             <div className="space-y-1">
               <p className="font-medium">This link is invalid or has expired</p>
@@ -57,10 +66,10 @@ export function ResetPasswordForm() {
   if (success) {
     return (
       <div className="space-y-6">
-        <div className="rounded-xl border border-secondary/30 bg-secondary/10 p-5">
+        <div role="status" className="rounded-xl border border-secondary/30 bg-secondary/10 p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary/20 text-secondary-foreground">
-              <CheckCircle2 className="h-5 w-5" />
+              <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
             </div>
             <div className="space-y-1">
               <p className="font-medium">Password updated</p>
@@ -86,11 +95,18 @@ export function ResetPasswordForm() {
     if (!validation.success) {
       const fieldErrors: Record<string, string> = {};
       validation.error.issues.forEach((issue) => {
-        if (issue.path[0]) {
-          fieldErrors[issue.path[0] as string] = issue.message;
+        const field = issue.path[0];
+        // Keep the first problem per field: it is the one to fix first.
+        if (typeof field === "string" && !fieldErrors[field]) {
+          fieldErrors[field] = issue.message;
         }
       });
       setErrors(fieldErrors);
+      const firstInvalid = FIELD_ORDER.find((field) => fieldErrors[field]);
+      if (firstInvalid) {
+        const input = formRef.current?.elements.namedItem(firstInvalid);
+        if (input instanceof HTMLElement) input.focus();
+      }
       return;
     }
 
@@ -117,10 +133,24 @@ export function ResetPasswordForm() {
     }
   };
 
+  const fieldProps = (field: ResetField, hintId?: string) => {
+    const errorId = errors[field] ? `${field}-error` : undefined;
+    const describedBy = [hintId, errorId].filter(Boolean).join(" ");
+    return {
+      id: field,
+      name: field,
+      "aria-invalid": errors[field] ? true : undefined,
+      "aria-describedby": describedBy || undefined,
+    };
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form ref={formRef} onSubmit={handleSubmit} noValidate className="space-y-5">
       {errors.form && (
-        <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+        <div
+          role="alert"
+          className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive"
+        >
           {errors.form}
         </div>
       )}
@@ -128,9 +158,12 @@ export function ResetPasswordForm() {
       <div className="space-y-2">
         <Label htmlFor="password">New password</Label>
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Lock
+            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
           <Input
-            id="password"
+            {...fieldProps("password", "password-hint")}
             type="password"
             placeholder="Create a new password"
             value={password}
@@ -141,21 +174,21 @@ export function ResetPasswordForm() {
             className="pl-10"
           />
         </div>
-        {errors.password ? (
-          <p className="text-sm text-destructive">{errors.password}</p>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            At least 8 characters, with an uppercase letter, a lowercase letter, and a number.
-          </p>
-        )}
+        <p id="password-hint" className="text-xs text-muted-foreground">
+          {PASSWORD_RULES}
+        </p>
+        <FieldError id="password-error" message={errors.password} />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="confirmPassword">Confirm new password</Label>
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Lock
+            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
           <Input
-            id="confirmPassword"
+            {...fieldProps("confirmPassword")}
             type="password"
             placeholder="Confirm your new password"
             value={confirmPassword}
@@ -165,15 +198,13 @@ export function ResetPasswordForm() {
             className="pl-10"
           />
         </div>
-        {errors.confirmPassword && (
-          <p className="text-sm text-destructive">{errors.confirmPassword}</p>
-        )}
+        <FieldError id="confirmPassword-error" message={errors.confirmPassword} />
       </div>
 
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
             Updating password...
           </>
         ) : (
@@ -181,5 +212,14 @@ export function ResetPasswordForm() {
         )}
       </Button>
     </form>
+  );
+}
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null;
+  return (
+    <p id={id} className="text-[13px] text-destructive">
+      {message}
+    </p>
   );
 }

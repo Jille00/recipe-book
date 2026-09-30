@@ -4,6 +4,10 @@ import { auth } from "@/lib/auth";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { extractRecipeFromText } from "@/lib/recipe-import/extract-from-text";
 
+// AI calls routinely take 10-30 seconds; don't let the platform default cut
+// them off halfway (a paid call with nothing to show for it).
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
@@ -12,7 +16,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const limited = enforceRateLimit("ai:import-recipe-text", session.user.id);
+    const limited = await enforceRateLimit("ai:import-recipe-text", session.user.id);
     if (limited) return limited;
 
     const body = await readJsonObject(request);

@@ -16,7 +16,7 @@ export default async function ProfilePage() {
   const session = await auth.api.getSession({ headers: headersList });
 
   if (!session?.user) {
-    redirect("/login");
+    redirect(`/login?callbackUrl=${encodeURIComponent("/profile")}`);
   }
 
   const profile = await getProfileByUserId(session.user.id);

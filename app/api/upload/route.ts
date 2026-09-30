@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const limited = enforceRateLimit("upload", session.user.id);
+    const limited = await enforceRateLimit("upload", session.user.id);
     if (limited) return limited;
 
     // Reject oversized requests before formData() buffers the whole body.
@@ -67,7 +67,16 @@ export async function POST(request: NextRequest) {
     let ext: string = detected.ext;
 
     if (detected.mime === "image/heic") {
-      buffer = await convertHeicToJpeg(buffer);
+      try {
+        buffer = await convertHeicToJpeg(buffer);
+      } catch {
+        // AVIF shares HEIF's container brands but isn't HEVC, and corrupt
+        // files fail here too: either way it's the file, not the server.
+        return NextResponse.json(
+          { error: "This photo couldn't be read. Try saving it as JPEG first." },
+          { status: 400 }
+        );
+      }
       contentType = "image/jpeg";
       ext = "jpg";
     }
@@ -77,6 +86,13 @@ export async function POST(request: NextRequest) {
       contentType,
       ext,
     });
+
+    if (!stored.ok && stored.invalidImage) {
+      return NextResponse.json(
+        { error: "This photo couldn't be read. Try another one." },
+        { status: 400 }
+      );
+    }
 
     if (!stored.ok) {
       console.error("Supabase upload error:", stored.error);

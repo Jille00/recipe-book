@@ -64,7 +64,7 @@ export async function getRecipeComments(
     .from(comment)
     .leftJoin(user, eq(comment.userId, user.id))
     .where(eq(comment.recipeId, recipeId))
-    .orderBy(desc(comment.createdAt))
+    .orderBy(desc(comment.createdAt), desc(comment.id))
     .limit(limit)
     .offset(offset);
 

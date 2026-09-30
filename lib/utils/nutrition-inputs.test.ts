@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nutritionInputsKey } from "./nutrition-inputs";
+import { NUTRITION_BASIS_KEY_MAX, nutritionBasisKey, nutritionInputsKey } from "./nutrition-inputs";
 
 type Row = { text: string; amount?: string; unit?: string };
 
@@ -135,5 +135,28 @@ describe("nutritionInputsKey", () => {
     it("produces valid JSON", () => {
       expect(() => JSON.parse(nutritionInputsKey([{ text: 'a"\\]', amount: "{", unit: "}" }], 3))).not.toThrow();
     });
+  });
+});
+
+describe("nutritionBasisKey", () => {
+  it("is short enough to store and versioned", () => {
+    const many = Array.from({ length: 100 }, (_, i) => ({ text: `ingredient ${i} `.repeat(30), amount: "1", unit: "g" }));
+    const key = nutritionBasisKey(many, 4);
+    expect(key.startsWith("v1:")).toBe(true);
+    expect(key.length).toBeLessThanOrEqual(NUTRITION_BASIS_KEY_MAX);
+  });
+
+  it("follows nutritionInputsKey: equal inputs give equal keys", () => {
+    expect(nutritionBasisKey([milk, flour, eggs], "4")).toBe(nutritionBasisKey(base, 4));
+    expect(nutritionBasisKey([{ text: " FLOUR ", amount: "200", unit: "G" }], 1)).toBe(
+      nutritionBasisKey([{ text: "flour", amount: "200", unit: "g" }], 1)
+    );
+  });
+
+  it("changes when an input that affects nutrition changed", () => {
+    const original = nutritionBasisKey(base, 4);
+    expect(nutritionBasisKey(base, 6)).not.toBe(original);
+    expect(nutritionBasisKey([flour, eggs], 4)).not.toBe(original);
+    expect(nutritionBasisKey([{ ...flour, amount: "201" }, eggs, milk], 4)).not.toBe(original);
   });
 });

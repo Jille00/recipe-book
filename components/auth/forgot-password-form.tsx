@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { requestPasswordReset } from "@/lib/auth-client";
 import { Button, Input, Label } from "@/components/ui";
@@ -12,14 +12,24 @@ export function ForgotPasswordForm() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  // Validation problems belong to the email field; anything else is shown
+  // for the form as a whole.
+  const [fieldError, setFieldError] = useState("");
+  const emailRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setFieldError("");
 
     const validation = forgotPasswordSchema.safeParse({ email });
     if (!validation.success) {
-      setError(validation.error.issues[0]?.message || "Please enter a valid email address");
+      setFieldError(
+        email.trim()
+          ? validation.error.issues[0]?.message || "Please enter a valid email address"
+          : "Please enter your email address"
+      );
+      emailRef.current?.focus();
       return;
     }
 
@@ -46,10 +56,10 @@ export function ForgotPasswordForm() {
   if (submitted) {
     return (
       <div className="space-y-6">
-        <div className="rounded-xl border border-secondary/30 bg-secondary/10 p-5">
+        <div role="status" className="rounded-xl border border-secondary/30 bg-secondary/10 p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary/20 text-secondary-foreground">
-              <MailCheck className="h-5 w-5" />
+              <MailCheck className="h-5 w-5" aria-hidden="true" />
             </div>
             <div className="space-y-1">
               <p className="font-medium">Check your inbox</p>
@@ -77,7 +87,7 @@ export function ForgotPasswordForm() {
           href="/login"
           className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back to sign in
         </Link>
       </div>
@@ -85,9 +95,12 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} noValidate className="space-y-6">
       {error && (
-        <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+        <div
+          role="alert"
+          className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive"
+        >
           {error}
         </div>
       )}
@@ -95,9 +108,16 @@ export function ForgotPasswordForm() {
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <div className="relative">
-          <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Mail
+            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
           <Input
+            ref={emailRef}
             id="email"
+            name="email"
+            aria-invalid={fieldError ? true : undefined}
+            aria-describedby={fieldError ? "email-error" : undefined}
             type="email"
             placeholder="you@example.com"
             value={email}
@@ -108,12 +128,17 @@ export function ForgotPasswordForm() {
             className="pl-10"
           />
         </div>
+        {fieldError && (
+          <p id="email-error" className="text-[13px] text-destructive">
+            {fieldError}
+          </p>
+        )}
       </div>
 
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
             Sending link...
           </>
         ) : (

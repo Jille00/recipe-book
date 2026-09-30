@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, Label } from "@/components/ui";
+import { Badge, Button, Input, Label } from "@/components/ui";
 import {
   Apple,
   Beef,
@@ -18,6 +18,10 @@ import type { NutritionInfo } from "@/types/nutrition";
 
 interface NutritionDisplayProps {
   nutrition: NutritionInfo | null;
+  /**
+   * The servings the per-serving values were calculated for (the recipe's own
+   * servings) - not a scaled count, since the values do not change with it.
+   */
   servings?: number | null;
   isEditable?: boolean;
   isEditing?: boolean;
@@ -26,13 +30,14 @@ interface NutritionDisplayProps {
   onCancelEdit?: () => void;
 }
 
+// Icon colours come from the palette / chart tokens (STYLE_GUIDE 01).
 const NUTRIENT_CONFIG = [
-  { key: "calories", label: "Calories", unit: "kcal", icon: Apple, color: "text-red-500" },
-  { key: "protein", label: "Protein", unit: "g", icon: Beef, color: "text-amber-600" },
-  { key: "carbs", label: "Carbs", unit: "g", icon: Wheat, color: "text-yellow-600" },
-  { key: "fat", label: "Fat", unit: "g", icon: Droplet, color: "text-orange-500" },
-  { key: "fiber", label: "Fiber", unit: "g", icon: Leaf, color: "text-green-600" },
-  { key: "sugar", label: "Sugar", unit: "g", icon: Cookie, color: "text-pink-500" },
+  { key: "calories", label: "Calories", unit: "kcal", icon: Apple, color: "text-chart-1" },
+  { key: "protein", label: "Protein", unit: "g", icon: Beef, color: "text-chart-4" },
+  { key: "carbs", label: "Carbs", unit: "g", icon: Wheat, color: "text-amber-700" },
+  { key: "fat", label: "Fat", unit: "g", icon: Droplet, color: "text-chart-5" },
+  { key: "fiber", label: "Fiber", unit: "g", icon: Leaf, color: "text-chart-2" },
+  { key: "sugar", label: "Sugar", unit: "g", icon: Cookie, color: "text-paprika" },
 ] as const;
 
 type NutrientKey = (typeof NUTRIENT_CONFIG)[number]["key"];
@@ -51,6 +56,18 @@ function toDrafts(nutrition: NutritionInfo | null): Record<NutrientKey, string> 
   return drafts;
 }
 
+/**
+ * A draft is invalid when it is filled in but is not a finite number >= 0.
+ * The save schema rejects negative values, so letting one through made the
+ * whole recipe save fail.
+ */
+function isInvalidDraft(raw: string): boolean {
+  const trimmed = raw.trim();
+  if (trimmed === "") return false;
+  const parsed = Number(trimmed);
+  return !Number.isFinite(parsed) || parsed < 0;
+}
+
 function fromDrafts(
   base: NutritionInfo,
   drafts: Record<NutrientKey, string>
@@ -59,21 +76,18 @@ function fromDrafts(
   for (const { key } of NUTRIENT_CONFIG) {
     const raw = drafts[key].trim();
     const parsed = raw === "" ? NaN : Number(raw);
-    next[key] = Number.isFinite(parsed) ? parsed : null;
+    // Belt and braces: Save is disabled while a draft is invalid, but never
+    // hand a negative value to the recipe.
+    next[key] = Number.isFinite(parsed) ? Math.max(0, parsed) : null;
   }
   return next;
 }
 
-function getConfidenceBadgeStyles(confidence: "high" | "medium" | "low") {
-  switch (confidence) {
-    case "high":
-      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
-    case "medium":
-      return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
-    case "low":
-      return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
-  }
-}
+const CONFIDENCE_BADGE_VARIANT = {
+  high: "success",
+  medium: "warning",
+  low: "danger",
+} as const;
 
 export function NutritionDisplay({
   nutrition,
@@ -95,7 +109,13 @@ export function NutritionDisplay({
     setDrafts(toDrafts(nutrition));
   }
 
+  const invalidKeys = NUTRIENT_CONFIG.filter(({ key }) =>
+    isInvalidDraft(drafts[key] ?? "")
+  ).map(({ key }) => key);
+  const hasInvalid = invalidKeys.length > 0;
+
   const handleSave = () => {
+    if (hasInvalid) return;
     if (nutrition && onEdit) {
       onEdit(fromDrafts(nutrition, drafts));
     }
@@ -113,23 +133,38 @@ export function NutritionDisplay({
     return (
       <div className="space-y-4">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {NUTRIENT_CONFIG.map(({ key, label, unit }) => (
-            <div key={key} className="space-y-1.5">
-              <Label htmlFor={`nutrition-${key}`} className="text-xs text-muted-foreground">
-                {label} ({unit})
-              </Label>
-              <Input
-                id={`nutrition-${key}`}
-                type="number"
-                min="0"
-                step={key === "calories" ? "1" : "0.1"}
-                value={drafts[key] ?? ""}
-                onChange={(e) => handleInputChange(key, e.target.value)}
-                className="h-9"
-              />
-            </div>
-          ))}
+          {NUTRIENT_CONFIG.map(({ key, label, unit }) => {
+            const invalid = invalidKeys.includes(key);
+            return (
+              <div key={key} className="space-y-1.5">
+                <Label htmlFor={`nutrition-${key}`} className="text-xs text-muted-foreground">
+                  {label} ({unit})
+                </Label>
+                <Input
+                  id={`nutrition-${key}`}
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step={key === "calories" ? "1" : "0.1"}
+                  value={drafts[key] ?? ""}
+                  onChange={(e) => handleInputChange(key, e.target.value)}
+                  aria-invalid={invalid || undefined}
+                  aria-describedby={invalid ? "nutrition-edit-error" : undefined}
+                />
+              </div>
+            );
+          })}
         </div>
+        {hasInvalid && (
+          <p
+            id="nutrition-edit-error"
+            role="alert"
+            className="flex items-center gap-1.5 text-[13px] text-destructive"
+          >
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            Values can&apos;t be negative.
+          </p>
+        )}
         <div className="flex justify-end gap-2">
           <Button
             type="button"
@@ -144,6 +179,7 @@ export function NutritionDisplay({
             type="button"
             size="sm"
             onClick={handleSave}
+            disabled={hasInvalid}
           >
             <Check className="h-4 w-4 mr-1" />
             Save
@@ -179,16 +215,14 @@ export function NutritionDisplay({
       {/* Footer with confidence and edit button */}
       <div className="flex items-center justify-between pt-2 border-t border-border/50">
         <div className="flex items-center gap-3">
-          <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getConfidenceBadgeStyles(nutrition.confidence)}`}
-          >
+          <Badge variant={CONFIDENCE_BADGE_VARIANT[nutrition.confidence]}>
             {nutrition.confidence.charAt(0).toUpperCase() + nutrition.confidence.slice(1)} confidence
-          </span>
-          {servings && (
+          </Badge>
+          {servings ? (
             <span className="text-xs text-muted-foreground">
-              per serving ({servings} servings)
+              per serving (based on {servings} servings)
             </span>
-          )}
+          ) : null}
         </div>
         {isEditable && onStartEdit && (
           <Button
@@ -196,7 +230,6 @@ export function NutritionDisplay({
             variant="ghost"
             size="sm"
             onClick={onStartEdit}
-            className="text-muted-foreground hover:text-foreground"
           >
             <Pencil className="h-3.5 w-3.5 mr-1" />
             Edit
@@ -206,9 +239,9 @@ export function NutritionDisplay({
 
       {/* Warnings */}
       {nutrition.warnings && nutrition.warnings.length > 0 && (
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-          <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-          <div className="text-sm text-amber-800 dark:text-amber-200">
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-amber/10 border border-amber/40">
+          <AlertCircle className="h-4 w-4 text-amber-700 mt-0.5 shrink-0" aria-hidden="true" />
+          <div className="text-sm text-amber-700">
             {nutrition.warnings.map((warning, i) => (
               <p key={i}>{warning}</p>
             ))}

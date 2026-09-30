@@ -11,7 +11,18 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Button, Input, Label, Spinner } from "@/components/ui";
+import { Button, Input, Label, Spinner, Textarea } from "@/components/ui";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Camera,
   Upload,
@@ -29,6 +40,7 @@ import {
 import type { ExtractedRecipe, ExtractionResponse } from "@/types/extraction";
 import { isHeicFile } from "@/lib/image/decode-heic";
 import { normalizeRecipeLink } from "@/lib/recipe-import/link-input";
+import { matchTagByName } from "@/lib/recipe-import/apply-to-form";
 import {
   compressImage,
   fitsRequestBudget,
@@ -40,6 +52,7 @@ import {
   IMPORT_REQUEST_BUDGET_BYTES,
   MAX_IMPORT_FILES,
   parseJsonResponse,
+  takeFreeSlots,
   validateImageFile,
 } from "./file-validation";
 
@@ -54,6 +67,13 @@ interface RecipeImportModalProps {
   onOpenChange: (open: boolean) => void;
   onImport: (data: ExtractedRecipe) => void;
   tags: Tag[];
+  /**
+   * Labels of the form fields that applying `data` would overwrite. When any
+   * are returned, applying asks for confirmation first.
+   */
+  getOverwrittenFields?: (data: ExtractedRecipe) => string[];
+  /** Receives focus after an import is applied (instead of the trigger). */
+  focusAfterApplyRef?: React.RefObject<HTMLElement | null>;
 }
 
 type ModalState = "idle" | "preparing" | "extracting" | "preview" | "error";
@@ -85,6 +105,8 @@ export function RecipeImportModal({
   onOpenChange,
   onImport,
   tags,
+  getOverwrittenFields,
+  focusAfterApplyRef,
 }: RecipeImportModalProps) {
   const [state, setState] = useState<ModalState>("idle");
   const [importMethod, setImportMethod] = useState<ImportMethod>("photo");
@@ -109,14 +131,31 @@ export function RecipeImportModal({
   // Guards against a second click landing before `state` flips to "extracting"
   // and firing another (paid) extraction call.
   const extractingRef = useRef(false);
-  // Bumped whenever the modal resets, so photo compression that finishes after
-  // the dialog was closed does not go on to start a (paid) extraction.
+  // Bumped whenever the modal resets, so work that finishes after the dialog
+  // was closed (photo compression, an extraction request) is dropped instead
+  // of starting a paid extraction or reappearing as a stale preview.
   const runIdRef = useRef(0);
+  // Aborts the extraction request in flight when the modal resets or unmounts.
+  const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => abortRef.current?.abort(), []);
+  // Set when "Apply to Form" closes the dialog, so focus moves to the form
+  // instead of back to the Import button.
+  const appliedRef = useRef(false);
+  const [confirmFields, setConfirmFields] = useState<string[] | null>(null);
+  const isBusy = state === "preparing" || state === "extracting";
 
+  // The latest selection, updated synchronously with every change. Counting
+  // free slots from render state let two quick drops of 6 both see 0 files
+  // and add 12 (the server then rejected the request).
   const selectedFilesRef = useRef<SelectedFile[]>([]);
-  useEffect(() => {
-    selectedFilesRef.current = selectedFiles;
-  }, [selectedFiles]);
+  const updateSelectedFiles = useCallback(
+    (update: (prev: SelectedFile[]) => SelectedFile[]) => {
+      const next = update(selectedFilesRef.current);
+      selectedFilesRef.current = next;
+      setSelectedFiles(next);
+    },
+    []
+  );
 
   // Every preview URL this component creates is tracked here, so all of them
   // are released on reset and unmount - including one whose photo was removed
@@ -142,9 +181,12 @@ export function RecipeImportModal({
 
   const resetState = useCallback(() => {
     runIdRef.current++;
+    abortRef.current?.abort();
+    abortRef.current = null;
+    extractingRef.current = false;
     setState("idle");
     releaseAllPreviewUrls();
-    setSelectedFiles([]);
+    updateSelectedFiles(() => []);
     setTextInput("");
     setLinkInput("");
     setLinkTouched(false);
@@ -152,7 +194,8 @@ export function RecipeImportModal({
     setConfidence(null);
     setWarnings([]);
     setError(null);
-  }, [releaseAllPreviewUrls]);
+    setConfirmFields(null);
+  }, [releaseAllPreviewUrls, updateSelectedFiles]);
 
   // After a failed extraction, go back with the photos (or pasted text, or the
   // entered link) still selected. A failure is often temporary, or caused by one bad photo that can
@@ -172,6 +215,25 @@ export function RecipeImportModal({
     [onOpenChange, resetState]
   );
 
+  // Escape, the overlay and the close button would reset the dialog and
+  // throw away the selected photos mid-extraction. While busy they are
+  // disabled; the explicit "Cancel" button below stops the run instead.
+  const preventCloseWhileBusy = useCallback(
+    (event: Event) => {
+      if (isBusy) event.preventDefault();
+    },
+    [isBusy]
+  );
+
+  // Cancels the running extraction but keeps what was entered.
+  const cancelExtraction = useCallback(() => {
+    runIdRef.current++;
+    abortRef.current?.abort();
+    abortRef.current = null;
+    extractingRef.current = false;
+    setState("idle");
+  }, []);
+
   // Enforces the image count and the accepted formats. Large photos are fine:
   // they are shrunk before upload (see handleExtract). Drag-and-drop never sees the input's `accept` filter, so
   // this has to run for both the picker and the dropzone - otherwise a dropped
@@ -179,33 +241,38 @@ export function RecipeImportModal({
   const handleFilesSelect = useCallback(
     (files: FileList | File[]) => {
       const errors: string[] = [];
-      const accepted: SelectedFile[] = [];
-      let remainingSlots = MAX_IMPORT_FILES - selectedFiles.length;
+      const valid: File[] = [];
 
       for (const file of Array.from(files)) {
-        if (remainingSlots <= 0) {
-          errors.push(`You can add at most ${MAX_IMPORT_FILES} images.`);
-          break;
-        }
-
         const validationError = validateImageFile(file, IMPORT_IMAGE_TYPES);
         if (validationError) {
           errors.push(validationError);
-          continue;
+        } else {
+          valid.push(file);
         }
+      }
 
+      const { accepted: fitting, overflow } = takeFreeSlots(
+        selectedFilesRef.current.length,
+        valid,
+        MAX_IMPORT_FILES
+      );
+      if (overflow > 0) {
+        errors.push(`You can add at most ${MAX_IMPORT_FILES} images.`);
+      }
+
+      const accepted: SelectedFile[] = fitting.map((file) => {
         const needsConversion = isHeicFile(file);
-        accepted.push({
+        return {
           id: nanoid(),
           file,
           previewUrl: needsConversion ? null : createPreviewUrl(file),
           status: needsConversion ? "converting" : "ready",
-        });
-        remainingSlots--;
-      }
+        };
+      });
 
       if (accepted.length > 0) {
-        setSelectedFiles((prev) => [...prev, ...accepted]);
+        updateSelectedFiles((prev) => [...prev, ...accepted]);
       }
       setError(errors.length > 0 ? errors.join(" ") : null);
 
@@ -219,7 +286,7 @@ export function RecipeImportModal({
     },
     // convertHeicTile is declared below and stable; it only reads refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedFiles.length, createPreviewUrl]
+    [createPreviewUrl, updateSelectedFiles]
   );
 
   /**
@@ -242,7 +309,7 @@ export function RecipeImportModal({
     if (!stillSelected()) return;
 
     const previewUrl = result.decoded ? createPreviewUrl(result.file) : null;
-    setSelectedFiles((prev) =>
+    updateSelectedFiles((prev) =>
       prev.map((f) =>
         f.id !== tile.id
           ? f
@@ -257,9 +324,9 @@ export function RecipeImportModal({
     (id: string) => {
       const removed = selectedFilesRef.current.find((f) => f.id === id);
       releasePreviewUrl(removed?.previewUrl ?? null);
-      setSelectedFiles((prev) => prev.filter((f) => f.id !== id));
+      updateSelectedFiles((prev) => prev.filter((f) => f.id !== id));
     },
-    [releasePreviewUrl]
+    [releasePreviewUrl, updateSelectedFiles]
   );
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -296,11 +363,59 @@ export function RecipeImportModal({
     [handleFilesSelect]
   );
 
+  /**
+   * Sends one extraction request and shows its result. The result is dropped
+   * when the modal was reset or closed meanwhile (the run id moved on), so a
+   * late answer never reappears as a stale preview; the request itself is
+   * aborted on reset too.
+   */
+  const runExtraction = async (
+    runId: number,
+    send: (signal: AbortSignal) => Promise<Response>,
+    messages: { failed: string; fallback: string; timeout?: string }
+  ) => {
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setState("extracting");
+
+    try {
+      const response = await send(controller.signal);
+      if (messages.timeout && response.status === 504) {
+        throw new Error(messages.timeout);
+      }
+      const extractionData = await parseJsonResponse<ExtractionResponse>(
+        response,
+        messages.failed
+      );
+      if (runId !== runIdRef.current) return;
+
+      setExtractedData(extractionData.recipe);
+      setConfidence(extractionData.confidence);
+      setWarnings(extractionData.warnings || []);
+      setState("preview");
+    } catch (err) {
+      if (runId !== runIdRef.current) return;
+      setError(err instanceof Error ? err.message : messages.fallback);
+      setState("error");
+    } finally {
+      // A newer run owns these refs once this one was superseded.
+      if (runId === runIdRef.current) {
+        extractingRef.current = false;
+        abortRef.current = null;
+      }
+    }
+  };
+
   const handleExtract = async () => {
     // `state` only flips on the next render, so a double-click would otherwise
     // fire two extraction calls. The ref closes that window synchronously.
     // Photos still converting from HEIC aren't ready to upload yet.
-    if (extractingRef.current || selectedFiles.length === 0 || isConvertingPhotos) {
+    const files = selectedFilesRef.current;
+    if (
+      extractingRef.current ||
+      files.length === 0 ||
+      files.some((f) => f.status === "converting")
+    ) {
       return;
     }
     extractingRef.current = true;
@@ -313,33 +428,28 @@ export function RecipeImportModal({
     // shrink every photo to a share of one whole-request budget first.
     let prepared: Awaited<ReturnType<typeof compressImage>>[];
     try {
-      const budget = perImageBudget(
-        IMPORT_REQUEST_BUDGET_BYTES,
-        selectedFiles.length
-      );
+      const budget = perImageBudget(IMPORT_REQUEST_BUDGET_BYTES, files.length);
       prepared = [];
       // One at a time: decoding several 12MP photos at once can exhaust
       // memory on phones.
-      for (const sf of selectedFiles) {
+      for (const sf of files) {
         prepared.push(
           await compressImage(sf.file, {
             maxBytes: budget,
             keepTypes: IMPORT_PASSTHROUGH_TYPES,
           })
         );
+        if (runId !== runIdRef.current) return;
       }
     } catch {
-      extractingRef.current = false;
       if (runId !== runIdRef.current) return;
+      extractingRef.current = false;
       setError("We couldn't prepare these photos. Please try different photos.");
       setState("idle");
       return;
     }
 
-    if (runId !== runIdRef.current) {
-      extractingRef.current = false;
-      return;
-    }
+    if (runId !== runIdRef.current) return;
 
     if (
       !fitsRequestBudget(
@@ -359,69 +469,44 @@ export function RecipeImportModal({
       return;
     }
 
-    setState("extracting");
+    const formData = new FormData();
+    prepared.forEach((p) => {
+      formData.append("files", p.file);
+    });
 
-    try {
-      const formData = new FormData();
-      prepared.forEach((p) => {
-        formData.append("files", p.file);
-      });
-
-      const response = await fetch("/api/extract-recipe", {
-        method: "POST",
-        body: formData,
-      });
-
-      const extractionData = await parseJsonResponse<ExtractionResponse>(
-        response,
-        "Extraction failed"
-      );
-
-      setExtractedData(extractionData.recipe);
-      setConfidence(extractionData.confidence);
-      setWarnings(extractionData.warnings || []);
-      setState("preview");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to extract recipe");
-      setState("error");
-    } finally {
-      extractingRef.current = false;
-    }
+    await runExtraction(
+      runId,
+      (signal) =>
+        fetch("/api/extract-recipe", {
+          method: "POST",
+          body: formData,
+          signal,
+        }),
+      { failed: "Extraction failed", fallback: "Failed to extract recipe" }
+    );
   };
 
   const handleTextExtract = async () => {
-    if (extractingRef.current || !textInput.trim()) return;
+    const text = textInput.trim();
+    if (extractingRef.current || !text) return;
     extractingRef.current = true;
-
+    const runId = runIdRef.current;
     setError(null);
-    setState("extracting");
 
-    try {
-      const response = await fetch("/api/import-recipe-text", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: textInput.trim() }),
-      });
-
-      const extractionData = await parseJsonResponse<ExtractionResponse>(
-        response,
-        "Extraction failed"
-      );
-
-      setExtractedData(extractionData.recipe);
-      setConfidence(extractionData.confidence);
-      setWarnings(extractionData.warnings || []);
-      setState("preview");
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to extract recipe from text"
-      );
-      setState("error");
-    } finally {
-      extractingRef.current = false;
-    }
+    await runExtraction(
+      runId,
+      (signal) =>
+        fetch("/api/import-recipe-text", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+          signal,
+        }),
+      {
+        failed: "Extraction failed",
+        fallback: "Failed to extract recipe from text",
+      }
+    );
   };
 
   const handleLinkImport = async () => {
@@ -429,71 +514,64 @@ export function RecipeImportModal({
     if (extractingRef.current || !link) return;
     extractingRef.current = true;
     const runId = runIdRef.current;
-
     setError(null);
-    setState("extracting");
 
-    try {
-      const response = await fetch("/api/import-recipe-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: link }),
-      });
-
-      // The generic 504 message talks about "the server"; here it is almost
-      // always the recipe website that was slow.
-      if (response.status === 504) {
-        throw new Error(
-          "The recipe website took too long to respond. Please try again later."
-        );
+    await runExtraction(
+      runId,
+      (signal) =>
+        fetch("/api/import-recipe-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: link }),
+          signal,
+        }),
+      {
+        failed: "Import failed",
+        fallback: "Failed to import recipe from link",
+        // The generic 504 message talks about "the server"; here it is almost
+        // always the recipe website that was slow.
+        timeout:
+          "The recipe website took too long to respond. Please try again later.",
       }
+    );
+  };
 
-      const extractionData = await parseJsonResponse<ExtractionResponse>(
-        response,
-        "Import failed"
-      );
-      // The dialog was closed (or reset) while the import ran.
-      if (runId !== runIdRef.current) return;
-
-      setExtractedData(extractionData.recipe);
-      setConfidence(extractionData.confidence);
-      setWarnings(extractionData.warnings || []);
-      setState("preview");
-    } catch (err) {
-      if (runId !== runIdRef.current) return;
-      setError(
-        err instanceof Error ? err.message : "Failed to import recipe from link"
-      );
-      setState("error");
-    } finally {
-      extractingRef.current = false;
-    }
+  const applyImport = () => {
+    if (!extractedData) return;
+    onImport(extractedData);
+    appliedRef.current = true;
+    handleOpenChange(false);
   };
 
   const handleApply = () => {
-    if (extractedData) {
-      onImport(extractedData);
-      handleOpenChange(false);
+    if (!extractedData) return;
+    const overwritten = getOverwrittenFields?.(extractedData) ?? [];
+    if (overwritten.length > 0) {
+      setConfirmFields(overwritten);
+      return;
     }
+    applyImport();
   };
 
-  const matchTag = (suggestedCategory: string | undefined): string => {
-    if (!suggestedCategory) return "";
-    const normalized = suggestedCategory.toLowerCase().trim();
-    const exact = tags.find((t) => t.name.toLowerCase() === normalized);
-    if (exact) return exact.name;
-    const partial = tags.find(
-      (t) =>
-        t.name.toLowerCase().includes(normalized) ||
-        normalized.includes(t.name.toLowerCase())
-    );
-    if (partial) return partial.name;
-    return suggestedCategory;
-  };
+  const matchedTagName = matchTagByName(tags, extractedData?.suggestedCategory)?.name;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="sm:max-w-2xl max-h-[90vh] overflow-y-auto"
+        showCloseButton={!isBusy}
+        onEscapeKeyDown={preventCloseWhileBusy}
+        onInteractOutside={preventCloseWhileBusy}
+        onCloseAutoFocus={(event) => {
+          if (!appliedRef.current) return;
+          appliedRef.current = false;
+          const target = focusAfterApplyRef?.current;
+          if (target) {
+            event.preventDefault();
+            target.focus();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {importMethod === "photo" ? (
@@ -508,291 +586,288 @@ export function RecipeImportModal({
           <DialogDescription>{METHOD_DESCRIPTIONS[importMethod]}</DialogDescription>
         </DialogHeader>
 
-        {/* Tab Switcher - only show in idle state */}
+        {/* Method tabs - only in the idle state */}
         {state === "idle" && (
-          <div className="flex gap-1 p-1 bg-muted rounded-lg">
-            {(
-              [
-                { method: "photo", label: "From Photos", Icon: Camera },
-                { method: "link", label: "From Link", Icon: Link2 },
-                { method: "text", label: "From Text", Icon: FileText },
-              ] as const
-            ).map(({ method, label, Icon }) => (
-              <button
-                key={method}
-                type="button"
-                aria-pressed={importMethod === method}
-                className={`flex-1 flex items-center justify-center gap-2 px-2 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                  importMethod === method
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                onClick={() => setImportMethod(method)}
-              >
-                {/* Three tabs with icons do not fit a phone-width dialog. */}
-                <Icon className="hidden h-4 w-4 sm:block" aria-hidden="true" />
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
+          <Tabs
+            value={importMethod}
+            onValueChange={(value) => {
+              setImportMethod(value as ImportMethod);
+              setError(null);
+            }}
+            className="gap-4"
+          >
+            <TabsList className="w-full">
+              {(
+                [
+                  { method: "photo", label: "From Photos", Icon: Camera },
+                  { method: "link", label: "From Link", Icon: Link2 },
+                  { method: "text", label: "From Text", Icon: FileText },
+                ] as const
+              ).map(({ method, label, Icon }) => (
+                <TabsTrigger key={method} value={method}>
+                  {/* Three tabs with icons do not fit a phone-width dialog. */}
+                  <Icon className="hidden sm:block" aria-hidden="true" />
+                  {label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-        {state === "idle" && importMethod === "photo" && (
-          <div className="space-y-4">
-            {/* Dropzone */}
-            <div
-              className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 transition-all ${
-                dragActive
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50 hover:bg-muted/50"
-              } cursor-pointer`}
-              role="presentation"
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-              onClick={() => inputRef.current?.click()}
-            >
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                <Camera className="h-6 w-6 text-primary" />
-              </div>
-              <p className="mb-1 text-sm text-foreground">
-                <span className="font-medium">Click to upload</span> or drag and drop
-              </p>
-              <p className="text-xs text-muted-foreground">
-                PNG, JPG, WebP, or HEIC (up to {MAX_IMPORT_FILES} images; large
-                photos are resized automatically)
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-3"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  inputRef.current?.click();
-                }}
+            <TabsContent value="photo" className="space-y-4">
+              {/* Dropzone */}
+              <div
+                className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 transition-all ${
+                  dragActive
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50 hover:bg-muted/50"
+                } cursor-pointer`}
+                role="presentation"
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+                onClick={() => inputRef.current?.click()}
               >
-                <Upload className="h-4 w-4" />
-                Select Images
-              </Button>
-            </div>
-
-            {/* Validation feedback (wrong format, too many, too large to upload) */}
-            {error && (
-              <p
-                role="alert"
-                className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
-              >
-                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                <span>{error}</span>
-              </p>
-            )}
-
-            {/* Selected Images Grid */}
-            {selectedFiles.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium">
-                    {selectedFiles.length} image{selectedFiles.length !== 1 ? "s" : ""} selected
-                  </p>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      // Photos still converting check they're selected before
-                      // finishing, so clearing the list is enough to drop them.
-                      releaseAllPreviewUrls();
-                      setSelectedFiles([]);
-                    }}
-                    className="text-muted-foreground hover:text-destructive"
-                  >
-                    Clear all
-                  </Button>
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                  <Camera className="h-6 w-6 text-primary" />
                 </div>
-                <div className="grid grid-cols-4 gap-2">
-                  {selectedFiles.map((sf, index) => (
-                    <div
-                      key={sf.id}
-                      className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted"
-                    >
-                      {sf.status === "ready" && sf.previewUrl ? (
-                        <Image
-                          src={sf.previewUrl}
-                          alt={`Image ${index + 1}`}
-                          fill
-                          unoptimized
-                          className="object-cover"
-                        />
-                      ) : sf.status === "converting" ? (
-                        <div
-                          role="status"
-                          className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground"
-                        >
-                          <Spinner size="sm" />
-                          <span className="text-xs">Converting</span>
-                          <span className="sr-only">
-                            Converting image {index + 1} so it can be previewed
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-2 text-center text-muted-foreground">
-                          <ImageOff className="h-5 w-5" aria-hidden="true" />
-                          <span className="text-xs">Can&apos;t preview</span>
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => removeFile(sf.id)}
-                        aria-label={`Remove image ${index + 1}`}
-                        // Always visible where there is no hover (touch, small
-                        // screens); revealed on hover or keyboard focus above.
-                        className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white transition-opacity hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
-                      >
-                        <X className="h-3 w-3" aria-hidden="true" />
-                      </button>
-                      <span className="absolute bottom-1 left-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-xs text-white">
-                        {index + 1}
-                      </span>
-                    </div>
-                  ))}
-                  {selectedFiles.length < MAX_IMPORT_FILES && (
-                    <button
-                      type="button"
-                      onClick={() => inputRef.current?.click()}
-                      aria-label="Add more images"
-                      className="flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-muted/50 transition-colors"
-                    >
-                      <Plus className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
-                    </button>
-                  )}
-                </div>
+                <p className="mb-1 text-sm text-foreground">
+                  <span className="font-medium">Click to upload</span> or drag and drop
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  PNG, JPG, WebP, or HEIC (up to {MAX_IMPORT_FILES} images; large
+                  photos are resized automatically)
+                </p>
                 <Button
                   type="button"
-                  onClick={handleExtract}
-                  disabled={
-                    state !== "idle" ||
-                    selectedFiles.length === 0 ||
-                    isConvertingPhotos
-                  }
-                  className="w-full"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    inputRef.current?.click();
+                  }}
                 >
-                  {isConvertingPhotos ? (
-                    <>
-                      <Spinner size="sm" />
-                      Converting photos…
-                    </>
-                  ) : (
-                    <>
-                      <ChefHat className="h-4 w-4" aria-hidden="true" />
-                      Extract Recipe from {selectedFiles.length} Image
-                      {selectedFiles.length !== 1 ? "s" : ""}
-                    </>
-                  )}
+                  <Upload className="h-4 w-4" />
+                  Select Images
                 </Button>
               </div>
-            )}
 
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.HEIC,.heif,.HEIF"
-              onChange={handleChange}
-              multiple
-              className="hidden"
-            />
-          </div>
-        )}
+              {/* Validation feedback (wrong format, too many, too large to upload) */}
+              {error && (
+                <p
+                  role="alert"
+                  className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+                >
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>{error}</span>
+                </p>
+              )}
 
-        {state === "idle" && importMethod === "link" && (
-          <form
-            className="space-y-4"
-            noValidate
-            onSubmit={(e) => {
-              e.preventDefault();
-              // React events bubble through the portal: without this the
-              // recipe form around the dialog would be submitted too.
-              e.stopPropagation();
-              void handleLinkImport();
-            }}
-          >
-            <div className="space-y-2">
-              <Label htmlFor="recipe-link" className="text-sm font-medium">
-                Recipe Link
-              </Label>
-              <Input
-                id="recipe-link"
-                type="url"
-                inputMode="url"
-                autoComplete="url"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                value={linkInput}
-                onChange={(e) => setLinkInput(e.target.value)}
-                onBlur={() => setLinkTouched(true)}
-                placeholder="https://www.example.com/recipes/…"
-                aria-invalid={showLinkHint || undefined}
-                aria-describedby="recipe-link-help"
-                className="h-12 rounded-lg border-border bg-background px-4 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+              {/* Selected Images Grid */}
+              {selectedFiles.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">
+                      {selectedFiles.length} image{selectedFiles.length !== 1 ? "s" : ""} selected
+                    </p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        // Photos still converting check they're selected before
+                        // finishing, so clearing the list is enough to drop them.
+                        releaseAllPreviewUrls();
+                        updateSelectedFiles(() => []);
+                      }}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      Clear all
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {selectedFiles.map((sf, index) => (
+                      <div
+                        key={sf.id}
+                        className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted"
+                      >
+                        {sf.status === "ready" && sf.previewUrl ? (
+                          <Image
+                            src={sf.previewUrl}
+                            alt={`Image ${index + 1}`}
+                            fill
+                            unoptimized
+                            className="object-cover"
+                          />
+                        ) : sf.status === "converting" ? (
+                          <div
+                            role="status"
+                            className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground"
+                          >
+                            <Spinner size="sm" />
+                            <span className="text-xs">Converting</span>
+                            <span className="sr-only">
+                              Converting image {index + 1} so it can be previewed
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-2 text-center text-muted-foreground">
+                            <ImageOff className="h-5 w-5" aria-hidden="true" />
+                            <span className="text-xs">Can&apos;t preview</span>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeFile(sf.id)}
+                          aria-label={`Remove image ${index + 1}`}
+                          // Always visible where there is no hover (touch, small
+                          // screens); revealed on hover or keyboard focus above.
+                          className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white transition-opacity hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+                        >
+                          <X className="h-3 w-3" aria-hidden="true" />
+                        </button>
+                        <span className="absolute bottom-1 left-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-xs text-white">
+                          {index + 1}
+                        </span>
+                      </div>
+                    ))}
+                    {selectedFiles.length < MAX_IMPORT_FILES && (
+                      <button
+                        type="button"
+                        onClick={() => inputRef.current?.click()}
+                        aria-label="Add more images"
+                        className="flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-muted/50 transition-colors"
+                      >
+                        <Plus className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleExtract}
+                    disabled={
+                      state !== "idle" ||
+                      selectedFiles.length === 0 ||
+                      isConvertingPhotos
+                    }
+                    className="w-full"
+                  >
+                    {isConvertingPhotos ? (
+                      <>
+                        <Spinner size="sm" />
+                        Converting photos…
+                      </>
+                    ) : (
+                      <>
+                        <ChefHat className="h-4 w-4" aria-hidden="true" />
+                        Extract Recipe from {selectedFiles.length} Image
+                        {selectedFiles.length !== 1 ? "s" : ""}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              <input
+                ref={inputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.HEIC,.heif,.HEIF"
+                onChange={handleChange}
+                multiple
+                className="hidden"
               />
-              <p
-                id="recipe-link-help"
-                className={`text-xs ${showLinkHint ? "text-destructive" : "text-muted-foreground"}`}
+            </TabsContent>
+
+            <TabsContent value="link">
+              <form
+                className="space-y-4"
+                noValidate
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  // React events bubble through the portal: without this the
+                  // recipe form around the dialog would be submitted too.
+                  e.stopPropagation();
+                  void handleLinkImport();
+                }}
               >
-                {showLinkHint
-                  ? "Enter a full web address, like https://www.example.com/recipe"
-                  : "Works with many recipe websites and food blogs. Some sites block importing; for those, copy the recipe into From Text"}
-              </p>
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="recipe-link" className="text-sm font-medium">
+                    Recipe Link
+                  </Label>
+                  <Input
+                    id="recipe-link"
+                    type="url"
+                    inputMode="url"
+                    autoComplete="url"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    value={linkInput}
+                    onChange={(e) => setLinkInput(e.target.value)}
+                    onBlur={() => setLinkTouched(true)}
+                    placeholder="https://www.example.com/recipes/…"
+                    aria-invalid={showLinkHint || undefined}
+                    aria-describedby="recipe-link-help"
+                  />
+                  <p
+                    id="recipe-link-help"
+                    className={`text-xs ${showLinkHint ? "text-destructive" : "text-muted-foreground"}`}
+                  >
+                    {showLinkHint
+                      ? "Enter a full web address, like https://www.example.com/recipe"
+                      : "Works with many recipe websites and food blogs. Some sites block importing; for those, copy the recipe into From Text"}
+                  </p>
+                </div>
 
-            <Button
-              type="submit"
-              disabled={state !== "idle" || !normalizedLink}
-              className="w-full"
-            >
-              <ChefHat className="h-4 w-4" aria-hidden="true" />
-              Import Recipe from Link
-            </Button>
-          </form>
+                <Button
+                  type="submit"
+                  disabled={state !== "idle" || !normalizedLink}
+                  className="w-full"
+                >
+                  <ChefHat className="h-4 w-4" aria-hidden="true" />
+                  Import Recipe from Link
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="text" className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="recipe-text" className="text-sm font-medium">
+                  Recipe Text
+                </Label>
+                <Textarea
+                  id="recipe-text"
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  placeholder="Paste recipe text here... (ingredients, instructions, etc.)"
+                  rows={8}
+                  aria-describedby="recipe-text-help"
+                  // field-sizing-content would grow with a long paste; keep the
+                  // box a fixed size and scroll instead.
+                  className="h-48 resize-none [field-sizing:fixed]"
+                />
+                <p id="recipe-text-help" className="text-xs text-muted-foreground">
+                  Copy and paste recipe content from a website or document
+                </p>
+              </div>
+
+              <Button
+                type="button"
+                onClick={handleTextExtract}
+                disabled={state !== "idle" || !textInput.trim()}
+                className="w-full"
+              >
+                <ChefHat aria-hidden="true" />
+                Extract Recipe from Text
+              </Button>
+            </TabsContent>
+          </Tabs>
         )}
 
-        {state === "idle" && importMethod === "text" && (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="recipe-text" className="text-sm font-medium">
-                Recipe Text
-              </label>
-              <textarea
-                id="recipe-text"
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                placeholder="Paste recipe text here... (ingredients, instructions, etc.)"
-                rows={8}
-                className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-              />
-              <p className="text-xs text-muted-foreground">
-                Copy and paste recipe content from a website or document
-              </p>
-            </div>
-
-            <Button
-              type="button"
-              onClick={handleTextExtract}
-              disabled={state !== "idle" || !textInput.trim()}
-              className="w-full"
-            >
-              <ChefHat className="h-4 w-4" />
-              Extract Recipe from Text
-            </Button>
-          </div>
-        )}
-
-        {(state === "preparing" || state === "extracting") && (
+        {isBusy && (
           <div
+            role="status"
             className="flex flex-col items-center justify-center py-12"
-            aria-live="polite"
           >
             <Spinner size="lg" />
             <p className="mt-4 text-sm text-muted-foreground">
@@ -807,6 +882,15 @@ export function RecipeImportModal({
             <p className="text-xs text-muted-foreground">
               This may take a few seconds
             </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mt-4"
+              onClick={cancelExtraction}
+            >
+              Cancel
+            </Button>
           </div>
         )}
 
@@ -839,10 +923,13 @@ export function RecipeImportModal({
           <div className="space-y-4">
             {confidence &&
               (confidence !== "high" || warnings.length > 0) && (
-              <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm">
-                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              <div className="flex items-start gap-2 rounded-lg border border-amber/30 bg-amber/10 p-3 text-sm">
+                <AlertTriangle
+                  className="h-4 w-4 text-amber mt-0.5 shrink-0"
+                  aria-hidden="true"
+                />
                 <div>
-                  <p className="font-medium text-amber-700 dark:text-amber-400">
+                  <p className="font-medium text-foreground">
                     {confidence === "high"
                       ? "Please check before saving"
                       : confidence === "medium"
@@ -852,7 +939,7 @@ export function RecipeImportModal({
                           : "The recipe may be incomplete"}
                   </p>
                   {warnings.length > 0 && (
-                    <ul className="mt-1 text-amber-600 dark:text-amber-300">
+                    <ul className="mt-1 text-muted-foreground">
                       {warnings.map((w, i) => (
                         <li key={i}>• {w}</li>
                       ))}
@@ -909,9 +996,10 @@ export function RecipeImportModal({
                     {extractedData.difficulty}
                   </span>
                 )}
-                {extractedData.suggestedCategory && (
+                {/* Only a tag the form will actually select is shown. */}
+                {matchedTagName && (
                   <span className="text-muted-foreground">
-                    {matchTag(extractedData.suggestedCategory)}
+                    Tag: {matchedTagName}
                   </span>
                 )}
               </div>
@@ -959,13 +1047,41 @@ export function RecipeImportModal({
                     : "Try Different Text"}
               </Button>
               <Button onClick={handleApply}>
-                <Check className="h-4 w-4" />
+                <Check aria-hidden="true" />
                 Apply to Form
               </Button>
             </DialogFooter>
           </div>
         )}
       </DialogContent>
+
+      <AlertDialog
+        open={confirmFields !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setConfirmFields(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace what you&apos;ve entered?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Applying this import replaces these fields in the form:{" "}
+              {confirmFields?.join(", ")}. Tags you picked are kept.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep my entries</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmFields(null);
+                applyImport();
+              }}
+            >
+              Replace fields
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

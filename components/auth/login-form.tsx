@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "@/lib/auth-client";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { Button, Input, Label } from "@/components/ui";
+import { forgotPasswordSchema } from "@/lib/utils/validation";
 import { Loader2, Mail, Lock, MailCheck } from "lucide-react";
 
 // Where to go after signing in. Validated so a crafted link can't send someone
@@ -22,6 +23,11 @@ export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{
+    email?: string;
+    password?: string;
+  }>({});
+  const formRef = useRef<HTMLFormElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   // Set when the password was right but the email isn't confirmed yet.
   // better-auth has already emailed a fresh link by the time we find out.
@@ -31,6 +37,31 @@ export function LoginForm() {
     e.preventDefault();
     setError("");
     setUnconfirmedEmail(null);
+
+    // Only the shape is checked here; whether the password is right is the
+    // server's call. Older accounts may predate the current password rules.
+    const nextFieldErrors: { email?: string; password?: string } = {};
+    const emailCheck = forgotPasswordSchema.shape.email.safeParse(email);
+    if (!email.trim()) {
+      nextFieldErrors.email = "Please enter your email address";
+    } else if (!emailCheck.success) {
+      nextFieldErrors.email =
+        emailCheck.error.issues[0]?.message || "Please enter a valid email address";
+    }
+    if (!password) {
+      nextFieldErrors.password = "Please enter your password";
+    }
+    setFieldErrors(nextFieldErrors);
+
+    const firstInvalid = (["email", "password"] as const).find(
+      (field) => nextFieldErrors[field]
+    );
+    if (firstInvalid) {
+      const input = formRef.current?.elements.namedItem(firstInvalid);
+      if (input instanceof HTMLElement) input.focus();
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -62,7 +93,7 @@ export function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form ref={formRef} onSubmit={handleSubmit} noValidate className="space-y-6">
       {unconfirmedEmail && (
         <div
           role="status"
@@ -86,7 +117,11 @@ export function LoginForm() {
       )}
 
       {error && (
-        <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+        <div
+          id="login-error"
+          role="alert"
+          className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive"
+        >
           {error}
         </div>
       )}
@@ -94,9 +129,15 @@ export function LoginForm() {
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <div className="relative">
-          <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Mail
+            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
           <Input
             id="email"
+            name="email"
+            aria-invalid={fieldErrors.email ? true : undefined}
+            aria-describedby={fieldErrors.email ? "email-error" : undefined}
             type="email"
             placeholder="you@example.com"
             value={email}
@@ -106,6 +147,11 @@ export function LoginForm() {
             className="pl-10"
           />
         </div>
+        {fieldErrors.email && (
+          <p id="email-error" className="text-[13px] text-destructive">
+            {fieldErrors.email}
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -119,9 +165,21 @@ export function LoginForm() {
           </Link>
         </div>
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Lock
+            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
           <Input
             id="password"
+            name="password"
+            aria-invalid={fieldErrors.password || error ? true : undefined}
+            aria-describedby={
+              fieldErrors.password
+                ? "password-error"
+                : error
+                  ? "login-error"
+                  : undefined
+            }
             type="password"
             placeholder="Enter your password"
             value={password}
@@ -131,12 +189,17 @@ export function LoginForm() {
             className="pl-10"
           />
         </div>
+        {fieldErrors.password && (
+          <p id="password-error" className="text-[13px] text-destructive">
+            {fieldErrors.password}
+          </p>
+        )}
       </div>
 
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
             Signing in...
           </>
         ) : (

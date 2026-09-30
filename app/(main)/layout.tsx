@@ -9,7 +9,7 @@ export default async function MainLayout({
   children: React.ReactNode;
 }) {
   // Resolve the session here so the header renders the correct state on the
-  // very first paint instead of flashing "Log In / Sign Up" at signed-in users.
+  // very first paint instead of flashing "Sign In / Sign Up" at signed-in users.
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
 
@@ -19,7 +19,7 @@ export default async function MainLayout({
       <main id="main-content" className="flex-1">
         {children}
       </main>
-      <Footer />
+      <Footer initialSignedIn={!!session?.user} />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import {
   UPLOAD_BUDGET_BYTES,
   UPLOAD_IMAGE_TYPES,
   UPLOAD_PASSTHROUGH_TYPES,
+  takeFreeSlots,
   validateImageFile,
 } from "./file-validation";
 
@@ -87,6 +88,24 @@ describe("validateImageFile", () => {
     it("rejects an unknown extension", () => {
       expect(validateImageFile(file("recipe.pdf", ""), IMPORT_IMAGE_TYPES)).not.toBeNull();
       expect(validateImageFile(file("noextension", ""), IMPORT_IMAGE_TYPES)).not.toBeNull();
+    });
+  });
+
+  describe("HEIC reported as application/octet-stream (Android)", () => {
+    it.each(["IMG_0001.HEIC", "photo.heic", "photo.HEIF"])("accepts %s for imports and uploads", (name) => {
+      expect(validateImageFile(file(name, "application/octet-stream"), IMPORT_IMAGE_TYPES)).toBeNull();
+      expect(validateImageFile(file(name, "application/octet-stream"), UPLOAD_IMAGE_TYPES)).toBeNull();
+    });
+
+    it("does not extend the fallback to other extensions", () => {
+      expect(validateImageFile(file("photo.jpg", "application/octet-stream"), IMPORT_IMAGE_TYPES)).not.toBeNull();
+      expect(validateImageFile(file("recipe.pdf", "application/octet-stream"), IMPORT_IMAGE_TYPES)).not.toBeNull();
+    });
+
+    it("only accepts HEIC when the list allows HEIC", () => {
+      expect(
+        validateImageFile(file("photo.heic", "application/octet-stream"), ["image/jpeg", "image/png"])
+      ).not.toBeNull();
     });
   });
 
@@ -208,5 +227,23 @@ describe("parseJsonResponse", () => {
     await expect(parseJsonResponse(response, "Failed")).rejects.toThrow(
       "The server returned an unexpected response."
     );
+  });
+});
+
+describe("takeFreeSlots", () => {
+  it("accepts everything that fits", () => {
+    expect(takeFreeSlots(2, ["a", "b"], 10)).toEqual({ accepted: ["a", "b"], overflow: 0 });
+  });
+
+  it("stops at the limit and reports the rest", () => {
+    // Two quick drops of 6: the second must see the first's 6.
+    const first = takeFreeSlots(0, [1, 2, 3, 4, 5, 6], 10);
+    const second = takeFreeSlots(first.accepted.length, [7, 8, 9, 10, 11, 12], 10);
+    expect(second).toEqual({ accepted: [7, 8, 9, 10], overflow: 2 });
+  });
+
+  it("accepts nothing when already full or over", () => {
+    expect(takeFreeSlots(10, ["a"], 10)).toEqual({ accepted: [], overflow: 1 });
+    expect(takeFreeSlots(12, ["a"], 10)).toEqual({ accepted: [], overflow: 1 });
   });
 });

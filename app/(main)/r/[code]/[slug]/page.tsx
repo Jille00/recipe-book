@@ -9,7 +9,7 @@ import { getRecipeComments } from "@/lib/db/queries/comments";
 import { RecipeDetail } from "@/components/recipe/recipe-detail";
 import { RecipeJsonLd } from "@/components/seo/recipe-json-ld";
 import { recipePath } from "@/lib/recipe-url";
-import { absoluteUrl } from "../../../../site-url";
+import { absoluteUrl, SITE_OG_IMAGE } from "../../../../site-url";
 
 interface Props {
   params: Promise<{ code: string; slug: string }>;
@@ -52,13 +52,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: "article",
       siteName: "Kookboek",
       url: path,
-      images: recipe.imageUrl ? [{ url: recipe.imageUrl }] : [],
+      // Without a photo, fall back to the site image rather than a bare card.
+      images: recipe.imageUrl ? [{ url: recipe.imageUrl }] : [SITE_OG_IMAGE],
     },
     twitter: {
       card: "summary_large_image",
       title: `${recipe.title} | Kookboek`,
       description,
-      images: recipe.imageUrl ? [recipe.imageUrl] : [],
+      images: recipe.imageUrl ? [recipe.imageUrl] : [SITE_OG_IMAGE.url],
     },
   };
 }
@@ -92,7 +93,11 @@ export default async function RecipePage({ params }: Props) {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Structured data only helps search engines, which never see unlisted recipes. */}
       {recipe.isPublic && (
-        <RecipeJsonLd recipe={recipe} url={absoluteUrl(recipePath(recipe))} />
+        <RecipeJsonLd
+          recipe={recipe}
+          url={absoluteUrl(recipePath(recipe))}
+          ratingStats={ratingStats}
+        />
       )}
       <RecipeDetail
         recipe={recipe}

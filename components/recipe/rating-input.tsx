@@ -1,7 +1,7 @@
 "use client";
 
 import { withRecipeCode } from "./recipe-api";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -25,6 +25,14 @@ const sizeClasses = {
   lg: "h-8 w-8",
 };
 
+// Padding that brings each star button up to a 44px touch target
+// (20 + 2*12, 24 + 2*10, 32 + 2*6).
+const hitAreaClasses = {
+  sm: "p-3",
+  md: "p-2.5",
+  lg: "p-1.5",
+};
+
 const VALUES = [1, 2, 3, 4, 5];
 
 export function RatingInput({
@@ -45,6 +53,7 @@ export function RatingInput({
     initialRating ? initialRating - 1 : 0
   );
   const starRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const hintId = useId();
 
   const displayRating = previewRating ?? rating ?? 0;
   const isInteractive = !disabled && !isSubmitting;
@@ -116,64 +125,79 @@ export function RatingInput({
   const clearPreview = () => setPreviewRating(null);
 
   return (
-    <div
-      role="radiogroup"
-      aria-label={label}
-      aria-disabled={disabled || undefined}
-      aria-busy={isSubmitting || undefined}
-      className={cn(
-        "flex gap-0.5",
-        disabled && "opacity-50 cursor-not-allowed",
-        isSubmitting && "opacity-70"
-      )}
-      onMouseLeave={clearPreview}
-      onBlur={(e) => {
-        // Only clear once focus leaves the whole group.
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-          clearPreview();
-        }
-      }}
-    >
-      {VALUES.map((value, index) => {
-        const isChecked = rating === value;
-        return (
-          <button
-            key={value}
-            ref={(node) => {
-              starRefs.current[index] = node;
-            }}
-            type="button"
-            role="radio"
-            aria-checked={isChecked}
-            aria-label={`${value} star${value !== 1 ? "s" : ""}`}
-            tabIndex={index === focusedIndex ? 0 : -1}
-            disabled={disabled || isSubmitting}
-            onClick={() => handleClick(value)}
-            onKeyDown={(e) => handleKeyDown(e, index)}
-            onMouseEnter={() => isInteractive && setPreviewRating(value)}
-            onFocus={() => {
-              setFocusedIndex(index);
-              if (isInteractive) setPreviewRating(value);
-            }}
-            className={cn(
-              "transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm",
-              isInteractive && "hover:scale-110 cursor-pointer",
-              disabled && "cursor-not-allowed"
-            )}
-          >
-            <Star
-              aria-hidden="true"
+    <div className="group/rating">
+      <div
+        role="radiogroup"
+        aria-label={label}
+        aria-describedby={hintId}
+        aria-disabled={disabled || undefined}
+        aria-busy={isSubmitting || undefined}
+        className={cn(
+          "flex",
+          disabled && "opacity-50 cursor-not-allowed",
+          isSubmitting && "opacity-70"
+        )}
+        onMouseLeave={clearPreview}
+        onBlur={(e) => {
+          // Only clear once focus leaves the whole group.
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+            clearPreview();
+          }
+        }}
+      >
+        {VALUES.map((value, index) => {
+          const isChecked = rating === value;
+          return (
+            <button
+              key={value}
+              ref={(node) => {
+                starRefs.current[index] = node;
+              }}
+              type="button"
+              role="radio"
+              aria-checked={isChecked}
+              aria-label={`${value} star${value !== 1 ? "s" : ""}`}
+              tabIndex={index === focusedIndex ? 0 : -1}
+              disabled={disabled || isSubmitting}
+              onClick={() => handleClick(value)}
+              onKeyDown={(e) => handleKeyDown(e, index)}
+              onMouseEnter={() => isInteractive && setPreviewRating(value)}
+              onFocus={() => {
+                setFocusedIndex(index);
+                if (isInteractive) setPreviewRating(value);
+              }}
               className={cn(
-                sizeClasses[size],
-                "transition-colors",
-                value <= displayRating
-                  ? "text-amber fill-amber"
-                  : "text-sand hover:text-amber/50"
+                "rounded-lg transition-transform duration-(--duration-fast) ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                hitAreaClasses[size],
+                isInteractive && "hover:scale-110 cursor-pointer",
+                disabled && "cursor-not-allowed"
               )}
-            />
-          </button>
-        );
-      })}
+            >
+              <Star
+                aria-hidden="true"
+                className={cn(
+                  sizeClasses[size],
+                  "transition-colors",
+                  // Empty stars use taupe-600 (3.43:1 on parchment) - sand
+                  // was 1.44:1, too faint to read as a control.
+                  value <= displayRating
+                    ? "text-amber fill-amber"
+                    : "text-taupe-600"
+                )}
+              />
+            </button>
+          );
+        })}
+      </div>
+      {/* Arrow keys only preview a rating (saving on every keypress would
+          POST each step), so say how to commit. Always announced; shown
+          on screen while a star has keyboard focus. */}
+      <p
+        id={hintId}
+        className="sr-only text-xs text-muted-foreground group-has-[:focus-visible]/rating:not-sr-only group-has-[:focus-visible]/rating:mt-1"
+      >
+        Use arrow keys to choose, then press Enter or Space to save.
+      </p>
     </div>
   );
 }

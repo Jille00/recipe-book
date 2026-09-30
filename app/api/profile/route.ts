@@ -12,9 +12,10 @@ import {
 const profileUpdateSchema = z.object({
   name: z
     .string()
+    // Trim first: "   " must fail "required", not pass it and then vanish.
+    .trim()
     .min(1, "Name is required")
     .max(100, "Name must be 100 characters or less")
-    .trim()
     .optional(),
   bio: z
     .string()

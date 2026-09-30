@@ -6,8 +6,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "DM Sans", system-ui, sans-serif;
-  --font-display: "Fraunces", Georgia, serif;
+  /* Loaded with next/font in app/layout.tsx, which sets these variables */
+  --font-sans: var(--font-dm-sans), system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
   --font-mono: var(--font-geist-mono);
 
   /* Semantic color mappings */
@@ -36,6 +37,8 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-destructive-hover: var(--destructive-hover);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -73,6 +76,9 @@
   --color-linen: #ede8e0;
   --color-sand: #d4ccc0;
   --color-taupe: #a69e91;
+  /* Darker taupe for non-text UI (input borders, empty rating stars):
+     3.71:1 on cream, 3.43:1 on parchment (WCAG 1.4.11 needs 3:1). */
+  --color-taupe-600: #8a8276;
   --color-stone: #7a7268;
   --color-charcoal: #4a4640;
   --color-graphite: #2d2a26;
@@ -82,10 +88,35 @@
   --color-amber: #d4a43a;
   --color-paprika: #c23d2e;
   --color-espresso: #3d2e24;
+  /* Text-safe accent shades (STYLE_GUIDE 04 difficulty badges: "amber-700").
+     Both clear 4.5:1 on their own 10-15% tint over cream and parchment. */
+  --color-amber-700: #7a5c16;
+  --color-paprika-700: #a8352a;
+}
+
+/* Non-inline so the variables are emitted and usable in plain CSS too */
+@theme {
+  /* Shadows (STYLE_GUIDE 10) */
+  --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-lifted: 0 12px 24px rgba(0, 0, 0, 0.08);
+
+  /* Easing (STYLE_GUIDE 05). ease-out / ease-in-out replace Tailwind's
+     defaults so the plain utilities follow the guide. */
+  --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 :root {
   --radius: 0.5rem;
+
+  /* Durations (STYLE_GUIDE 05) - use as duration-(--duration-fast) */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  --duration-slower: 600ms;
 
   /* Light Mode - Warm Paper Theme */
   --background: #fffcf8;
@@ -94,17 +125,25 @@
   --card-foreground: #1a1816;
   --popover: #fffcf8;
   --popover-foreground: #1a1816;
-  --primary: #c75d3a;
+  /* terracotta-600: cream on it is 5.58:1, and as text it is 5.16:1 on
+     parchment cards (terracotta-500 was 4.06:1 / 3.76:1 and failed AA). */
+  --primary: #a84a2d;
+  --primary-hover: #8a3b23; /* terracotta-700 */
   --primary-foreground: #fffcf8;
   --secondary: #e8eee4;
   --secondary-foreground: #435f36;
   --muted: #ede8e0;
-  --muted-foreground: #7a7268;
+  /* A shade darker than stone (4.28:1 on parchment): 5.28:1 on parchment,
+     5.70:1 on cream, 4.78:1 on linen. */
+  --muted-foreground: #6b645b;
   --accent: #f7f3ed;
   --accent-foreground: #2d2a26;
   --destructive: #c23d2e;
+  --destructive-hover: #a8352a; /* paprika-700 */
   --border: #ede8e0;
-  --input: #ede8e0;
+  /* Form control boundary: taupe-600, 3.71:1 on cream (linen was 1.19:1) */
+  --input: #8a8276;
+  /* Focus ring stays terracotta-500 (4.06:1 on cream, >= 3:1) */
   --ring: #c75d3a;
 
   /* Charts - Earthy palette */
@@ -117,7 +156,7 @@
   /* Sidebar */
   --sidebar: #f7f3ed;
   --sidebar-foreground: #1a1816;
-  --sidebar-primary: #c75d3a;
+  --sidebar-primary: #a84a2d;
   --sidebar-primary-foreground: #fffcf8;
   --sidebar-accent: #ede8e0;
   --sidebar-accent-foreground: #2d2a26;
@@ -134,6 +173,7 @@
   --popover: #242220;
   --popover-foreground: #f5f2ed;
   --primary: #e8785a;
+  --primary-hover: #c75d3a;
   --primary-foreground: #1a1816;
   --secondary: #2d2a26;
   --secondary-foreground: #b5c9a8;
@@ -142,6 +182,7 @@
   --accent: #2d2a26;
   --accent-foreground: #f5f2ed;
   --destructive: #e85a4a;
+  --destructive-hover: #c23d2e;
   --border: #3d3935;
   --input: #3d3935;
   --ring: #e8785a;
@@ -170,16 +211,14 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
-    font-family: "DM Sans", system-ui, sans-serif;
+    @apply bg-background text-foreground font-sans antialiased;
   }
 
   /* Typography */
   h1,
   h2,
-  h3,
-  .font-display {
-    font-family: "Fraunces", Georgia, serif;
+  h3 {
+    @apply font-display;
   }
 
   h1 {
@@ -211,6 +250,15 @@
   background: rgba(255, 252, 248, 0.8);
   backdrop-filter: blur(12px) saturate(1.5);
   border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* Time badge over photos (STYLE_GUIDE 04 "Time badge") */
+.glass-badge {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  color: var(--color-graphite);
 }
 
 .dark .glass {
@@ -247,7 +295,7 @@
 }
 
 .animate-fade-in-up {
-  animation: fadeInUp 0.6s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+  animation: fadeInUp var(--duration-slower) var(--ease-out) forwards;
   opacity: 0;
 }
 
@@ -274,15 +322,6 @@
 }
 .stagger > *:nth-child(8) {
   animation-delay: 525ms;
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
 }
 
 /* ─────────────────────────────────────────────────────────────

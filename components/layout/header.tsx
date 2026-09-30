@@ -43,6 +43,15 @@ const navigation = [
 
 const MOBILE_MENU_ID = "mobile-navigation";
 
+/**
+ * A section stays highlighted on its sub-pages too, so /recipes/new still
+ * shows "My Recipes" as the current section. Home only matches itself.
+ */
+function isActivePath(pathname: string, href: string): boolean {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 /** The subset of the session user the header actually renders. */
 export interface HeaderUser {
   name?: string | null;
@@ -64,6 +73,14 @@ export function Header({ initialUser }: HeaderProps) {
   const router = useRouter();
   const { user: clientUser, isLoading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Close the panel whenever the route changes (a link was followed, Back was
+  // pressed, a form redirected...). Adjusting state during render on a changed
+  // value is React's recommended alternative to an effect for this.
+  const [menuPathname, setMenuPathname] = useState(pathname);
+  if (menuPathname !== pathname) {
+    setMenuPathname(pathname);
+    setMobileMenuOpen(false);
+  }
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -105,6 +122,23 @@ export function Header({ initialUser }: HeaderProps) {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [mobileMenuOpen, closeMobileMenu]);
+
+  // A tap or click outside the panel (and outside its toggle, which handles
+  // itself) closes it.
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (mobileMenuRef.current?.contains(target)) return;
+      if (menuButtonRef.current?.contains(target)) return;
+      closeMobileMenu();
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [mobileMenuOpen, closeMobileMenu]);
 
   // Move focus into the panel when it opens.
@@ -158,7 +192,7 @@ export function Header({ initialUser }: HeaderProps) {
           {sessionResolved
             ? filteredNav.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href;
+                const isActive = isActivePath(pathname, item.href);
                 return (
                   <Link
                     key={item.name}
@@ -171,7 +205,7 @@ export function Header({ initialUser }: HeaderProps) {
                         : "text-muted-foreground hover:text-foreground hover:bg-accent"
                     )}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-4 w-4" aria-hidden="true" />
                     {item.name}
                     {isActive && (
                       <span className="absolute bottom-0 left-1/2 h-0.5 w-4 -translate-x-1/2 rounded-full bg-primary" />
@@ -193,18 +227,23 @@ export function Header({ initialUser }: HeaderProps) {
             </div>
           ) : isAuthenticated ? (
             <div className="flex items-center gap-3">
-              <Link href="/recipes/new">
-                <Button size="sm" className="gap-2">
-                  <Plus className="h-4 w-4" />
+              <Button asChild size="sm" className="gap-2">
+                <Link href="/recipes/new">
+                  <Plus className="h-4 w-4" aria-hidden="true" />
                   New Recipe
-                </Button>
-              </Link>
+                </Link>
+              </Button>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 rounded-lg p-1.5 transition-colors hover:bg-accent">
+                  <button
+                    type="button"
+                    aria-label={`Account menu${user?.name ? ` for ${user.name}` : ""}`}
+                    className="flex items-center gap-2 rounded-lg p-1.5 transition-colors hover:bg-accent"
+                  >
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={user?.image || undefined} />
+                      {/* Decorative: the name is spelled out right next to it. */}
+                      <AvatarImage src={user?.image || undefined} alt="" />
                       <AvatarFallback className="bg-secondary text-secondary-foreground text-xs font-medium">
                         {getInitials(user?.name)}
                       </AvatarFallback>
@@ -212,25 +251,25 @@ export function Header({ initialUser }: HeaderProps) {
                     <span className="text-sm font-medium text-foreground max-w-[100px] truncate">
                       {user?.name}
                     </span>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem asChild>
                     <Link href="/dashboard" className="flex items-center gap-2">
-                      <LayoutDashboard className="h-4 w-4" />
+                      <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
                       Dashboard
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/recipes/new" className="flex items-center gap-2">
-                      <Plus className="h-4 w-4" />
+                      <Plus className="h-4 w-4" aria-hidden="true" />
                       New Recipe
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/profile" className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
+                      <User className="h-4 w-4" aria-hidden="true" />
                       Profile
                     </Link>
                   </DropdownMenuItem>
@@ -239,7 +278,7 @@ export function Header({ initialUser }: HeaderProps) {
                     onClick={handleSignOut}
                     className="text-destructive focus:text-destructive"
                   >
-                    <LogOut className="h-4 w-4 mr-2" />
+                    <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
                     Sign Out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -247,14 +286,12 @@ export function Header({ initialUser }: HeaderProps) {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <Link href="/login">
-                <Button variant="ghost" size="sm">
-                  Log In
-                </Button>
-              </Link>
-              <Link href="/register">
-                <Button size="sm">Sign Up</Button>
-              </Link>
+              <Button asChild variant="ghost" size="sm" className="text-foreground">
+                <Link href="/login">Sign In</Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link href="/register">Sign Up</Link>
+              </Button>
             </div>
           )}
         </div>
@@ -266,7 +303,7 @@ export function Header({ initialUser }: HeaderProps) {
           aria-label={mobileMenuOpen ? "Close main menu" : "Open main menu"}
           aria-expanded={mobileMenuOpen}
           aria-controls={MOBILE_MENU_ID}
-          className="md:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-accent"
+          className="md:hidden flex h-11 w-11 items-center justify-center rounded-lg transition-colors hover:bg-accent"
           onClick={() => setMobileMenuOpen((open) => !open)}
         >
           {mobileMenuOpen ? (
@@ -288,7 +325,7 @@ export function Header({ initialUser }: HeaderProps) {
             {sessionResolved
               ? filteredNav.map((item) => {
                   const Icon = item.icon;
-                  const isActive = pathname === item.href;
+                  const isActive = isActivePath(pathname, item.href);
                   return (
                     <Link
                       key={item.name}
@@ -302,7 +339,7 @@ export function Header({ initialUser }: HeaderProps) {
                       )}
                       onClick={() => closeMobileMenu()}
                     >
-                      <Icon className="h-5 w-5" />
+                      <Icon className="h-5 w-5" aria-hidden="true" />
                       {item.name}
                     </Link>
                   );
@@ -324,7 +361,8 @@ export function Header({ initialUser }: HeaderProps) {
               <div className="space-y-1">
                 <div className="flex items-center gap-3 px-3 py-2">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={user?.image || undefined} />
+                    {/* Decorative: the name is spelled out right next to it. */}
+                    <AvatarImage src={user?.image || undefined} alt="" />
                     <AvatarFallback className="bg-secondary text-secondary-foreground font-medium">
                       {getInitials(user?.name)}
                     </AvatarFallback>
@@ -340,7 +378,7 @@ export function Header({ initialUser }: HeaderProps) {
                   className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
                   onClick={() => closeMobileMenu()}
                 >
-                  <LayoutDashboard className="h-5 w-5" />
+                  <LayoutDashboard className="h-5 w-5" aria-hidden="true" />
                   Dashboard
                 </Link>
                 <Link
@@ -348,7 +386,7 @@ export function Header({ initialUser }: HeaderProps) {
                   className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
                   onClick={() => closeMobileMenu()}
                 >
-                  <Plus className="h-5 w-5" />
+                  <Plus className="h-5 w-5" aria-hidden="true" />
                   New Recipe
                 </Link>
                 <Link
@@ -356,38 +394,33 @@ export function Header({ initialUser }: HeaderProps) {
                   className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
                   onClick={() => closeMobileMenu()}
                 >
-                  <User className="h-5 w-5" />
+                  <User className="h-5 w-5" aria-hidden="true" />
                   Profile
                 </Link>
 
                 <Separator className="my-2" />
 
                 <button
+                  type="button"
                   onClick={handleSignOut}
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-destructive hover:bg-destructive/10"
                 >
-                  <LogOut className="h-5 w-5" />
+                  <LogOut className="h-5 w-5" aria-hidden="true" />
                   Sign Out
                 </button>
               </div>
             ) : (
               <div className="flex gap-3">
-                <Link
-                  href="/login"
-                  className="flex-1"
-                  onClick={() => closeMobileMenu()}
-                >
-                  <Button variant="outline" className="w-full">
-                    Log In
-                  </Button>
-                </Link>
-                <Link
-                  href="/register"
-                  className="flex-1"
-                  onClick={() => closeMobileMenu()}
-                >
-                  <Button className="w-full">Sign Up</Button>
-                </Link>
+                <Button asChild variant="outline" className="h-11 flex-1">
+                  <Link href="/login" onClick={() => closeMobileMenu()}>
+                    Sign In
+                  </Link>
+                </Button>
+                <Button asChild className="h-11 flex-1">
+                  <Link href="/register" onClick={() => closeMobileMenu()}>
+                    Sign Up
+                  </Link>
+                </Button>
               </div>
             )}
           </div>

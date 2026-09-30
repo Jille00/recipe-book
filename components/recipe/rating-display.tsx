@@ -11,6 +11,8 @@ interface RatingDisplayProps {
   className?: string;
 }
 
+// Empty stars: taupe-600 (3.43:1 on parchment, 3.71:1 on cream); sand was
+// 1.44:1 and read as missing rather than empty.
 const sizeClasses = {
   sm: "h-3 w-3",
   md: "h-4 w-4",
@@ -48,7 +50,7 @@ export function RatingDisplay({
             <Star
               key={i}
               aria-hidden="true"
-              className={cn(sizeClasses[size], "text-sand")}
+              className={cn(sizeClasses[size], "text-taupe-600")}
               fill="none"
             />
           ))}
@@ -96,7 +98,7 @@ export function RatingDisplay({
           <Star
             key={`empty-${i}`}
             aria-hidden="true"
-            className={cn(sizeClasses[size], "text-sand")}
+            className={cn(sizeClasses[size], "text-taupe-600")}
             fill="none"
           />
         ))}

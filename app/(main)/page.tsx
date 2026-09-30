@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 import { Button, Card, CardContent } from "@/components/ui";
 import { SITE_OG_IMAGE } from "../site-url";
 import {
@@ -10,6 +12,8 @@ import {
   Search,
   Smartphone,
   ArrowRight,
+  LayoutDashboard,
+  Plus,
 } from "lucide-react";
 
 const HOME_DESCRIPTION =
@@ -37,7 +41,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Signed-in visitors get a way back into their cookbook instead of sign-up
+  // prompts. The main layout already resolves the session, so this page is
+  // dynamic either way.
+  const session = await auth.api.getSession({ headers: await headers() });
+  const isSignedIn = !!session?.user;
+
   const features = [
     {
       icon: ChefHat,
@@ -97,18 +107,35 @@ export default function HomePage() {
               culinary creations in one place and easily share them with friends
               and family.
             </p>
-            <div className="mt-10 flex items-center justify-center gap-4">
-              <Link href="/register">
-                <Button size="lg">
-                  Get Started Free
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/browse">
-                <Button variant="outline" size="lg">
-                  Browse Recipes
-                </Button>
-              </Link>
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+              {isSignedIn ? (
+                <>
+                  <Button asChild size="lg">
+                    <Link href="/dashboard">
+                      <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
+                      Go to Dashboard
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="lg">
+                    <Link href="/recipes/new">
+                      <Plus className="h-4 w-4" aria-hidden="true" />
+                      Add Recipe
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button asChild size="lg">
+                    <Link href="/register">
+                      Get Started Free
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="lg">
+                    <Link href="/browse">Browse Recipes</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -151,33 +178,36 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="relative overflow-hidden bg-primary py-16">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h2 className="font-display text-3xl font-semibold tracking-tight text-primary-foreground sm:text-4xl">
-              Start your recipe collection today
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-lg text-primary-foreground/80">
-              Kookboek is free to use. Create an account, add your first
-              recipe, and build a cookbook you will actually cook from.
-            </p>
-            <div className="mt-8">
-              <Link href="/register">
+      {/* CTA Section (sign-up pitch, so only for visitors without an account) */}
+      {!isSignedIn && (
+        <section className="relative overflow-hidden bg-primary py-16">
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <h2 className="font-display text-3xl font-semibold tracking-tight text-primary-foreground sm:text-4xl">
+                Start your recipe collection today
+              </h2>
+              <p className="mx-auto mt-4 max-w-xl text-lg text-primary-foreground/80">
+                Kookboek is free to use. Create an account, add your first
+                recipe, and build a cookbook you will actually cook from.
+              </p>
+              <div className="mt-8">
                 <Button
+                  asChild
                   size="lg"
                   variant="secondary"
                   className="bg-background text-foreground hover:bg-background/90"
                 >
-                  Create Free Account
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <Link href="/register">
+                    Create Free Account
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
                 </Button>
-              </Link>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   );
 }

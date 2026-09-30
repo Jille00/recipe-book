@@ -1,19 +1,15 @@
 import { NextResponse } from "next/server";
+import { lt, sql } from "drizzle-orm";
+import { appRateLimit, db, rateLimit } from "@/lib/db";
 
 /**
- * Minimal in-memory sliding-window rate limiter.
+ * Per-user rate limits for the expensive endpoints.
  *
- * !!! IMPORTANT - PER-INSTANCE ONLY !!!
- * Counters live in the memory of a single Node process. On Vercel (or any
- * multi-instance / serverless deployment) every lambda instance keeps its own
- * counters, so the effective limit is roughly `limit x number of warm
- * instances`, and counters reset whenever an instance is recycled. This is a
- * cheap abuse-brake, NOT a correctness guarantee.
- *
- * For real multi-instance correctness, back this with a shared store
- * (Upstash Redis / Vercel KV / Redis) and keep the same call signature:
- * replace the Map operations below with an atomic INCR + EXPIRE (or a Lua
- * sliding-window script) against that store.
+ * enforceRateLimit counts in Postgres (the app_rate_limit table), so every
+ * serverless instance shares the same counters. In memory, each Vercel
+ * instance would count on its own and the effective limit would grow with the
+ * number of warm instances. If the database is unreachable it falls back to
+ * the in-memory checkRateLimit below rather than failing the request.
  */
 
 export interface RateLimitRule {
@@ -44,6 +40,18 @@ export const RATE_LIMITS = {
   upload: { limit: 30, windowMs: 60_000 },
   // Link import - makes outbound requests to the given site (and its photo).
   "import:recipe-url": { limit: 10, windowMs: 60_000 },
+} as const satisfies Record<string, RateLimitRule>;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Daily spend caps on top of the per-minute limits, applied to every "ai:"
+ * limit: one per user, and one across all users so a burst of new accounts
+ * can't run up an unbounded bill either.
+ */
+export const AI_DAILY_LIMITS = {
+  perUser: { limit: 150, windowMs: DAY_MS },
+  global: { limit: 3000, windowMs: DAY_MS },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;
@@ -102,23 +110,77 @@ export function checkRateLimit(key: string, rule: RateLimitRule): RateLimitResul
   };
 }
 
+/** Where counters live. Swappable so tests run without a database. */
+export interface RateLimitStore {
+  hit(key: string, rule: RateLimitRule, now: number): Promise<RateLimitResult>;
+}
+
+export const memoryRateLimitStore: RateLimitStore = {
+  hit: async (key, rule) => checkRateLimit(key, rule),
+};
+
 /**
- * Apply a named per-user limit. Returns a 429 response when the caller is over
- * the limit, or `null` when the request may proceed.
+ * Fixed windows in Postgres: one row per key and window, incremented with a
+ * single upsert so concurrent requests on different instances can't both
+ * slip under the limit.
  */
-export function enforceRateLimit(
-  name: RateLimitName,
-  userId: string
-): NextResponse | null {
-  const result = checkRateLimit(`${name}:${userId}`, RATE_LIMITS[name]);
+export const postgresRateLimitStore: RateLimitStore = {
+  async hit(key, rule, now) {
+    const windowStart = Math.floor(now / rule.windowMs) * rule.windowMs;
+    const [row] = await db
+      .insert(appRateLimit)
+      .values({ key, windowStart, count: 1 })
+      .onConflictDoUpdate({
+        target: [appRateLimit.key, appRateLimit.windowStart],
+        set: { count: sql`${appRateLimit.count} + 1` },
+      })
+      .returning({ count: appRateLimit.count });
 
-  if (result.allowed) {
-    return null;
+    // Old windows are useless; clear them out now and then.
+    if (Math.random() < 0.01) {
+      void pruneRateLimits(now).catch(() => {});
+    }
+
+    const resetAt = windowStart + rule.windowMs;
+    const allowed = row.count <= rule.limit;
+    return {
+      allowed,
+      limit: rule.limit,
+      remaining: Math.max(0, rule.limit - row.count),
+      retryAfterSeconds: allowed ? 0 : Math.max(1, Math.ceil((resetAt - now) / 1000)),
+      resetAt,
+    };
+  },
+};
+
+async function pruneRateLimits(now: number) {
+  const cutoff = now - 2 * DAY_MS;
+  await db.delete(appRateLimit).where(lt(appRateLimit.windowStart, cutoff));
+  // better-auth's own counters never expire either.
+  await db.delete(rateLimit).where(lt(rateLimit.lastRequest, cutoff));
+}
+
+let store: RateLimitStore = postgresRateLimitStore;
+
+export function setRateLimitStore(next: RateLimitStore) {
+  store = next;
+}
+
+async function hit(key: string, rule: RateLimitRule): Promise<RateLimitResult> {
+  try {
+    return await store.hit(key, rule, Date.now());
+  } catch (error) {
+    console.error("Rate limit store unavailable, counting in memory:", error);
+    return checkRateLimit(key, rule);
   }
+}
 
+function tooManyRequests(result: RateLimitResult, message?: string): NextResponse {
   return NextResponse.json(
     {
-      error: `Too many requests. Please try again in ${result.retryAfterSeconds} second${result.retryAfterSeconds === 1 ? "" : "s"}.`,
+      error:
+        message ??
+        `Too many requests. Please try again in ${result.retryAfterSeconds} second${result.retryAfterSeconds === 1 ? "" : "s"}.`,
     },
     {
       status: 429,
@@ -130,4 +192,36 @@ export function enforceRateLimit(
       },
     }
   );
+}
+
+/**
+ * Apply a named per-user limit (plus the daily AI caps for "ai:" limits).
+ * Returns a 429 response when the caller is over a limit, or `null` when the
+ * request may proceed.
+ */
+export async function enforceRateLimit(
+  name: RateLimitName,
+  userId: string
+): Promise<NextResponse | null> {
+  const result = await hit(`${name}:${userId}`, RATE_LIMITS[name]);
+  if (!result.allowed) return tooManyRequests(result);
+
+  if (name.startsWith("ai:")) {
+    const daily = await hit(`ai:daily:${userId}`, AI_DAILY_LIMITS.perUser);
+    if (!daily.allowed) {
+      return tooManyRequests(
+        daily,
+        "You've reached today's limit for AI features. Please try again tomorrow."
+      );
+    }
+    const global = await hit("ai:daily:all", AI_DAILY_LIMITS.global);
+    if (!global.allowed) {
+      return tooManyRequests(
+        global,
+        "AI features are busy right now. Please try again later."
+      );
+    }
+  }
+
+  return null;
 }

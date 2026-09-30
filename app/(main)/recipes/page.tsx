@@ -19,7 +19,7 @@ export default async function RecipesPage() {
   const session = await auth.api.getSession({ headers: headersList });
 
   if (!session?.user) {
-    redirect("/login");
+    redirect(`/login?callbackUrl=${encodeURIComponent("/recipes")}`);
   }
 
   const recipes = await getRecipesByUserId(session.user.id);
@@ -35,12 +35,12 @@ export default async function RecipesPage() {
             Manage and organize your recipe collection
           </p>
         </div>
-        <Link href="/recipes/new">
-          <Button>
-            <Plus className="h-4 w-4" />
+        <Button asChild>
+          <Link href="/recipes/new">
+            <Plus className="h-4 w-4" aria-hidden="true" />
             New Recipe
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
 
       {recipes.length === 0 ? (
@@ -56,12 +56,12 @@ export default async function RecipesPage() {
               Start building your collection by creating your first recipe. You
               can add ingredients, instructions, and photos.
             </p>
-            <Link href="/recipes/new">
-              <Button>
-                <Plus className="h-4 w-4" />
+            <Button asChild>
+              <Link href="/recipes/new">
+                <Plus className="h-4 w-4" aria-hidden="true" />
                 Create Your First Recipe
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       ) : (

@@ -1,10 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Heart } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
+
+type FavoriteChangeHandler = (recipeId: string, favorited: boolean) => void;
+
+/**
+ * Lets a list react to favorites changing inside cards it does not render
+ * itself (RecipeCard renders its own FavoriteButton). The favorites page uses
+ * it to drop a recipe from the list as soon as it is unfavorited.
+ */
+const FavoriteChangeContext = createContext<FavoriteChangeHandler | null>(null);
+
+export const FavoriteChangeProvider = FavoriteChangeContext.Provider;
 
 interface FavoriteButtonProps {
   recipeId: string;
@@ -12,6 +24,8 @@ interface FavoriteButtonProps {
   variant?: "icon" | "button" | "glass";
   size?: "sm" | "md";
   className?: string;
+  /** Called once the server has confirmed the new state. */
+  onChange?: (favorited: boolean) => void;
 }
 
 export function FavoriteButton({
@@ -20,7 +34,11 @@ export function FavoriteButton({
   variant = "icon",
   size = "md",
   className,
+  onChange,
 }: FavoriteButtonProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const onListChange = useContext(FavoriteChangeContext);
   const [isFavorited, setIsFavorited] = useState(initialFavorited ?? false);
   const [isPending, setIsPending] = useState(false);
 
@@ -53,14 +71,24 @@ export function FavoriteButton({
     setIsFavorited(next);
     setIsPending(true);
 
+    let confirmed = false;
     try {
       const res = await fetch(`/api/favorites/${recipeId}`, {
         method: next ? "POST" : "DELETE",
       });
 
+      if (res.status === 401) {
+        // Signed out (or the session expired): sign in, then come back here.
+        favoritedRef.current = previous;
+        setIsFavorited(previous);
+        router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+        return;
+      }
+
       if (!res.ok) {
         throw new Error("Request failed");
       }
+      confirmed = true;
     } catch {
       favoritedRef.current = previous;
       setIsFavorited(previous);
@@ -68,6 +96,11 @@ export function FavoriteButton({
     } finally {
       inFlightRef.current = false;
       setIsPending(false);
+    }
+
+    if (confirmed) {
+      onChange?.(next);
+      onListChange?.(recipeId, next);
     }
   };
 
@@ -81,7 +114,8 @@ export function FavoriteButton({
         onClick={handleToggle}
         disabled={isPending}
         className={cn(
-          "flex items-center justify-center rounded-full glass p-2 transition-all hover:scale-110",
+          // 44px touch target (style guide: medium control height).
+          "flex h-11 w-11 items-center justify-center rounded-full glass transition-all hover:scale-110",
           isPending && "opacity-50",
           className
         )}
@@ -93,7 +127,7 @@ export function FavoriteButton({
           className={cn(
             iconSize,
             "transition-colors",
-            isFavorited ? "fill-red-500 text-red-500" : "text-foreground"
+            isFavorited ? "fill-paprika text-paprika" : "text-foreground"
           )}
         />
       </button>
@@ -127,7 +161,8 @@ export function FavoriteButton({
       disabled={isPending}
       variant="ghost"
       size="icon"
-      className={cn("rounded-full", isPending && "opacity-50", className)}
+      // 44px touch target (style guide: medium control height).
+      className={cn("size-11 rounded-full", isPending && "opacity-50", className)}
       aria-label={label}
       aria-pressed={isFavorited}
     >
@@ -137,7 +172,7 @@ export function FavoriteButton({
           iconSize,
           "transition-colors",
           isFavorited
-            ? "fill-red-500 text-red-500"
+            ? "fill-paprika text-paprika"
             : "text-muted-foreground hover:text-foreground"
         )}
       />

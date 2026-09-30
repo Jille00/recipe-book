@@ -1,10 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { nanoid } from "nanoid";
+import { toast } from "sonner";
 import {
   Button,
+  buttonVariants,
   Input,
   Textarea,
   Card,
@@ -19,8 +23,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ImageUpload } from "@/components/recipe/image-upload";
-import { RecipeImportModal } from "@/components/recipe/recipe-import-modal";
 import { NutritionDisplay } from "@/components/recipe/nutrition-display";
 import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
 import type { NutritionInfo } from "@/types/nutrition";
@@ -53,7 +66,38 @@ import {
 import { useUnitPreferences } from "@/hooks/use-unit-preferences";
 import type { UnitSystem } from "@/types/units";
 import { recipePath } from "@/lib/recipe-url";
-import { nutritionInputsKey } from "@/lib/utils/nutrition-inputs";
+import { nutritionBasisKey } from "@/lib/utils/nutrition-inputs";
+import { recipeFormSnapshot } from "@/lib/utils/recipe-form-snapshot";
+import {
+  applyImportToForm,
+  fieldsOverwrittenByImport,
+  type ImportableFormValues,
+} from "@/lib/recipe-import/apply-to-form";
+import { useBeforeUnload } from "@/hooks/use-before-unload";
+
+// The import dialog (and its image and HEIC helpers) is only needed once
+// someone opens it, so it is split into its own chunk.
+const RecipeImportModal = dynamic(
+  () =>
+    import("@/components/recipe/recipe-import-modal").then(
+      (mod) => mod.RecipeImportModal
+    ),
+  { ssr: false }
+);
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
+/** Nutrition as the form holds it: the basis key is tracked separately. */
+function withoutBasisKey(nutrition: NutritionInfo): NutritionInfo {
+  const copy = { ...nutrition };
+  delete copy.basisKey;
+  return copy;
+}
 
 // Unit options for ingredient selection with system info
 const UNIT_OPTIONS: Array<{
@@ -174,15 +218,18 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
     initialData?.tag_ids || []
   );
   const [isPublic, setIsPublic] = useState(initialData?.is_public || false);
-  const [nutrition, setNutrition] = useState<NutritionInfo | null>(
-    initialData?.nutrition || null
+  const [nutrition, setNutrition] = useState<NutritionInfo | null>(() =>
+    initialData?.nutrition ? withoutBasisKey(initialData.nutrition) : null
   );
   // Fingerprint of the ingredients and servings the nutrition on screen was
-  // calculated from. A saved recipe's nutrition is taken to match its saved
-  // ingredients; anything edited since makes the estimate outdated.
+  // calculated from. It is saved with the nutrition, so numbers that were
+  // already outdated when saved are still flagged when the recipe is edited
+  // again. Nutrition saved before the fingerprint existed is taken to match
+  // its saved ingredients.
   const [nutritionBasis, setNutritionBasis] = useState<string | null>(() =>
     initialData?.nutrition
-      ? nutritionInputsKey(initialData.ingredients, initialData.servings)
+      ? initialData.nutrition.basisKey ??
+        nutritionBasisKey(initialData.ingredients, initialData.servings)
       : null
   );
   const [isCalculatingNutrition, setIsCalculatingNutrition] = useState(false);
@@ -198,22 +245,47 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [importModalOpen, setImportModalOpen] = useState(false);
+  // The import dialog's code is loaded the first time it opens, then kept
+  // mounted so it can animate closed.
+  const [importModalMounted, setImportModalMounted] = useState(false);
+  const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
+  const [outdatedDialogOpen, setOutdatedDialogOpen] = useState(false);
+  // True once the recipe was saved or the user chose to discard changes:
+  // leaving is intended from then on, so it is no longer guarded.
+  const [leaveAllowed, setLeaveAllowed] = useState(false);
   const errorRef = useRef<HTMLDivElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const servingsInputRef = useRef<HTMLInputElement>(null);
   // Set synchronously, unlike isSubmitting, so a fast second click can't slip
   // in before the re-render and create the recipe twice.
   const submittingRef = useRef(false);
+
+  const formValues = {
+    title,
+    description,
+    ingredients,
+    instructions,
+    prepTime,
+    cookTime,
+    servings,
+    difficulty,
+    imageUrl,
+    tagIds: selectedTagIds,
+    isPublic,
+    nutrition,
+  };
+  // What the form held when it opened; any difference is an unsaved change.
+  const [initialSnapshot] = useState(() => recipeFormSnapshot(formValues));
+  const isDirty = recipeFormSnapshot(formValues) !== initialSnapshot;
+  useBeforeUnload(isDirty && !leaveAllowed);
 
   // Nutrition is calculated per serving, but the Servings field lives in a
   // different card from the Calculate button. The hint links straight to it.
   const focusServingsField = () => {
     const input = servingsInputRef.current;
     if (!input) return;
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
     input.scrollIntoView({
-      behavior: reduceMotion ? "auto" : "smooth",
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
       block: "center",
     });
     input.focus({ preventScroll: true });
@@ -224,56 +296,65 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
   // view (and focus it) whenever a new message appears.
   useEffect(() => {
     if (!error) return;
-    errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    errorRef.current?.scrollIntoView({
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+      block: "center",
+    });
     errorRef.current?.focus({ preventScroll: true });
   }, [error]);
 
-  // Handle import from AI extraction
-  const handleImportRecipe = (extracted: ExtractedRecipe) => {
-    setTitle(extracted.title);
-    setDescription(extracted.description || "");
-    setPrepTime(extracted.prepTimeMinutes?.toString() || "");
-    setCookTime(extracted.cookTimeMinutes?.toString() || "");
-    setServings(extracted.servings?.toString() || "");
-    setDifficulty(extracted.difficulty || "");
-    // Only a link import brings a photo (already re-hosted in our storage).
-    // Keep the current photo when the import has none.
-    if (extracted.imageUrl) {
-      setImageUrl(extracted.imageUrl);
-    }
+  const importableValues: ImportableFormValues = {
+    title,
+    description,
+    prepTime,
+    cookTime,
+    servings,
+    difficulty,
+    imageUrl,
+    ingredients,
+    instructions,
+    tagIds: selectedTagIds,
+  };
 
-    // Map ingredients with new IDs
-    setIngredients(
-      extracted.ingredients.map((ing) => ({
-        id: nanoid(),
-        text: ing.text,
-        amount: ing.amount || "",
-        unit: ing.unit || "",
-      }))
+  // Which filled-in fields an import would replace; the import dialog asks
+  // before overwriting them.
+  const getOverwrittenFields = (extracted: ExtractedRecipe) =>
+    fieldsOverwrittenByImport(
+      importableValues,
+      applyImportToForm(importableValues, extracted, tags)
     );
 
-    // Map instructions with new IDs
+  // Handle import from AI extraction
+  const handleImportRecipe = (extracted: ExtractedRecipe) => {
+    const next = applyImportToForm(importableValues, extracted, tags);
+    setTitle(next.title);
+    setDescription(next.description);
+    setPrepTime(next.prepTime);
+    setCookTime(next.cookTime);
+    setServings(next.servings);
+    setDifficulty(next.difficulty);
+    setImageUrl(next.imageUrl);
+    setIngredients(
+      next.ingredients.map((ing) => ({
+        id: nanoid(),
+        text: ing.text,
+        amount: ing.amount ?? "",
+        unit: ing.unit ?? "",
+      }))
+    );
     setInstructions(
-      extracted.instructions.map((inst, index) => ({
+      next.instructions.map((inst, index) => ({
         id: nanoid(),
         step: index + 1,
         text: inst.text,
       }))
     );
+    setSelectedTagIds(next.tagIds);
+  };
 
-    // Match suggested category to tags
-    if (extracted.suggestedCategory) {
-      const normalized = extracted.suggestedCategory.toLowerCase().trim();
-      const matched = tags.find(
-        (t) =>
-          t.name.toLowerCase() === normalized ||
-          t.name.toLowerCase().includes(normalized) ||
-          normalized.includes(t.name.toLowerCase())
-      );
-      if (matched) {
-        setSelectedTagIds([matched.id]);
-      }
-    }
+  const openImportModal = () => {
+    setImportModalMounted(true);
+    setImportModalOpen(true);
   };
 
   // Calculate nutrition from ingredients
@@ -287,7 +368,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
 
     // Captured before the request: if the recipe is edited while this runs,
     // the result must still count as based on what was actually sent.
-    const requestBasis = nutritionInputsKey(filteredIngredients, servings);
+    const requestBasis = nutritionBasisKey(filteredIngredients, servings);
 
     setIsCalculatingNutrition(true);
     setError("");
@@ -312,7 +393,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       }
 
       const data = await response.json();
-      setNutrition(data.nutrition);
+      setNutrition(withoutBasisKey(data.nutrition));
       setNutritionBasis(requestBasis);
     } catch (err) {
       setError(
@@ -324,10 +405,10 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
   };
 
   const handleNutritionEdit = (updatedNutrition: NutritionInfo) => {
-    setNutrition(updatedNutrition);
+    setNutrition(withoutBasisKey(updatedNutrition));
     // Editing the values by hand means they were reviewed against the recipe
     // as it is now.
-    setNutritionBasis(nutritionInputsKey(ingredients, servings));
+    setNutritionBasis(nutritionBasisKey(ingredients, servings));
     setIsEditingNutrition(false);
   };
 
@@ -335,7 +416,8 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
   const nutritionOutdated =
     nutrition !== null &&
     nutritionBasis !== null &&
-    nutritionBasis !== nutritionInputsKey(ingredients, servings);
+    nutritionBasis !== nutritionBasisKey(ingredients, servings);
+  const canCalculateNutrition = hasIngredientText && !!servings;
 
   const addIngredient = () => {
     setIngredients([
@@ -382,8 +464,11 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
     );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const saveRecipe = async ({
+    allowOutdatedNutrition,
+  }: {
+    allowOutdatedNutrition: boolean;
+  }) => {
     if (submittingRef.current) return;
     submittingRef.current = true;
     setError("");
@@ -406,6 +491,15 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       return;
     }
 
+    // Saving numbers that no longer match the recipe would show them on the
+    // recipe page as if they did; ask first.
+    if (nutritionOutdated && !allowOutdatedNutrition) {
+      submittingRef.current = false;
+      setIsSubmitting(false);
+      setOutdatedDialogOpen(true);
+      return;
+    }
+
     const recipeData = {
       title,
       description,
@@ -419,7 +513,11 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       servings: servings ? parseInt(servings) : null,
       difficulty: difficulty || null,
       image_url: imageUrl || null,
-      nutrition: nutrition,
+      // The basis key travels with the nutrition, so the editor can still
+      // tell later whether these numbers match the recipe.
+      nutrition: nutrition
+        ? { ...nutrition, basisKey: nutritionBasis ?? undefined }
+        : null,
       tag_ids: selectedTagIds,
       is_public: isPublic,
     };
@@ -440,6 +538,10 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       }
 
       const data = await response.json();
+      // Saved: navigating away is no longer losing anything. flushSync drops
+      // the beforeunload guard before navigation starts.
+      flushSync(() => setLeaveAllowed(true));
+      toast.success(isEditing ? "Recipe updated" : "Recipe created");
       // Land on the recipe's one address, which is also its share link. The
       // form stays disabled while that page loads.
       router.push(recipePath(data));
@@ -448,6 +550,24 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
       setError(err instanceof Error ? err.message : "An error occurred");
       submittingRef.current = false;
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void saveRecipe({ allowOutdatedNutrition: false });
+  };
+
+  const leave = () => {
+    flushSync(() => setLeaveAllowed(true));
+    router.back();
+  };
+
+  const handleCancel = () => {
+    if (isDirty) {
+      setDiscardDialogOpen(true);
+    } else {
+      leave();
     }
   };
 
@@ -488,10 +608,9 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setImportModalOpen(true)}
-                className="gap-2"
+                onClick={openImportModal}
               >
-                <Camera className="h-4 w-4" />
+                <Camera aria-hidden="true" />
                 Import
               </Button>
             )}
@@ -506,12 +625,13 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                   Recipe Title <span className="text-destructive">*</span>
                 </Label>
                 <Input
+                  ref={titleInputRef}
                   id="title"
                   placeholder="e.g., Grandma's Apple Pie"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
-                  className="h-12 text-lg font-display"
+                  className="text-lg font-display"
                 />
               </div>
               <div className="space-y-2">
@@ -527,57 +647,72 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                   className="resize-none"
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Tags</Label>
+              <fieldset className="space-y-2" aria-describedby="tags-help">
+                <legend className="mb-2 text-sm font-medium">Tags</legend>
                 <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-border min-h-[44px]">
-                  {tags.map((tag) => (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      onClick={() => toggleTag(tag.id)}
-                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm transition-colors ${
-                        selectedTagIds.includes(tag.id)
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground hover:bg-muted/80"
-                      }`}
-                    >
-                      {tag.name}
-                      {selectedTagIds.includes(tag.id) && (
-                        <X className="h-3 w-3" />
-                      )}
-                    </button>
-                  ))}
+                  {tags.map((tag) => {
+                    const selected = selectedTagIds.includes(tag.id);
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => toggleTag(tag.id)}
+                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                          selected
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                        }`}
+                      >
+                        {tag.name}
+                        {selected && (
+                          <X className="h-3 w-3" aria-hidden="true" />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p id="tags-help" className="text-xs text-muted-foreground">
                   Click to select multiple tags
                 </p>
-              </div>
+              </fieldset>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Difficulty</Label>
+                  <Label htmlFor="difficulty" className="text-sm font-medium">
+                    Difficulty
+                  </Label>
                   <Select
                     value={difficulty}
                     onValueChange={(v) => setDifficulty(v as Difficulty)}
                   >
-                    <SelectTrigger className="h-11">
+                    <SelectTrigger id="difficulty">
                       <SelectValue placeholder="Select level" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="easy">
                         <span className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                          <span
+                            className="h-2 w-2 rounded-full bg-sage-500"
+                            aria-hidden="true"
+                          />
                           Easy
                         </span>
                       </SelectItem>
                       <SelectItem value="medium">
                         <span className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full bg-amber-500" />
+                          <span
+                            className="h-2 w-2 rounded-full bg-amber"
+                            aria-hidden="true"
+                          />
                           Medium
                         </span>
                       </SelectItem>
                       <SelectItem value="hard">
                         <span className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full bg-red-500" />
+                          <span
+                            className="h-2 w-2 rounded-full bg-paprika"
+                            aria-hidden="true"
+                          />
                           Hard
                         </span>
                       </SelectItem>
@@ -588,8 +723,8 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
             </div>
 
             {/* Right: Image Upload */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Recipe Photo</Label>
+            <fieldset className="min-w-0">
+              <legend className="mb-2 text-sm font-medium">Recipe Photo</legend>
               <ImageUpload
                 value={imageUrl}
                 onChange={setImageUrl}
@@ -600,7 +735,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                   instructions: instructions.filter((i) => i.text.trim()),
                 }}
               />
-            </div>
+            </fieldset>
           </div>
         </CardContent>
       </Card>
@@ -636,7 +771,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                   placeholder="30"
                   value={prepTime}
                   onChange={(e) => setPrepTime(e.target.value)}
-                  className="pl-10 h-11"
+                  className="pl-10"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                   min
@@ -659,7 +794,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                   placeholder="45"
                   value={cookTime}
                   onChange={(e) => setCookTime(e.target.value)}
-                  className="pl-10 h-11"
+                  className="pl-10"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                   min
@@ -683,7 +818,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                   placeholder="4"
                   value={servings}
                   onChange={(e) => setServings(e.target.value)}
-                  className="pl-10 h-11"
+                  className="pl-10"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                   people
@@ -714,9 +849,8 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
               variant="outline"
               size="sm"
               onClick={addIngredient}
-              className="gap-2"
             >
-              <Plus className="h-4 w-4" />
+              <Plus aria-hidden="true" />
               Add
             </Button>
           </div>
@@ -739,7 +873,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                     onChange={(e) =>
                       updateIngredient(ingredient.id, "amount", e.target.value)
                     }
-                    className="sm:col-span-2 h-9 text-center"
+                    className="sm:col-span-2 text-center"
                   />
                   <Select
                     value={ingredient.unit || "none"}
@@ -753,7 +887,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                   >
                     <SelectTrigger
                       aria-label={`Ingredient ${index + 1} unit`}
-                      className="sm:col-span-4 h-9"
+                      className="w-full sm:col-span-4"
                     >
                       <SelectValue placeholder="Unit" />
                     </SelectTrigger>
@@ -775,7 +909,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                     onChange={(e) =>
                       updateIngredient(ingredient.id, "text", e.target.value)
                     }
-                    className="sm:col-span-6 h-9"
+                    className="sm:col-span-6"
                   />
                 </div>
                 <Button
@@ -802,7 +936,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
             onClick={addIngredient}
             className="mt-4 w-full border border-dashed border-border hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-primary"
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus aria-hidden="true" />
             Add another ingredient
           </Button>
         </CardContent>
@@ -828,17 +962,12 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
               variant="outline"
               size="sm"
               onClick={calculateNutrition}
-              disabled={
-                isCalculatingNutrition ||
-                ingredients.filter((i) => i.text.trim()).length === 0 ||
-                !servings
-              }
-              className="gap-2"
+              disabled={isCalculatingNutrition || !canCalculateNutrition}
             >
               {isCalculatingNutrition ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="animate-spin" aria-hidden="true" />
               ) : (
-                <Sparkles className="h-4 w-4" />
+                <Sparkles aria-hidden="true" />
               )}
               {nutrition ? "Recalculate" : "Calculate"}
             </Button>
@@ -879,24 +1008,24 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
           {nutrition && !isCalculatingNutrition && nutritionOutdated && (
             <div
               role="status"
-              className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm"
+              className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-amber/30 bg-amber/10 p-3 text-sm"
             >
               <AlertTriangle
-                className="h-4 w-4 shrink-0 text-amber-600"
+                className="h-4 w-4 shrink-0 text-amber"
                 aria-hidden="true"
               />
               <p className="flex-1 text-foreground">
                 The ingredients or servings have changed since this was
                 calculated, so these numbers may be out of date.
               </p>
-              {hasIngredientText && servings ? (
+              {canCalculateNutrition ? (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={calculateNutrition}
                 >
-                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                  <Sparkles aria-hidden="true" />
                   Recalculate
                 </Button>
               ) : !servings ? (
@@ -942,9 +1071,8 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
               variant="outline"
               size="sm"
               onClick={addInstruction}
-              className="gap-2"
             >
-              <Plus className="h-4 w-4" />
+              <Plus aria-hidden="true" />
               Add Step
             </Button>
           </div>
@@ -972,7 +1100,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
                     onChange={(e) =>
                       updateInstruction(instruction.id, e.target.value)
                     }
-                    className="min-h-[80px] resize-none"
+                    className="resize-none"
                     rows={2}
                   />
                 </div>
@@ -997,7 +1125,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
             onClick={addInstruction}
             className="mt-2 w-full border border-dashed border-border hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-primary"
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus aria-hidden="true" />
             Add another step
           </Button>
         </CardContent>
@@ -1051,7 +1179,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.back()}
+            onClick={handleCancel}
             disabled={isSubmitting}
             className="min-w-[100px]"
           >
@@ -1060,21 +1188,78 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
           <Button
             type="submit"
             isLoading={isSubmitting}
-            className="min-w-[140px] gap-2"
+            className="min-w-[140px]"
           >
-            {!isSubmitting && <ChefHat className="h-4 w-4" />}
+            {!isSubmitting && <ChefHat aria-hidden="true" />}
             {isEditing ? "Update Recipe" : "Create Recipe"}
           </Button>
         </div>
       </div>
 
-      {/* Import Modal */}
-      <RecipeImportModal
-        open={importModalOpen}
-        onOpenChange={setImportModalOpen}
-        onImport={handleImportRecipe}
-        tags={tags}
-      />
+      {/* Import Modal - loaded on first open */}
+      {importModalMounted && (
+        <RecipeImportModal
+          open={importModalOpen}
+          onOpenChange={setImportModalOpen}
+          onImport={handleImportRecipe}
+          getOverwrittenFields={getOverwrittenFields}
+          focusAfterApplyRef={titleInputRef}
+          tags={tags}
+        />
+      )}
+
+      {/* Cancel with unsaved changes */}
+      <AlertDialog open={discardDialogOpen} onOpenChange={setDiscardDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard your changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {isEditing
+                ? "Your changes to this recipe haven't been saved and will be lost."
+                : "This recipe hasn't been saved and everything you entered will be lost."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={leave}
+              className={buttonVariants({ variant: "destructive" })}
+            >
+              Discard changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Saving while the nutrition no longer matches the recipe */}
+      <AlertDialog open={outdatedDialogOpen} onOpenChange={setOutdatedDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Nutrition may be out of date</AlertDialogTitle>
+            <AlertDialogDescription>
+              The ingredients or servings changed after the nutrition was
+              calculated, so the saved numbers may not match this recipe.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go back</AlertDialogCancel>
+            {canCalculateNutrition && (
+              <AlertDialogAction
+                onClick={() => void calculateNutrition()}
+                className={buttonVariants({ variant: "outline" })}
+              >
+                <Sparkles aria-hidden="true" />
+                Recalculate
+              </AlertDialogAction>
+            )}
+            <AlertDialogAction
+              onClick={() => void saveRecipe({ allowOutdatedNutrition: true })}
+            >
+              Save anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 }

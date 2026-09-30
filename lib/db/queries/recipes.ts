@@ -192,7 +192,8 @@ export async function getRecipeByCode(
         ? and(eq(favorite.recipeId, recipe.id), eq(favorite.userId, viewerId))
         : sql`false`
     )
-    .where(eq(recipe.code, code))
+    // Codes are lowercase; a link retyped in capitals still works.
+    .where(eq(recipe.code, code.toLowerCase()))
     .limit(1);
 
   if (results.length === 0) return null;
@@ -228,13 +229,13 @@ export async function resolveRecipeAddress(
     .from(recipe)
     .where(
       or(
-        eq(recipe.code, key),
+        eq(recipe.code, key.toLowerCase()),
         eq(recipe.shareToken, key),
-        and(eq(recipe.slug, key), eq(recipe.isPublic, true))
+        and(eq(recipe.slug, key.toLowerCase()), eq(recipe.isPublic, true))
       )
     )
     .orderBy(
-      sql`case when ${recipe.code} = ${key} then 0 when ${recipe.shareToken} = ${key} then 1 else 2 end`,
+      sql`case when ${recipe.code} = ${key.toLowerCase()} then 0 when ${recipe.shareToken} = ${key} then 1 else 2 end`,
       asc(recipe.createdAt)
     )
     .limit(1);
@@ -425,4 +426,14 @@ export async function getPublicRecipesForSitemap(): Promise<
     .orderBy(desc(recipe.updatedAt));
 
   return recipes;
+}
+
+/** Whether any recipe still shows this image (checked before deleting it). */
+export async function isImageUrlInUse(imageUrl: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: recipe.id })
+    .from(recipe)
+    .where(eq(recipe.imageUrl, imageUrl))
+    .limit(1);
+  return rows.length > 0;
 }

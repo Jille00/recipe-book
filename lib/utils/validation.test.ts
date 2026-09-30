@@ -198,6 +198,21 @@ describe("nutritionSchema", () => {
     expect(nutritionSchema.safeParse({ ...nutrition, calories: -1 }).success).toBe(false);
     expect(nutritionSchema.safeParse({ ...nutrition, confidence: "certain" }).success).toBe(false);
   });
+
+  it("keeps the basis key the nutrition was calculated for", () => {
+    const parsed = nutritionSchema.parse({ ...nutrition, basisKey: "v1:abc123" });
+    expect(parsed.basisKey).toBe("v1:abc123");
+  });
+
+  it("still parses nutrition saved without a basis key", () => {
+    const parsed = nutritionSchema.parse(nutrition);
+    expect(parsed).not.toHaveProperty("basisKey");
+  });
+
+  it("rejects an oversized or non-string basis key", () => {
+    expect(nutritionSchema.safeParse({ ...nutrition, basisKey: "x".repeat(65) }).success).toBe(false);
+    expect(nutritionSchema.safeParse({ ...nutrition, basisKey: 42 }).success).toBe(false);
+  });
 });
 
 describe("recipeUpdateSchema", () => {

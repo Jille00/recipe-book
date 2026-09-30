@@ -65,6 +65,10 @@ const NUTRITION_PROMPT = `You are a nutrition expert. Calculate the estimated nu
 
 Provide your best estimates. If you truly cannot determine a value, use null.`;
 
+// AI calls routinely take 10-30 seconds; don't let the platform default cut
+// them off halfway (a paid call with nothing to show for it).
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
@@ -73,7 +77,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const limited = enforceRateLimit("ai:calculate-nutrition", session.user.id);
+    const limited = await enforceRateLimit("ai:calculate-nutrition", session.user.id);
     if (limited) return limited;
 
     let body: unknown;
@@ -127,7 +131,21 @@ Calculate the nutritional values per serving.`,
       ],
     });
 
-    return NextResponse.json(result.object);
+    // The model occasionally returns a negative estimate, which the recipe
+    // schema then rejects, failing the whole save. Nothing here is below zero.
+    const { nutrition } = result.object;
+    const clamp = (value: number | null) => (value === null ? null : Math.max(0, value));
+    return NextResponse.json({
+      nutrition: {
+        ...nutrition,
+        calories: clamp(nutrition.calories),
+        protein: clamp(nutrition.protein),
+        carbs: clamp(nutrition.carbs),
+        fat: clamp(nutrition.fat),
+        fiber: clamp(nutrition.fiber),
+        sugar: clamp(nutrition.sugar),
+      },
+    });
   } catch (error) {
     console.error("Nutrition calculation failed:", error);
 

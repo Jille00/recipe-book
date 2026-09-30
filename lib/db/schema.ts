@@ -10,6 +10,7 @@ import {
   unique,
   primaryKey,
   check,
+  bigint,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -89,6 +90,30 @@ export const verification = pgTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)]
 );
 
+// better-auth's brute-force counters (rateLimit.storage: "database"), shared
+// by every serverless instance instead of living in one instance's memory.
+export const rateLimit = pgTable("rate_limit", {
+  id: text("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  count: integer("count").notNull(),
+  lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+});
+
+// The app's own per-user limits (lib/rate-limit.ts): one row per key and fixed
+// window, incremented atomically.
+export const appRateLimit = pgTable(
+  "app_rate_limit",
+  {
+    key: text("key").notNull(),
+    windowStart: bigint("window_start", { mode: "number" }).notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (table) => [
+    primaryKey({ columns: [table.key, table.windowStart] }),
+    index("idx_app_rate_limit_window_start").on(table.windowStart),
+  ]
+);
+
 // =====================
 // Application Tables
 // =====================
@@ -152,12 +177,15 @@ export const recipe = pgTable(
     updatedAt: timestamp("updated_at").defaultNow(),
   },
   (table) => [
-    index("idx_recipe_user_id").on(table.userId),
-    index("idx_recipe_is_public").on(table.isPublic),
+    // "My recipes" and the dashboard: one user's recipes, newest first.
+    index("idx_recipe_user_created").on(table.userId, table.createdAt),
+    // /browse and the sitemap: public recipes, newest first.
+    index("idx_recipe_public_created")
+      .on(table.createdAt)
+      .where(sql`${table.isPublic}`),
     // The unique (user_id, slug) index leads with user_id, so it cannot serve
     // the public "slug + is_public" lookup. This one can.
     index("idx_recipe_slug").on(table.slug),
-    index("idx_recipe_share_token").on(table.shareToken),
     index("idx_recipe_created_at").on(table.createdAt),
     unique("recipe_user_slug_unique").on(table.userId, table.slug),
   ]
@@ -193,7 +221,9 @@ export const favorite = pgTable(
     createdAt: timestamp("created_at").defaultNow(),
   },
   (table) => [
-    index("idx_favorite_user_id").on(table.userId),
+    index("idx_favorite_user_created").on(table.userId, table.createdAt),
+    // Cascading deletes of a recipe look favorites up by recipe.
+    index("idx_favorite_recipe_id").on(table.recipeId),
     unique("favorite_user_recipe_unique").on(table.userId, table.recipeId),
   ]
 );
@@ -235,9 +265,9 @@ export const comment = pgTable(
     updatedAt: timestamp("updated_at").defaultNow(),
   },
   (table) => [
-    index("idx_comment_recipe_id").on(table.recipeId),
+    // A recipe's comments, newest first.
+    index("idx_comment_recipe_created").on(table.recipeId, table.createdAt),
     index("idx_comment_user_id").on(table.userId),
-    index("idx_comment_created_at").on(table.createdAt),
     // Mirrors MAX_COMMENT_LENGTH in lib/db/queries/comments.ts
     check("comment_content_length", sql`char_length(${table.content}) <= 1000`),
   ]

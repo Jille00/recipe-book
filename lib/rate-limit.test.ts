@@ -1,5 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { checkRateLimit, enforceRateLimit, RATE_LIMITS } from "./rate-limit";
+import {
+  AI_DAILY_LIMITS,
+  checkRateLimit,
+  enforceRateLimit,
+  memoryRateLimitStore,
+  RATE_LIMITS,
+  setRateLimitStore,
+  type RateLimitStore,
+} from "./rate-limit";
+
+setRateLimitStore(memoryRateLimitStore);
 
 // The limiter keeps its counters in module state with no reset hook, so every
 // test uses keys nobody else uses.
@@ -119,21 +129,21 @@ describe("enforceRateLimit", () => {
   const NAME = "ai:generate-recipe-image";
   const { limit, windowMs } = RATE_LIMITS[NAME];
 
-  const exhaust = (name: keyof typeof RATE_LIMITS, userId: string) => {
+  const exhaust = async (name: keyof typeof RATE_LIMITS, userId: string) => {
     for (let i = 0; i < RATE_LIMITS[name].limit; i++) {
-      expect(enforceRateLimit(name, userId)).toBeNull();
+      expect(await enforceRateLimit(name, userId)).toBeNull();
     }
   };
 
-  it("lets requests through up to the named limit", () => {
-    exhaust(NAME, uniqueKey("user"));
+  it("lets requests through up to the named limit", async () => {
+    await exhaust(NAME, uniqueKey("user"));
   });
 
   it("answers 429 with Retry-After and rate-limit headers once over the limit", async () => {
     const userId = uniqueKey("user");
-    exhaust(NAME, userId);
+    await exhaust(NAME, userId);
 
-    const response = enforceRateLimit(NAME, userId);
+    const response = await enforceRateLimit(NAME, userId);
     expect(response).not.toBeNull();
     expect(response!.status).toBe(429);
 
@@ -149,40 +159,87 @@ describe("enforceRateLimit", () => {
 
   it("uses the singular 'second' when one second remains", async () => {
     const userId = uniqueKey("user");
-    exhaust(NAME, userId);
+    await exhaust(NAME, userId);
     vi.setSystemTime(START + windowMs - 500);
-    const response = enforceRateLimit(NAME, userId);
+    const response = await enforceRateLimit(NAME, userId);
     expect(response!.headers.get("Retry-After")).toBe("1");
     expect(await response!.json()).toEqual({ error: "Too many requests. Please try again in 1 second." });
   });
 
-  it("isolates users", () => {
+  it("isolates users", async () => {
     const alice = uniqueKey("alice");
     const bob = uniqueKey("bob");
-    exhaust(NAME, alice);
-    expect(enforceRateLimit(NAME, alice)).not.toBeNull();
-    expect(enforceRateLimit(NAME, bob)).toBeNull();
+    await exhaust(NAME, alice);
+    expect(await enforceRateLimit(NAME, alice)).not.toBeNull();
+    expect(await enforceRateLimit(NAME, bob)).toBeNull();
   });
 
-  it("isolates limit names for the same user", () => {
+  it("isolates limit names for the same user", async () => {
     const userId = uniqueKey("user");
-    exhaust(NAME, userId);
-    expect(enforceRateLimit(NAME, userId)).not.toBeNull();
-    expect(enforceRateLimit("upload", userId)).toBeNull();
-    expect(enforceRateLimit("ai:extract-recipe", userId)).toBeNull();
+    await exhaust(NAME, userId);
+    expect(await enforceRateLimit(NAME, userId)).not.toBeNull();
+    expect(await enforceRateLimit("upload", userId)).toBeNull();
+    expect(await enforceRateLimit("ai:extract-recipe", userId)).toBeNull();
   });
 
-  it("allows the user again once the window has passed", () => {
+  it("allows the user again once the window has passed", async () => {
     const userId = uniqueKey("user");
-    exhaust(NAME, userId);
-    expect(enforceRateLimit(NAME, userId)).not.toBeNull();
+    await exhaust(NAME, userId);
+    expect(await enforceRateLimit(NAME, userId)).not.toBeNull();
     vi.setSystemTime(START + windowMs);
-    expect(enforceRateLimit(NAME, userId)).toBeNull();
+    expect(await enforceRateLimit(NAME, userId)).toBeNull();
   });
 
-  it("does not share counters with checkRateLimit keys that are not namespaced", () => {
+  it("does not share counters with checkRateLimit keys that are not namespaced", async () => {
     const userId = uniqueKey("user");
     for (let i = 0; i < limit; i++) checkRateLimit(userId, { limit, windowMs });
-    expect(enforceRateLimit(NAME, userId)).toBeNull();
+    expect(await enforceRateLimit(NAME, userId)).toBeNull();
+  });
+});
+
+describe("daily AI caps", () => {
+  it("stops a user after the daily AI limit, across AI endpoints", async () => {
+    const userId = uniqueKey("user");
+    const perMinute = RATE_LIMITS["ai:calculate-nutrition"];
+    let allowed = 0;
+    for (let i = 0; i < AI_DAILY_LIMITS.perUser.limit + 5; i++) {
+      // Stay under the per-minute limit.
+      if (i > 0 && i % perMinute.limit === 0) vi.advanceTimersByTime(perMinute.windowMs);
+      const response = await enforceRateLimit("ai:calculate-nutrition", userId);
+      if (response === null) allowed++;
+      else expect(await response.json()).toEqual({
+        error: "You've reached today's limit for AI features. Please try again tomorrow.",
+      });
+    }
+    expect(allowed).toBe(AI_DAILY_LIMITS.perUser.limit);
+  });
+
+  it("does not apply the AI caps to uploads", async () => {
+    const counted: string[] = [];
+    const spy: RateLimitStore = {
+      hit: async (key, rule, now) => {
+        counted.push(key);
+        return memoryRateLimitStore.hit(key, rule, now);
+      },
+    };
+    setRateLimitStore(spy);
+    try {
+      await enforceRateLimit("upload", uniqueKey("user"));
+      expect(counted.some((key) => key.startsWith("ai:daily"))).toBe(false);
+    } finally {
+      setRateLimitStore(memoryRateLimitStore);
+    }
+  });
+
+  it("falls back to memory when the store fails", async () => {
+    setRateLimitStore({ hit: async () => { throw new Error("db down"); } });
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(await enforceRateLimit("upload", uniqueKey("user"))).toBeNull();
+      expect(errors).toHaveBeenCalled();
+    } finally {
+      errors.mockRestore();
+      setRateLimitStore(memoryRateLimitStore);
+    }
   });
 });

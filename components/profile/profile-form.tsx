@@ -19,7 +19,27 @@ import {
 } from "@/components/ui";
 import { User, Globe, MapPin, Scale, Loader2 } from "lucide-react";
 import { useUnitPreferences } from "@/hooks/use-unit-preferences";
+import { useSession } from "@/lib/auth-client";
 import type { UnitSystem } from "@/types/units";
+
+/**
+ * The API explains validation problems (a bad website address, a bio that is
+ * too long) in a 400's `error` field. Anything else, or a body that is not
+ * JSON (an HTML error page), gets a generic message.
+ */
+async function readErrorMessage(response: Response): Promise<string> {
+  const fallback = "Failed to update profile";
+  if (response.status === 401) {
+    return "Your session has expired. Please sign in again.";
+  }
+  if (response.status !== 400) return fallback;
+  try {
+    const data = await response.json();
+    return typeof data?.error === "string" && data.error ? data.error : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 interface ProfileFormProps {
   user: {
@@ -37,6 +57,9 @@ interface ProfileFormProps {
 
 export function ProfileForm({ user, profile }: ProfileFormProps) {
   const router = useRouter();
+  // The header reads the name from the client session, which does not know
+  // about the rename until it is fetched again.
+  const { refetch: refetchSession } = useSession();
   const { globalPreference, setGlobalPreference, isLoaded } = useUnitPreferences();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -70,13 +93,18 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update profile");
+        throw new Error(await readErrorMessage(response));
       }
 
       toast.success("Profile updated successfully");
       router.refresh();
-    } catch {
-      toast.error("Failed to update profile");
+      // Not awaited for the toast; a failed refetch only leaves the header
+      // stale until the next navigation.
+      refetchSession().catch(() => {});
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update profile"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -104,7 +132,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
       <Card>
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
-            <User className="h-5 w-5 text-primary" />
+            <User className="h-5 w-5 text-primary" aria-hidden="true" />
             Profile
           </CardTitle>
           <CardDescription>
@@ -115,7 +143,8 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
           {/* Avatar display */}
           <div className="flex items-center gap-4">
             <Avatar className="h-20 w-20">
-              <AvatarImage src={user.image || undefined} />
+              {/* Decorative: the name is spelled out right next to it. */}
+              <AvatarImage src={user.image || undefined} alt="" />
               <AvatarFallback className="bg-primary/10 text-primary text-xl font-medium">
                 {getInitials(user.name)}
               </AvatarFallback>
@@ -154,7 +183,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
           {/* Location */}
           <div className="space-y-2">
             <Label htmlFor="location" className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <MapPin className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Location
             </Label>
             <Input
@@ -169,7 +198,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
           {/* Website */}
           <div className="space-y-2">
             <Label htmlFor="website" className="flex items-center gap-2">
-              <Globe className="h-4 w-4 text-muted-foreground" />
+              <Globe className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Website
             </Label>
             <Input
@@ -188,7 +217,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
       <Card>
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
-            <Scale className="h-5 w-5 text-primary" />
+            <Scale className="h-5 w-5 text-primary" aria-hidden="true" />
             Measurement Units
           </CardTitle>
           <CardDescription>
@@ -260,7 +289,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
       {/* Save Button */}
       <div className="flex justify-end">
         <Button type="submit" disabled={isSubmitting || !hasChanges}>
-          {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+          {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
           {isSubmitting ? "Saving..." : "Save Changes"}
         </Button>
       </div>

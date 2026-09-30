@@ -41,22 +41,22 @@ export default function Error({
             </p>
 
             {error.digest && (
-              <p className="mt-4 font-mono text-xs text-muted-foreground/70">
+              <p className="mt-4 font-mono text-xs text-muted-foreground">
                 Reference: {error.digest}
               </p>
             )}
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button onClick={reset} className="w-full sm:w-auto">
-                <RefreshCw className="h-4 w-4" />
+                <RefreshCw className="h-4 w-4" aria-hidden="true" />
                 Try Again
               </Button>
-              <Link href="/">
-                <Button variant="outline" className="w-full sm:w-auto">
-                  <Home className="h-4 w-4" />
+              <Button asChild variant="outline" className="w-full sm:w-auto">
+                <Link href="/">
+                  <Home className="h-4 w-4" aria-hidden="true" />
                   Back to Home
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </Card>

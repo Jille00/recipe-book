@@ -61,6 +61,26 @@ const EXTENSION_BY_TYPE: Record<string, string[]> = {
   "image/heif": [".heif"],
 };
 
+const HEIF_TYPES = new Set(["image/heic", "image/heif"]);
+
+/**
+ * Splits newly picked items into those that fit the free slots and the rest.
+ * `currentCount` must be the latest count, including picks not yet rendered:
+ * two quick drops read from a stale count used to add 6 + 6 files past a
+ * limit of 10.
+ */
+export function takeFreeSlots<T>(
+  currentCount: number,
+  items: readonly T[],
+  max: number
+): { accepted: T[]; overflow: number } {
+  const free = Math.max(0, max - currentCount);
+  return {
+    accepted: items.slice(0, free),
+    overflow: Math.max(0, items.length - free),
+  };
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes >= 1024 * 1024) {
     // One decimal at most, and none when it would read ".0": a file one byte
@@ -89,11 +109,21 @@ export function validateImageFile(
     (type) => EXTENSION_BY_TYPE[type] ?? []
   );
 
-  // Some browsers report an empty type for HEIC/HEIF, so fall back to the
-  // file extension before rejecting.
-  const typeAllowed = file.type
-    ? allowedTypes.includes(file.type.toLowerCase())
-    : allowedExtensions.some((ext) => name.endsWith(ext));
+  // Some browsers report an empty type for HEIC/HEIF, and Android reports
+  // "application/octet-stream", so fall back to the file extension for those.
+  // The octet-stream fallback is limited to HEIC/HEIF: a generic type is only
+  // expected for them, and the server identifies the real format anyway.
+  const type = file.type.trim().toLowerCase();
+  const typeAllowed =
+    type === ""
+      ? allowedExtensions.some((ext) => name.endsWith(ext))
+      : type === "application/octet-stream"
+        ? allowedTypes.some(
+            (allowed) =>
+              HEIF_TYPES.has(allowed) &&
+              (EXTENSION_BY_TYPE[allowed] ?? []).some((ext) => name.endsWith(ext))
+          )
+        : allowedTypes.includes(type);
 
   if (!typeAllowed) {
     return `"${file.name}" is not a supported image (${allowedExtensions

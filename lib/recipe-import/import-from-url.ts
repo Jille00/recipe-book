@@ -64,7 +64,7 @@ export interface ImportDependencies {
   fetchPage(url: string): Promise<SafeFetchResult>;
   fetchImage(url: string): Promise<SafeFetchResult>;
   /** Called right before the AI fallback; may throw to stop it (rate limit). */
-  beforeAiFallback(): void;
+  beforeAiFallback(): void | Promise<void>;
   extractFromText(text: string): Promise<ExtractionResponse>;
   /** Store a validated image in our storage and return its public URL. */
   storeImage(body: Buffer, image: DetectedImage): Promise<string>;
@@ -122,7 +122,7 @@ export async function importRecipeFromUrl(
       );
     }
 
-    deps.beforeAiFallback();
+    await deps.beforeAiFallback();
     const title = extractPageTitle(html);
     const extracted = await deps.extractFromText(
       title ? `Page title: ${title}\n\n${text}` : text

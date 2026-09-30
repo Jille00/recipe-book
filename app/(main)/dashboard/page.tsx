@@ -32,7 +32,7 @@ export default async function DashboardPage() {
   const session = await auth.api.getSession({ headers: headersList });
 
   if (!session?.user) {
-    redirect("/login");
+    redirect(`/login?callbackUrl=${encodeURIComponent("/dashboard")}`);
   }
 
   const userId = session.user.id;
@@ -106,12 +106,12 @@ export default async function DashboardPage() {
             Welcome back{session.user.name ? `, ${session.user.name}` : ""}! Here&apos;s an overview of your recipe collection.
           </p>
         </div>
-        <Link href="/recipes/new">
-          <Button>
-            <Plus className="h-4 w-4" />
+        <Button asChild>
+          <Link href="/recipes/new">
+            <Plus className="h-4 w-4" aria-hidden="true" />
             New Recipe
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
 
       {/* Stats Grid */}
@@ -191,12 +191,12 @@ export default async function DashboardPage() {
                 <p className="text-sm text-muted-foreground mt-1">
                   Create your first recipe to get started!
                 </p>
-                <Link href="/recipes/new" className="mt-4">
-                  <Button variant="outline" size="sm">
-                    <Plus className="h-4 w-4" />
+                <Button asChild variant="outline" size="sm" className="mt-4">
+                  <Link href="/recipes/new">
+                    <Plus className="h-4 w-4" aria-hidden="true" />
                     Create Recipe
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             ) : (
               <div className="space-y-3">

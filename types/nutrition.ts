@@ -7,6 +7,13 @@ export interface NutritionInfo {
   sugar: number | null;
   confidence: "high" | "medium" | "low";
   warnings?: string[];
+  /**
+   * Fingerprint (`nutritionBasisKey`) of the ingredients and servings these
+   * values were calculated or reviewed for. Lets the editor tell, after a
+   * save, that the numbers no longer match the recipe. Absent on nutrition
+   * saved before it existed.
+   */
+  basisKey?: string;
 }
 
 export interface NutritionCalculationRequest {

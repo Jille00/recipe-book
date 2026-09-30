@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui";
+import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui";
 import { RatingDisplay } from "./rating-display";
 import { RatingInput } from "./rating-input";
 import { CommentList } from "./comment-list";
@@ -53,10 +53,12 @@ export function RatingsCommentsSection({
         <CardHeader className="border-b border-border/50 bg-gradient-to-r from-amber/5 to-transparent">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber/10">
-              <Star className="h-5 w-5 text-amber" />
+              <Star className="h-5 w-5 text-amber" aria-hidden="true" />
             </div>
             <div>
-              <CardTitle className="font-display">Community Rating</CardTitle>
+              <h2 className="font-display leading-none font-semibold">
+                Community Rating
+              </h2>
               <CardDescription>
                 {ratingStats.totalRatings > 0
                   ? `${ratingStats.averageRating.toFixed(1)} average from ${ratingStats.totalRatings} rating${

@@ -7,6 +7,26 @@ import { Send } from "lucide-react";
 import { toast } from "sonner";
 import type { CommentWithUser } from "@/lib/db/queries/comments";
 
+/** Same limit the API enforces, measured the same way: on trimmed text. */
+const MAX_COMMENT_LENGTH = 1000;
+
+/** Reads `error` from a JSON error body; HTML error pages fall back. */
+async function readErrorMessage(res: Response, fallback: string) {
+  if (res.status === 401) {
+    return "Your session has expired. Please sign in again.";
+  }
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    try {
+      const data = await res.json();
+      if (typeof data?.error === "string" && data.error) return data.error;
+    } catch {
+      // Fall through to the generic message
+    }
+  }
+  return fallback;
+}
+
 interface CommentFormProps {
   recipeId: string;
   code?: string;
@@ -26,8 +46,8 @@ export function CommentForm({ recipeId, code, onCommentAdded }: CommentFormProps
       return;
     }
 
-    if (trimmedContent.length > 1000) {
-      toast.error("Comment is too long (max 1000 characters)");
+    if (trimmedContent.length > MAX_COMMENT_LENGTH) {
+      toast.error(`Comment is too long (max ${MAX_COMMENT_LENGTH} characters)`);
       return;
     }
 
@@ -40,8 +60,7 @@ export function CommentForm({ recipeId, code, onCommentAdded }: CommentFormProps
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to post comment");
+        throw new Error(await readErrorMessage(res, "Failed to post comment"));
       }
 
       const data = await res.json();
@@ -60,7 +79,10 @@ export function CommentForm({ recipeId, code, onCommentAdded }: CommentFormProps
     }
   };
 
-  const charactersRemaining = 1000 - content.length;
+  // Count what will actually be sent: leading/trailing whitespace is trimmed
+  // before both the check above and the request.
+  const trimmedLength = content.trim().length;
+  const charactersRemaining = MAX_COMMENT_LENGTH - trimmedLength;
   const isOverLimit = charactersRemaining < 0;
 
   const fieldId = useId();
@@ -70,7 +92,7 @@ export function CommentForm({ recipeId, code, onCommentAdded }: CommentFormProps
   // Only speak once the count starts to matter, so typing is not narrated
   // character by character - but going over the limit is always announced.
   const counterAnnouncement = isOverLimit
-    ? `Comment is ${Math.abs(charactersRemaining)} characters over the 1000 character limit`
+    ? `Comment is ${Math.abs(charactersRemaining)} characters over the ${MAX_COMMENT_LENGTH} character limit`
     : charactersRemaining <= 100
     ? `${charactersRemaining} characters remaining`
     : "";
@@ -110,10 +132,10 @@ export function CommentForm({ recipeId, code, onCommentAdded }: CommentFormProps
         <Button
           type="submit"
           size="sm"
-          disabled={isSubmitting || !content.trim() || isOverLimit}
+          disabled={isSubmitting || trimmedLength === 0 || isOverLimit}
           isLoading={isSubmitting}
         >
-          {!isSubmitting && <Send className="h-4 w-4" />}
+          {!isSubmitting && <Send className="h-4 w-4" aria-hidden="true" />}
           Post Comment
         </Button>
       </div>

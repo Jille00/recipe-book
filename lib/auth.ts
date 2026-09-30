@@ -1,6 +1,8 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
+import { APIError, createAuthMiddleware } from "better-auth/api";
+import { nameProblem, passwordProblem } from "@/lib/auth-rules";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -20,6 +22,7 @@ export const auth = betterAuth({
       session: schema.session,
       account: schema.account,
       verification: schema.verification,
+      rateLimit: schema.rateLimit,
     },
   }),
   trustedOrigins: [
@@ -75,12 +78,11 @@ export const auth = betterAuth({
     updateAge: 60 * 60 * 24, // 1 day
   },
   // Brute-force brake on the auth endpoints (sign-in, sign-up, password
-  // reset, ...). NOTE: better-auth's default storage for these counters is
-  // in-memory, so on Vercel every lambda instance keeps its own counters and
-  // the effective limit scales with the number of warm instances. Configure a
-  // shared secondary storage (Redis/Upstash) - or `rateLimit.storage:
-  // "database"` - for multi-instance correctness.
+  // reset, ...). Counters live in Postgres (the rate_limit table) so every
+  // serverless instance shares them; in memory each instance would count on
+  // its own and the effective limit would grow with the number of instances.
   rateLimit: {
+    storage: "database",
     // Matches better-auth's own default of production-only, but stated
     // explicitly so the limits below are obviously intentional.
     enabled: process.env.NODE_ENV === "production",
@@ -97,6 +99,37 @@ export const auth = betterAuth({
       "/send-verification-email": { window: 60 * 60, max: 5 },
       "/reset-password": { window: 60 * 60, max: 10 },
     },
+  },
+  // better-auth itself only checks a minimum password length and accepts a
+  // name or image of any type and size. The forms check more, but anyone can
+  // POST to these endpoints directly.
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      const body = (ctx.body ?? {}) as Record<string, unknown>;
+      const reject = (message: string | null) => {
+        if (message) throw new APIError("BAD_REQUEST", { message });
+      };
+
+      switch (ctx.path) {
+        case "/sign-up/email":
+          reject(nameProblem(body.name));
+          reject(passwordProblem(body.password));
+          break;
+        case "/reset-password":
+        case "/change-password":
+          reject(passwordProblem(body.newPassword));
+          break;
+        case "/update-user":
+          if ("name" in body) reject(nameProblem(body.name));
+          if ("image" in body && body.image !== null) {
+            const image = body.image;
+            const ok =
+              typeof image === "string" && image.length <= 2000 && /^https:\/\//.test(image);
+            reject(ok ? null : "Image must be an https URL");
+          }
+          break;
+      }
+    }),
   },
   plugins: [nextCookies()],
 });

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import Image from "next/image";
+import { toast } from "sonner";
 import { Button, Spinner } from "@/components/ui";
 import { ImagePlus, Upload, X, RefreshCw, Sparkles } from "lucide-react";
 import { compressImage } from "@/lib/image/compress-image";
@@ -39,6 +40,20 @@ export function ImageUpload({
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // The "Photo removed" toast, dismissed once a new photo replaces the
+  // removed one so its Undo cannot swap the new photo back out.
+  const undoToastRef = useRef<string | number | null>(null);
+
+  const setPhoto = useCallback(
+    (url: string) => {
+      if (undoToastRef.current !== null) {
+        toast.dismiss(undoToastRef.current);
+        undoToastRef.current = null;
+      }
+      onChange(url);
+    },
+    [onChange]
+  );
 
   const handleUpload = useCallback(
     async (file: File) => {
@@ -85,7 +100,7 @@ export function ImageUpload({
         );
 
         if (data.url) {
-          onChange(data.url);
+          setPhoto(data.url);
         } else {
           throw new Error("The server did not return an image URL.");
         }
@@ -95,7 +110,7 @@ export function ImageUpload({
         setUploadPhase(null);
       }
     },
-    [onChange]
+    [setPhoto]
   );
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -138,9 +153,28 @@ export function ImageUpload({
     inputRef.current?.click();
   }, []);
 
+  // A removed AI image cannot be generated again identically (and costs a new
+  // generation), so removal can be undone for a while.
   const handleRemove = useCallback(() => {
+    const removed = value;
     onChange("");
-  }, [onChange]);
+    if (!removed) return;
+    undoToastRef.current = toast("Photo removed", {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          undoToastRef.current = null;
+          onChange(removed);
+        },
+      },
+      onDismiss: () => {
+        undoToastRef.current = null;
+      },
+      onAutoClose: () => {
+        undoToastRef.current = null;
+      },
+    });
+  }, [value, onChange]);
 
   const handleGenerateAI = useCallback(async () => {
     if (!recipeContext?.title) return;
@@ -166,7 +200,7 @@ export function ImageUpload({
       );
 
       if (data.url) {
-        onChange(data.url);
+        setPhoto(data.url);
       } else {
         throw new Error("The server did not return an image URL.");
       }
@@ -175,57 +209,77 @@ export function ImageUpload({
     } finally {
       setIsGenerating(false);
     }
-  }, [recipeContext, onChange]);
+  }, [recipeContext, setPhoto]);
 
   const canGenerateAI =
     recipeContext?.title && recipeContext.title.trim().length > 0;
   const isBusy = uploadPhase !== null || isGenerating;
+  const statusMessage = isGenerating
+    ? "Generating image with AI..."
+    : uploadPhase === "preparing"
+      ? "Preparing photo..."
+      : uploadPhase === "uploading"
+        ? "Uploading..."
+        : "";
+
+  const photoActions = (
+    <>
+      {canGenerateAI && (
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={handleGenerateAI}
+          disabled={isGenerating}
+        >
+          <Sparkles aria-hidden="true" />
+          {isGenerating ? "Generating..." : "Regenerate"}
+        </Button>
+      )}
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={openFilePicker}
+        disabled={isGenerating}
+      >
+        <RefreshCw aria-hidden="true" />
+        Change
+      </Button>
+      <Button
+        type="button"
+        variant="destructive"
+        size="sm"
+        onClick={handleRemove}
+        disabled={isGenerating}
+      >
+        <X aria-hidden="true" />
+        Remove
+      </Button>
+    </>
+  );
 
   return (
     <div className="w-full">
       {value ? (
-        <div className="relative aspect-video overflow-hidden rounded-xl border border-border">
-          <Image
-            src={value}
-            alt="Recipe preview"
-            fill
-            className="object-cover"
-          />
-          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 opacity-0 transition-opacity hover:opacity-100 focus-within:opacity-100">
-            {canGenerateAI && (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={handleGenerateAI}
-                disabled={isGenerating}
-              >
-                <Sparkles className="h-4 w-4" aria-hidden="true" />
-                {isGenerating ? "Generating..." : "Regenerate"}
-              </Button>
-            )}
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={openFilePicker}
-              disabled={isGenerating}
-            >
-              <RefreshCw className="h-4 w-4" aria-hidden="true" />
-              Change
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              onClick={handleRemove}
-              disabled={isGenerating}
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-              Remove
-            </Button>
+        <>
+          <div className="relative aspect-video overflow-hidden rounded-xl border border-border">
+            <Image
+              src={value}
+              alt="Recipe preview"
+              fill
+              className="object-cover"
+            />
+            {/* On hover-capable screens >= sm the actions sit over the photo
+                and appear on hover or focus. Touch screens have no hover, so
+                there they stay visible. */}
+            <div className="absolute inset-0 hidden items-center justify-center gap-2 bg-black/60 opacity-0 transition-opacity hover:opacity-100 focus-within:opacity-100 sm:flex [@media(hover:none)]:opacity-100">
+              {photoActions}
+            </div>
           </div>
-        </div>
+          {/* Below sm the actions sit under the photo, always visible. */}
+          <div className="mt-2 flex flex-wrap gap-2 sm:hidden">{photoActions}</div>
+        </>
       ) : (
         <div
           // The copy promises "Click to upload", so the whole dashed area now
@@ -252,12 +306,8 @@ export function ImageUpload({
           {isBusy ? (
             <div className="flex flex-col items-center gap-3">
               <Spinner size="lg" />
-              <p className="text-sm text-muted-foreground">
-                {isGenerating
-                  ? "Generating image with AI..."
-                  : uploadPhase === "preparing"
-                    ? "Preparing photo..."
-                    : "Uploading..."}
+              <p className="text-sm text-muted-foreground" aria-hidden="true">
+                {statusMessage}
               </p>
             </div>
           ) : (
@@ -285,7 +335,7 @@ export function ImageUpload({
                     openFilePicker();
                   }}
                 >
-                  <Upload className="h-4 w-4" aria-hidden="true" />
+                  <Upload aria-hidden="true" />
                   Select Image
                 </Button>
                 {canGenerateAI && (
@@ -297,9 +347,8 @@ export function ImageUpload({
                       e.stopPropagation();
                       handleGenerateAI();
                     }}
-                    className="gap-1"
                   >
-                    <Sparkles className="h-4 w-4" aria-hidden="true" />
+                    <Sparkles aria-hidden="true" />
                     Generate with AI
                   </Button>
                 )}
@@ -308,6 +357,11 @@ export function ImageUpload({
           )}
         </div>
       )}
+
+      {/* Always rendered, so screen readers announce each status change. */}
+      <p role="status" className="sr-only">
+        {statusMessage}
+      </p>
 
       <input
         ref={inputRef}

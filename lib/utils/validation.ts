@@ -76,6 +76,9 @@ export const nutritionSchema = z.object({
   sugar: z.number().nonnegative().nullable(),
   confidence: z.enum(["high", "medium", "low"]),
   warnings: z.array(z.string().max(500)).max(20).optional(),
+  // Fingerprint of the inputs the values were calculated for (see
+  // nutritionBasisKey). Optional so nutrition saved before it existed parses.
+  basisKey: z.string().max(64).optional(),
 });
 
 // Field definitions shared by the create and update schemas. Note that no

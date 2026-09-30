@@ -1,8 +1,11 @@
 import type { RecipeWithDetails } from "@/lib/db/queries/recipes";
+import type { RatingStats } from "@/lib/db/queries/ratings";
 
 interface RecipeJsonLdProps {
   recipe: RecipeWithDetails;
   url: string;
+  /** Already loaded by the recipe page; only emitted once someone has rated. */
+  ratingStats?: RatingStats;
 }
 
 function formatDuration(minutes: number | null): string | undefined {
@@ -14,7 +17,7 @@ function formatDuration(minutes: number | null): string | undefined {
   return `PT${mins}M`;
 }
 
-export function RecipeJsonLd({ recipe, url }: RecipeJsonLdProps) {
+export function RecipeJsonLd({ recipe, url, ratingStats }: RecipeJsonLdProps) {
   const totalTime =
     (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
 
@@ -74,6 +77,17 @@ export function RecipeJsonLd({ recipe, url }: RecipeJsonLdProps) {
             : undefined,
         }
       : undefined,
+    // Google rejects an aggregateRating with no ratings, so leave it out then.
+    aggregateRating:
+      ratingStats && ratingStats.totalRatings > 0
+        ? {
+            "@type": "AggregateRating",
+            ratingValue: Number(ratingStats.averageRating.toFixed(1)),
+            ratingCount: ratingStats.totalRatings,
+            bestRating: 5,
+            worstRating: 1,
+          }
+        : undefined,
     url,
   };
 

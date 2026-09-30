@@ -43,6 +43,13 @@
       "when": 1790773720857,
       "tag": "0005_profile_preferences_default",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790774847684,
+      "tag": "0006_drop_public_upload_policy",
+      "breakpoints": true
     }
   ]
 }

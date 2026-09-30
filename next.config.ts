@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+// The Content-Security-Policy is set per request in proxy.ts: it carries a
+// nonce that has to be new for every response.
 const securityHeaders = [
   {
     key: "X-DNS-Prefetch-Control",
@@ -22,13 +24,6 @@ const securityHeaders = [
     // "0" is the current recommendation.
     key: "X-XSS-Protection",
     value: "0",
-  },
-  {
-    // A baseline that can't break the app: no plugins, no <base> hijacking, no
-    // framing by other sites, forms only post here. Script sources are not
-    // restricted yet; that needs nonces for Next's inline scripts.
-    key: "Content-Security-Policy",
-    value: "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'",
   },
   {
     key: "Referrer-Policy",

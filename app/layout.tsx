@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { DM_Sans, Fraunces } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
@@ -76,11 +77,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Reading the request makes every page render per request, which the CSP
+  // nonce (proxy.ts) needs: a page prerendered at build time would carry no
+  // nonce, and the browser would block its scripts.
+  await headers();
+
   return (
     <html lang="en" className={`${fraunces.variable} ${dmSans.variable}`}>
       <body className="min-h-screen antialiased grain">

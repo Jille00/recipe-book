@@ -50,6 +50,12 @@ export interface RecipeWithDetails extends Recipe {
   ratingStats?: RatingStats;
 }
 
+/**
+ * What a recipe card needs. List pages fetch only this, not the full
+ * ingredients, steps and nutrition of every recipe on the page.
+ */
+export type RecipeCardData = Omit<RecipeWithDetails, "ingredients" | "instructions" | "nutrition">;
+
 export interface Tag {
   id: string;
   name: string;

@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ImageUpload } from "@/components/recipe/image-upload";
 import { NutritionDisplay } from "@/components/recipe/nutrition-display";
+import { ResetLinkSection } from "@/components/recipe/reset-link-section";
 import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
 import type { NutritionInfo } from "@/types/nutrition";
 
@@ -74,6 +75,7 @@ import {
   type ImportableFormValues,
 } from "@/lib/recipe-import/apply-to-form";
 import { useBeforeUnload } from "@/hooks/use-before-unload";
+import { useLinkNavigationGuard } from "@/hooks/use-link-navigation-guard";
 
 // The import dialog (and its image and HEIC helpers) is only needed once
 // someone opens it, so it is split into its own chunk.
@@ -249,6 +251,10 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
   // mounted so it can animate closed.
   const [importModalMounted, setImportModalMounted] = useState(false);
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
+  // Where a held-back link click was going; null means Cancel (go back).
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  // Set when the link was reset here: the page we came from no longer exists.
+  const [resetAddress, setResetAddress] = useState<{ code: string; slug: string } | null>(null);
   const [outdatedDialogOpen, setOutdatedDialogOpen] = useState(false);
   // True once the recipe was saved or the user chose to discard changes:
   // leaving is intended from then on, so it is no longer guarded.
@@ -278,6 +284,10 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
   const [initialSnapshot] = useState(() => recipeFormSnapshot(formValues));
   const isDirty = recipeFormSnapshot(formValues) !== initialSnapshot;
   useBeforeUnload(isDirty && !leaveAllowed);
+  useLinkNavigationGuard(isDirty && !leaveAllowed, (href) => {
+    setPendingHref(href);
+    setDiscardDialogOpen(true);
+  });
 
   // Nutrition is calculated per serving, but the Servings field lives in a
   // different card from the Calculate button. The hint links straight to it.
@@ -558,16 +568,24 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
     void saveRecipe({ allowOutdatedNutrition: false });
   };
 
-  const leave = () => {
+  // `href`: where a held-back link was going; null leaves the way Cancel does.
+  const leave = (href: string | null) => {
     flushSync(() => setLeaveAllowed(true));
-    router.back();
+    if (href) {
+      router.push(href);
+    } else if (resetAddress) {
+      router.push(recipePath(resetAddress));
+    } else {
+      router.back();
+    }
   };
 
   const handleCancel = () => {
+    setPendingHref(null);
     if (isDirty) {
       setDiscardDialogOpen(true);
     } else {
-      leave();
+      leave(null);
     }
   };
 
@@ -1167,6 +1185,9 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
               </p>
             </div>
           </label>
+          {isEditing && initialData?.id && (
+            <ResetLinkSection recipeId={initialData.id} onReset={setResetAddress} />
+          )}
         </CardContent>
       </Card>
 
@@ -1222,7 +1243,7 @@ export function RecipeForm({ tags, initialData }: RecipeFormProps) {
           <AlertDialogFooter>
             <AlertDialogCancel>Keep editing</AlertDialogCancel>
             <AlertDialogAction
-              onClick={leave}
+              onClick={() => leave(pendingHref)}
               className={buttonVariants({ variant: "destructive" })}
             >
               Discard changes

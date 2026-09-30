@@ -45,10 +45,12 @@ import {
   Utensils,
   Apple,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { useRecipeUnitSystem } from "@/hooks/use-unit-preferences";
 import { useRecipeScaling } from "@/hooks/use-recipe-scaling";
 import { recipePath, recipeEditPath } from "@/lib/recipe-url";
+import { nutritionBasisKey } from "@/lib/utils/nutrition-inputs";
 import {
   convertUnit,
   convertTemperatureInText,
@@ -146,6 +148,11 @@ export function RecipeDetail({
 
   // Nutrition values are per serving, so they don't need to be scaled
   const nutrition = recipe.nutrition;
+  // Nutrition saved with a fingerprint of its ingredients and servings (see
+  // recipe-form) can tell when the recipe changed after it was calculated.
+  const nutritionOutdated =
+    !!nutrition?.basisKey &&
+    nutrition.basisKey !== nutritionBasisKey(recipe.ingredients, recipe.servings);
 
   // The measured amounts change when the recipe is rescaled, so previously
   // ticked ingredients no longer reflect what has actually been measured out.
@@ -490,6 +497,30 @@ export function RecipeDetail({
             </div>
           </CardHeader>
           <CardContent className="p-6">
+            {nutritionOutdated && (
+              <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber/30 bg-amber/10 p-3 text-sm">
+                <AlertTriangle
+                  className="mt-0.5 h-4 w-4 shrink-0 text-amber"
+                  aria-hidden="true"
+                />
+                <p className="text-foreground">
+                  These numbers were calculated before the ingredients or
+                  servings last changed, so they may be off.
+                  {isOwner && (
+                    <>
+                      {" "}
+                      <Link
+                        href={recipeEditPath(recipe)}
+                        className="font-medium text-primary underline-offset-4 hover:underline"
+                      >
+                        Recalculate them in the editor
+                      </Link>
+                      .
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
             <NutritionDisplay
               nutrition={nutrition}
               // Values are per serving of the recipe as written, so they

@@ -1,7 +1,6 @@
 import { eq, and, or, desc, sql } from "drizzle-orm";
 import { db, favorite, recipe, user } from "@/lib/db";
-import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
-import type { NutritionInfo } from "@/types/nutrition";
+import type { Difficulty } from "@/types/recipe";
 
 export async function getUserFavorites(userId: string) {
   const favorites = await db
@@ -11,14 +10,11 @@ export async function getUserFavorites(userId: string) {
       title: recipe.title,
       slug: recipe.slug,
       description: recipe.description,
-      ingredients: recipe.ingredients,
-      instructions: recipe.instructions,
       prepTimeMinutes: recipe.prepTimeMinutes,
       cookTimeMinutes: recipe.cookTimeMinutes,
       servings: recipe.servings,
       difficulty: recipe.difficulty,
       imageUrl: recipe.imageUrl,
-      nutrition: recipe.nutrition,
       isPublic: recipe.isPublic,
       code: recipe.code,
       createdAt: recipe.createdAt,
@@ -41,10 +37,7 @@ export async function getUserFavorites(userId: string) {
 
   return favorites.map((r) => ({
     ...r,
-    ingredients: r.ingredients as Ingredient[],
-    instructions: r.instructions as Instruction[],
     difficulty: r.difficulty as Difficulty | null,
-    nutrition: r.nutrition as NutritionInfo | null,
     // Never hand another user's share token to a viewer.
     isFavorited: true,
   }));

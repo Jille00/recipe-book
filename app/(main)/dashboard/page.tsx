@@ -39,13 +39,14 @@ export default async function DashboardPage() {
 
   // Fetch all data in parallel
   const [recipes, recipeStats, favoriteCount, tagCount] = await Promise.all([
-    getRecipesByUserId(userId),
+    // Only the ones shown; the totals come from getUserRecipeStats.
+    getRecipesByUserId(userId, 5),
     getUserRecipeStats(userId),
     getFavoriteCount(userId),
     getUserTagCount(userId),
   ]);
 
-  const recentRecipes = recipes.slice(0, 5);
+  const recentRecipes = recipes;
 
   const stats = [
     {

@@ -14,7 +14,7 @@ import {
 } from "@/lib/browse-params";
 import { SITE_OG_IMAGE } from "../../site-url";
 import type { Metadata } from "next";
-import type { RecipeWithDetails } from "@/types/recipe";
+import type { RecipeCardData } from "@/types/recipe";
 
 const PAGE_SIZE = 12;
 
@@ -115,8 +115,7 @@ export default async function BrowsePage({ searchParams }: Props) {
     maxServings: params.maxServings,
   };
 
-  // Map recipes to RecipeWithDetails
-  const recipesWithDetails: RecipeWithDetails[] = recipes.map((recipe) => ({
+  const recipesWithDetails: RecipeCardData[] = recipes.map((recipe) => ({
     ...recipe,
     authorName: recipe.authorName,
   }));

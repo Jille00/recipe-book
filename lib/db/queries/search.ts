@@ -1,6 +1,6 @@
 import { eq, and, or, sql, desc, ilike, lte, gte, inArray } from "drizzle-orm";
 import { db, recipe, user, recipeTag, favorite } from "@/lib/db";
-import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
+import type { Ingredient, Instruction, Difficulty, RecipeCardData } from "@/types/recipe";
 import type { NutritionInfo } from "@/types/nutrition";
 
 export interface SearchFilters {
@@ -139,7 +139,7 @@ export async function searchRecipes(
 }
 
 export interface PublicRecipesResult {
-  recipes: SearchRecipeResult[];
+  recipes: (RecipeCardData & { authorName: string | null; isOwn: boolean })[];
   total: number;
 }
 
@@ -219,14 +219,11 @@ export async function getPublicRecipes(
       title: recipe.title,
       slug: recipe.slug,
       description: recipe.description,
-      ingredients: recipe.ingredients,
-      instructions: recipe.instructions,
       prepTimeMinutes: recipe.prepTimeMinutes,
       cookTimeMinutes: recipe.cookTimeMinutes,
       servings: recipe.servings,
       difficulty: recipe.difficulty,
       imageUrl: recipe.imageUrl,
-      nutrition: recipe.nutrition,
       isPublic: recipe.isPublic,
       code: recipe.code,
       createdAt: recipe.createdAt,
@@ -250,11 +247,8 @@ export async function getPublicRecipes(
   return {
     recipes: results.map((r) => ({
       ...r,
-      ingredients: r.ingredients as Ingredient[],
-      instructions: r.instructions as Instruction[],
-      difficulty: r.difficulty as Difficulty | null,
-      nutrition: r.nutrition as NutritionInfo | null,
-      // Share tokens are owner-only capabilities; never include them in listings.
+          difficulty: r.difficulty as Difficulty | null,
+        // Share tokens are owner-only capabilities; never include them in listings.
       isOwn: false,
       isFavorited: r.favoriteId !== null,
     })),

@@ -4,10 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { RecipeCard } from "@/components/recipe/recipe-card";
 import { FavoriteChangeProvider } from "@/components/recipe/favorite-button";
-import type { RecipeWithDetails } from "@/types/recipe";
+import type { RecipeCardData } from "@/types/recipe";
 
 interface FavoritesGridProps {
-  recipes: RecipeWithDetails[];
+  recipes: RecipeCardData[];
   currentUserId: string;
   /** Shown once the last favorite has been removed. */
   emptyState: React.ReactNode;

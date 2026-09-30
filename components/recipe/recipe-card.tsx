@@ -1,13 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
-import type { RecipeWithDetails } from "@/types/recipe";
+import type { RecipeCardData } from "@/types/recipe";
 import { Clock, Users, ChefHat, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { FavoriteButton } from "./favorite-button";
 import { recipePath } from "@/lib/recipe-url";
 
 interface RecipeCardProps {
-  recipe: RecipeWithDetails;
+  recipe: RecipeCardData;
   showAuthor?: boolean;
   showFavorite?: boolean;
   initialFavorited?: boolean;

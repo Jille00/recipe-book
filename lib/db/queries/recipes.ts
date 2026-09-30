@@ -1,7 +1,7 @@
 import { eq, and, asc, desc, sql, or } from "drizzle-orm";
 import { db, recipe, user, recipeTag, favorite } from "@/lib/db";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils/slug";
-import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
+import type { Ingredient, Instruction, Difficulty, RecipeCardData } from "@/types/recipe";
 import type { NutritionInfo } from "@/types/nutrition";
 
 export interface RecipeWithDetails {
@@ -26,7 +26,11 @@ export interface RecipeWithDetails {
   isFavorited?: boolean;
 }
 
-export async function getRecipesByUserId(userId: string): Promise<RecipeWithDetails[]> {
+/** A user's recipes for list pages, newest first; `limit` for previews. */
+export async function getRecipesByUserId(
+  userId: string,
+  limit?: number
+): Promise<RecipeCardData[]> {
   const recipes = await db
     .select({
       id: recipe.id,
@@ -34,14 +38,11 @@ export async function getRecipesByUserId(userId: string): Promise<RecipeWithDeta
       title: recipe.title,
       slug: recipe.slug,
       description: recipe.description,
-      ingredients: recipe.ingredients,
-      instructions: recipe.instructions,
       prepTimeMinutes: recipe.prepTimeMinutes,
       cookTimeMinutes: recipe.cookTimeMinutes,
       servings: recipe.servings,
       difficulty: recipe.difficulty,
       imageUrl: recipe.imageUrl,
-      nutrition: recipe.nutrition,
       isPublic: recipe.isPublic,
       code: recipe.code,
       createdAt: recipe.createdAt,
@@ -51,14 +52,12 @@ export async function getRecipesByUserId(userId: string): Promise<RecipeWithDeta
     .from(recipe)
     .leftJoin(favorite, and(eq(favorite.recipeId, recipe.id), eq(favorite.userId, userId)))
     .where(eq(recipe.userId, userId))
-    .orderBy(desc(recipe.createdAt));
+    .orderBy(desc(recipe.createdAt), desc(recipe.id))
+    .limit(limit ?? Number.MAX_SAFE_INTEGER);
 
   return recipes.map((r) => ({
     ...r,
-    ingredients: r.ingredients as Ingredient[],
-    instructions: r.instructions as Instruction[],
     difficulty: r.difficulty as Difficulty | null,
-    nutrition: r.nutrition as NutritionInfo | null,
     isFavorited: r.favoriteId !== null,
   }));
 }
@@ -436,4 +435,24 @@ export async function isImageUrlInUse(imageUrl: string): Promise<boolean> {
     .where(eq(recipe.imageUrl, imageUrl))
     .limit(1);
   return rows.length > 0;
+}
+
+/**
+ * Replaces a recipe's code (and drops any legacy share token), so old links
+ * stop resolving. Returns the new address, or null if the user doesn't own it.
+ */
+export async function resetRecipeCode(
+  id: string,
+  userId: string
+): Promise<{ code: string; slug: string } | null> {
+  const rows = await db
+    .update(recipe)
+    .set({
+      code: sql`public.generate_recipe_code()`,
+      shareToken: null,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(recipe.id, id), eq(recipe.userId, userId)))
+    .returning({ code: recipe.code, slug: recipe.slug });
+  return rows[0] ?? null;
 }

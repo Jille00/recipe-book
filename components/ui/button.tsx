@@ -12,9 +12,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Primary: terracotta (the --primary token), cream text, darker on hover
+        // Primary: terracotta (the --primary token), cream text, darker on
+        // hover, uppercase (STYLE_GUIDE 04). Only primary is uppercase.
         default:
-          "bg-primary text-primary-foreground hover:bg-primary-hover hover:scale-[1.02]",
+          "bg-primary text-primary-foreground uppercase hover:bg-primary-hover hover:scale-[1.02]",
         // Danger: paprika, cream text, darker paprika on hover
         destructive:
           "bg-destructive text-primary-foreground hover:bg-destructive-hover focus-visible:ring-destructive dark:bg-destructive/60",

@@ -27,6 +27,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { UnitToggle } from "./unit-toggle";
 import { NutritionDisplay } from "./nutrition-display";
 import { FavoriteButton } from "./favorite-button";
+import { AddToShoppingList } from "./add-to-shopping-list";
 import { ServingsSelector } from "./servings-selector";
 import { RatingsCommentsSection } from "./ratings-comments-section";
 import type { RecipeWithDetails, RatingStats } from "@/types/recipe";
@@ -293,6 +294,7 @@ export function RecipeDetail({
                 <Share2 className="h-4 w-4" aria-hidden="true" />
                 Share
               </Button>
+              <AddToShoppingList recipeId={recipe.id} code={recipe.code} ingredients={convertedIngredients} isAuthenticated={isAuthenticated} />
               {isOwner && (
                 <>
                   <Button asChild variant="outline" size="sm">

@@ -47,6 +47,8 @@ export async function getUserCollections(
   // One grouped query rather than correlated subqueries: the recipe join only
   // matches recipes the owner may still open, so count(recipe.id) and the
   // cover skip the rest, while membership looks at the link row itself.
+  // The cover keeps only the newest COVER_STRIPES recipes, sliced in SQL so
+  // a large collection doesn't ship every recipe's tags.
   const rows = await db
     .select({
       id: collection.id,
@@ -54,7 +56,7 @@ export async function getUserCollections(
       createdAt: collection.createdAt,
       updatedAt: collection.updatedAt,
       recipeCount: sql<number>`count(${recipe.id})::int`,
-      coverRecipes: sql<{ code: string; tags: string[] }[]>`coalesce(json_agg(json_build_object('code', ${recipe.code}, 'tags', ${recipeTagNames}) order by ${collectionRecipe.addedAt} desc) filter (where ${recipe.id} is not null), '[]'::json)`,
+      coverRecipes: sql<{ code: string; tags: string[] }[]>`coalesce(to_json((array_agg(json_build_object('code', ${recipe.code}, 'tags', ${recipeTagNames}) order by ${collectionRecipe.addedAt} desc) filter (where ${recipe.id} is not null))[1:${sql.raw(String(COVER_STRIPES))}]), '[]'::json)`,
       containsRecipe: recipeId
         ? sql<boolean>`coalesce(bool_or(${collectionRecipe.recipeId} = ${recipeId}), false)`
         : sql<boolean>`false`,
@@ -67,8 +69,7 @@ export async function getUserCollections(
     .orderBy(desc(collection.createdAt), desc(collection.id));
 
   return rows.map((row) => {
-    const { containsRecipe, coverRecipes, ...summary } = row;
-    const rest = { ...summary, coverRecipes: coverRecipes.slice(0, COVER_STRIPES) };
+    const { containsRecipe, ...rest } = row;
     return recipeId ? { ...rest, containsRecipe } : rest;
   });
 }

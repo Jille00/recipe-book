@@ -52,7 +52,14 @@ const INGREDIENT_COLUMNS =
  * form: a back link, the page title, then the form's seven section cards in
  * order and its footer.
  */
-export function RecipeFormSkeleton({ label }: { label: string }) {
+export function RecipeFormSkeleton({
+  label,
+  showImport = false,
+}: {
+  label: string;
+  /** The Import pill beside "Details": only the create page has it. */
+  showImport?: boolean;
+}) {
   return (
     <div className="mx-auto max-w-4xl px-4 pt-8 pb-8 sm:px-6 sm:pb-12 lg:px-8">
       {/* Back link, title, intro */}
@@ -66,7 +73,7 @@ export function RecipeFormSkeleton({ label }: { label: string }) {
 
       <div className="space-y-6 sm:space-y-8">
         {/* Details: title, description, tags, difficulty; Import on the right */}
-        <SectionSkeleton titleWidth="w-24" action="w-28">
+        <SectionSkeleton titleWidth="w-24" action={showImport ? "w-28" : undefined}>
           <div className="space-y-6">
             <FieldSkeleton labelWidth="w-12" field="h-14" />
             <FieldSkeleton field="h-26" />

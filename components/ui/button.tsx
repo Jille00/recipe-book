@@ -32,11 +32,13 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-12 px-6 text-base has-[>svg]:px-5",
-        sm: "h-10 gap-1.5 px-4 text-[15px] has-[>svg]:px-3.5",
+        // 40px to look at, 44px to touch: the ::after extends the hit area
+        // (STYLE_GUIDE 09).
+        sm: "relative h-10 gap-1.5 px-4 text-[15px] after:absolute after:-inset-0.5 after:content-[''] has-[>svg]:px-3.5",
         lg: "h-14 px-8 text-lg has-[>svg]:px-7",
         // Icon buttons: every size clears the 44px touch target but icon-sm
         icon: "size-12",
-        "icon-sm": "size-10",
+        "icon-sm": "relative size-10 after:absolute after:-inset-0.5 after:content-['']",
         "icon-lg": "size-14",
       },
     },

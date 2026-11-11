@@ -442,8 +442,9 @@ export function RecipeDetail({
 
               {/* Actions: Start cooking is the one filled pill; the rest are
                   outlines, and below `sm` they shrink to icons (or move into
-                  More) so the row stays on one line. */}
-              <div className="mt-8 flex items-center gap-2 print:hidden">
+                  More) to fit one line. Between `lg` and `xl` the column is
+                  narrower than the labelled row, so it wraps. */}
+              <div className="mt-8 flex flex-wrap items-center gap-2 print:hidden">
                 <CookMode
                   recipeId={recipe.id}
                   code={recipe.code}

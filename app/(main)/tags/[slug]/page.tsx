@@ -51,7 +51,7 @@ export async function generateMetadata({
   const session = await getSession();
   const { total } = await getRecipePage(tag.id, page, session?.user?.id);
 
-  const title = page > 1 ? `${tag.name} Recipes - Page ${page}` : `${tag.name} Recipes`;
+  const title = page > 1 ? `${tag.name} recipes - Page ${page}` : `${tag.name} recipes`;
   const description = describeTag(tag.name);
   const canonical = tagPath(tag.slug, page);
 

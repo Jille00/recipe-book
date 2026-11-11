@@ -15,7 +15,7 @@ function Switch({
       className={cn(
         // --input is ink, so "off" is an outlined track with an ink thumb and
         // "on" is the filled pill: the two never look alike.
-        "peer border-input data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=unchecked]:bg-card focus-visible:ring-ring/50 inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 transition-all outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
+        "peer border-input data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=unchecked]:bg-card focus-visible:ring-ring focus-visible:ring-offset-background inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}

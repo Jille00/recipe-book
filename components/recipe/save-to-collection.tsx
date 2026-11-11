@@ -234,7 +234,7 @@ export function SaveToCollection({
         onClick={goToLogin}
         className={cn(compact && compactButtonClass)}
       >
-        <FolderPlus className="h-4 w-4" aria-hidden="true" />
+        <FolderPlus aria-hidden="true" />
         <span className={cn(compact && compactLabelClass)}>Save to collection</span>
       </Button>
     );
@@ -250,13 +250,13 @@ export function SaveToCollection({
           size={compact ? "default" : "sm"}
           className={cn(compact && compactButtonClass)}
         >
-          <FolderPlus className="h-4 w-4" aria-hidden="true" />
+          <FolderPlus aria-hidden="true" />
           <span className={cn(compact && compactLabelClass)}>Save to collection</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 rounded-xl p-0 shadow-medium">
         <div className="border-b border-border px-4 py-3">
-          <h2 className="text-xl text-foreground">
+          <h2 className="text-3xl text-foreground">
             Save to collection
           </h2>
           {loadState === "ready" && collections.length > 0 && (
@@ -270,7 +270,7 @@ export function SaveToCollection({
 
         {(loadState === "loading" || loadState === "idle") && (
           <div className="flex items-center justify-center gap-2 px-4 py-8 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
             <span role="status">Loading your collections</span>
           </div>
         )}
@@ -310,7 +310,7 @@ export function SaveToCollection({
                         <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                           {c.name}
                         </span>
-                        <span className="shrink-0 font-mono text-xs tabular text-muted-foreground">
+                        <span className="shrink-0 font-bold text-xs tabular text-muted-foreground">
                           {pending[c.id] ? (
                             <Loader2
                               className="h-3 w-3 animate-spin"
@@ -358,20 +358,18 @@ export function SaveToCollection({
                       autoFocus
                       aria-invalid={createError ? true : undefined}
                       aria-describedby={createError ? `${inputId}-error` : undefined}
-                      className="h-11"
                     />
                     <Button
                       type="submit"
                       variant="secondary"
                       size="sm"
-                      className="h-11"
                       isLoading={isCreating}
                     >
                       Create
                     </Button>
                   </div>
                   {createError && (
-                    <p id={`${inputId}-error`} className="text-[13px] text-destructive">
+                    <p id={`${inputId}-error`} role="alert" className="text-[13px] text-destructive">
                       {createError}
                     </p>
                   )}
@@ -383,13 +381,13 @@ export function SaveToCollection({
                   className="w-full justify-start"
                   onClick={() => setShowCreate(true)}
                 >
-                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  <Plus aria-hidden="true" />
                   New collection
                 </Button>
               )}
               <Link
                 href="/collections"
-                className="mt-2 block px-1 text-xs font-medium text-primary underline-offset-4 hover:underline"
+                className="mt-2 inline-flex min-h-11 items-center px-1 text-xs font-bold text-foreground underline decoration-2 underline-offset-4 hover:decoration-[3px] rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
                 Manage collections
               </Link>

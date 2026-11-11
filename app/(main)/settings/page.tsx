@@ -33,15 +33,15 @@ export default async function SettingsPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
       <header className="mb-8 sm:mb-10">
-        <h1 className="text-4xl leading-[1.1] tracking-[-0.01em] text-foreground sm:text-[44px]">
+        <h1 className="text-6xl leading-[0.88] text-foreground sm:text-7xl lg:text-8xl">
           Account
         </h1>
-        <p className="mt-2 text-muted-foreground">
+        <p className="mt-4 text-lg text-muted-foreground">
           Your sign-in details, your data, and your account.
         </p>
         <Link
           href="/profile"
-          className="group mt-3 -ml-1 inline-flex min-h-11 items-center gap-2 rounded-md px-1 text-sm font-medium text-primary transition-colors duration-(--duration-fast) hover:text-primary-hover"
+          className="group mt-3 inline-flex min-h-11 items-center gap-2 font-bold text-foreground underline decoration-2 underline-offset-4 hover:decoration-[3px] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           <User className="size-4" aria-hidden="true" />
           Name, bio and units are on your profile

@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     const { id, name, createdAt, updatedAt } = result.collection;
     return NextResponse.json(
-      { id, name, createdAt, updatedAt, recipeCount: 0, coverImageUrl: null },
+      { id, name, createdAt, updatedAt, recipeCount: 0, coverRecipes: [] },
       { status: 201 }
     );
   } catch (error) {

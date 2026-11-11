@@ -4,13 +4,15 @@ import { RecipeGridSkeleton } from "@/components/page/recipe-grid-skeleton";
 export default function RecipesLoading() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
-      {/* Title row */}
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4 sm:mb-10">
-        <div>
-          <Skeleton className="h-10 w-56 sm:h-12" />
-          <Skeleton className="mt-3 h-5 w-52" />
+      {/* PageHeader: title, count, "Add a recipe" */}
+      <div className="mb-8 sm:mb-10">
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+          <div className="min-w-0">
+            <Skeleton className="h-14 w-64 max-w-full sm:h-20 sm:w-96" />
+            <Skeleton className="mt-4 h-6 w-64 max-w-full" />
+          </div>
+          <Skeleton className="h-12 w-44 rounded-full" />
         </div>
-        <Skeleton className="h-11 w-40 rounded-md" />
       </div>
 
       <RecipeGridSkeleton />

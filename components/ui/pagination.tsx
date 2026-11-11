@@ -163,7 +163,8 @@ function PaginationLink({
 }: PaginationLinkProps) {
   const linkClassName = cn(
     buttonVariants({
-      variant: isActive ? "outline" : "ghost",
+      // The current page is the filled pill, like a selected chip.
+      variant: isActive ? "default" : "ghost",
       size,
     }),
     className
@@ -205,7 +206,7 @@ function PaginationPrevious({
     <PaginationLink
       aria-label="Go to previous page"
       size="default"
-      className={cn("gap-1 px-2.5 sm:pl-2.5", className)}
+      className={cn("gap-1 px-3.5 sm:pl-3", className)}
       {...props}
     >
       <ChevronLeftIcon />
@@ -222,7 +223,7 @@ function PaginationNext({
     <PaginationLink
       aria-label="Go to next page"
       size="default"
-      className={cn("gap-1 px-2.5 sm:pr-2.5", className)}
+      className={cn("gap-1 px-3.5 sm:pr-3", className)}
       {...props}
     >
       <span className="hidden sm:block">Next</span>
@@ -239,7 +240,7 @@ function PaginationEllipsis({
     <span
       aria-hidden
       data-slot="pagination-ellipsis"
-      className={cn("flex size-9 items-center justify-center", className)}
+      className={cn("flex size-12 items-center justify-center", className)}
       {...props}
     >
       <MoreHorizontalIcon className="size-4" />

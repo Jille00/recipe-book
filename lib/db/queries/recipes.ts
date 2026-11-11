@@ -1,5 +1,5 @@
 import { eq, and, asc, desc, sql, or } from "drizzle-orm";
-import { recipeTagSlugs } from "./tag-slugs";
+import { recipeTagNames } from "./tag-names";
 import { db, recipe, user, recipeTag, favorite, profile } from "@/lib/db";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils/slug";
 import type { Ingredient, Instruction, Difficulty, RecipeCardData } from "@/types/recipe";
@@ -46,7 +46,7 @@ export async function getRecipesByUserId(
       servings: recipe.servings,
       difficulty: recipe.difficulty,
       imageUrl: recipe.imageUrl,
-      tags: recipeTagSlugs,
+      tags: recipeTagNames,
       isPublic: recipe.isPublic,
       code: recipe.code,
       createdAt: recipe.createdAt,

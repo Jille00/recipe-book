@@ -36,8 +36,8 @@ describe("contrastRatio", () => {
   });
 
   it("matches the guide's published light-mode ratio", () => {
-    // STYLE_GUIDE 09: charcoal on cream is ~9.4 (guide rounds loosely)
-    expect(contrastRatio("#4a4640", "#fffcf8")).toBeGreaterThan(7);
+    // STYLE_GUIDE 01: fig on leek is 5.69
+    expect(contrastRatio("#6a5a70", "#f1f4e8")).toBeCloseTo(5.69, 1);
     expect(relativeLuminance("#ffffff")).toBeCloseTo(1, 5);
   });
 });
@@ -121,5 +121,52 @@ describe("dark theme tokens (app/globals.css) meet WCAG AA", () => {
       const light = palette[`color-${status}-light`];
       expect(contrastRatio(light, blend(light, dark.card, 0.15))).toBeGreaterThanOrEqual(AA_TEXT);
     }
+  });
+});
+
+describe("light theme tokens (app/globals.css) meet WCAG AA", () => {
+  const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
+  const light = readBlock(css, ":root");
+  const palette = readBlock(css, "@theme inline");
+  const surfaces = {
+    background: light.background,
+    card: light.card,
+    muted: light.muted,
+  };
+
+  it.each([
+    ["foreground", "background"],
+    ["card-foreground", "card"],
+    ["primary-foreground", "primary"],
+    ["primary-foreground", "primary-hover"],
+    ["cta-foreground", "cta"],
+    ["cta-foreground", "cta-hover"],
+    ["secondary-foreground", "secondary"],
+    ["muted-foreground", "muted"],
+    ["accent-foreground", "accent"],
+  ])("%s on %s >= 4.5:1", (fg, bg) => {
+    expect(contrastRatio(light[fg], light[bg])).toBeGreaterThanOrEqual(AA_TEXT);
+  });
+
+  it.each(["foreground", "muted-foreground", "primary", "destructive"])(
+    "%s as text on every light surface >= 4.5:1",
+    (token) => {
+      for (const surface of Object.values(surfaces)) {
+        expect(contrastRatio(light[token], surface)).toBeGreaterThanOrEqual(AA_TEXT);
+      }
+    }
+  );
+
+  it.each(["input", "ring"])("%s as a UI boundary on every light surface >= 3:1", (token) => {
+    for (const surface of Object.values(surfaces)) {
+      expect(contrastRatio(light[token], surface)).toBeGreaterThanOrEqual(AA_UI);
+    }
+  });
+
+  it("the footer's leek text reads on its aubergine band, also at 75%", () => {
+    const ink = palette["color-ink"];
+    const leek = palette["color-leek"];
+    expect(contrastRatio(leek, ink)).toBeGreaterThanOrEqual(AA_TEXT);
+    expect(contrastRatio(blend(leek, ink, 0.75), ink)).toBeGreaterThanOrEqual(AA_TEXT);
   });
 });

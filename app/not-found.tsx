@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Button, Card, CardContent } from "@/components/ui";
-import { DelftTile } from "@/components/delft/delft-tile";
 
 export const metadata: Metadata = {
   title: "Page not found",
@@ -21,14 +20,10 @@ export default function NotFound() {
       >
         <Card className="w-full max-w-xl">
           <CardContent className="flex flex-col items-center justify-center px-6 py-14 text-center">
-            <DelftTile
-              seed="kookboek-404"
-              tags={["drinks"]}
-              className="size-28 rounded-[2px] shadow-soft"
-            />
-
-            <p className="mt-8 font-mono text-sm tabular text-muted-foreground">404</p>
-            <h1 className="mt-2 font-display text-[2.25rem] leading-[1.1] tracking-[-0.01em] text-foreground">
+            <p className="font-display text-[9rem] leading-[0.8] tabular text-foreground" aria-hidden="true">
+              404
+            </p>
+            <h1 className="mt-6 font-display text-5xl leading-[0.92] text-foreground text-balance sm:text-6xl">
               This page isn&apos;t on the menu
             </h1>
             <p className="mt-3 max-w-md text-muted-foreground">

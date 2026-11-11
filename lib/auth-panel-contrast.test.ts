@@ -10,8 +10,8 @@ import {
 
 /**
  * The quote beside the auth forms (app/(auth)/_components/auth-shell.tsx):
- * a Delft tile wall with the quote on an opaque card block, so the text sits
- * on that block's background and never on the painted tiles. Checked here in
+ * a wall of recipe colours with the quote on an opaque card block, so the text
+ * sits on that block's background and never on the colours. Checked here in
  * both themes, straight from the classes the shell uses and app/globals.css.
  */
 
@@ -34,7 +34,7 @@ const palette = readBlock("@theme inline");
 const themes = { light: readBlock(":root"), dark: readBlock(".dark") };
 type Theme = keyof typeof themes;
 
-/** A Tailwind colour name (`card`, `delft`) to hex in `theme`. */
+/** A Tailwind colour name (`card`, `fig`) to hex in `theme`. */
 function color(name: string, theme: Theme): string {
   const value = themes[theme][name] ?? palette[`color-${name}`];
   if (!value) throw new Error(`Unknown colour ${name}`);
@@ -55,7 +55,7 @@ const pages = readdirSync(authDir, { withFileTypes: true })
   .map((entry) => join(entry.name, "page.tsx"));
 
 describe("auth quote panel text meets WCAG AA", () => {
-  it("every auth page uses the shell with the tile wall", () => {
+  it("every auth page uses the shell with the wall of colours", () => {
     expect(pages.length).toBeGreaterThanOrEqual(5);
     for (const file of pages) {
       expect(readFileSync(join(authDir, file), "utf8"), file).toContain("<AuthShell");
@@ -63,7 +63,7 @@ describe("auth quote panel text meets WCAG AA", () => {
   });
 
   it("the shell puts the quote on the checked surface with the checked text colours", () => {
-    expect(shellSource).toContain("<DelftWall");
+    expect(shellSource).toContain("data-colour-wall");
     expect(shellSource).toContain("AUTH_PANEL_SURFACE");
     expect(shellSource).toContain("AUTH_PANEL_QUOTE_TEXT");
     expect(shellSource).toContain("AUTH_PANEL_ATTRIBUTION_TEXT");

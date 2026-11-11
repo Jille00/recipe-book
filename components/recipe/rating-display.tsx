@@ -106,14 +106,14 @@ export function RatingDisplay({
       </div>
       <span
         aria-hidden="true"
-        className={cn("ml-1 font-mono font-medium tabular text-foreground", textSizeClasses[size])}
+        className={cn("ml-1 font-bold tabular text-foreground", textSizeClasses[size])}
       >
         {safeAverage.toFixed(1)}
       </span>
       {showCount && (
         <span
           aria-hidden="true"
-          className={cn("font-mono tabular text-muted-foreground", textSizeClasses[size])}
+          className={cn("tabular text-muted-foreground", textSizeClasses[size])}
         >
           ({totalRatings})
         </span>

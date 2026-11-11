@@ -124,11 +124,11 @@ export function CommentList({
         <h2
           ref={headingRef}
           tabIndex={-1}
-          className="text-[1.75rem] leading-[1.2] text-foreground outline-none"
+          className="text-[2.75rem] leading-[0.95] text-foreground outline-none"
         >
           Comments
         </h2>
-        <span className="font-mono text-sm tabular text-muted-foreground">
+        <span className="font-bold text-sm tabular text-muted-foreground">
           <span className="sr-only">(</span>
           {total}
           <span className="sr-only">)</span>
@@ -147,7 +147,7 @@ export function CommentList({
           <p className="text-sm text-muted-foreground">
             <Link
               href={loginHref}
-              className="font-medium text-primary underline-offset-4 hover:underline"
+              className="font-bold text-foreground underline decoration-2 underline-offset-4 hover:decoration-[3px] rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               Sign in
             </Link>{" "}
@@ -179,13 +179,13 @@ export function CommentList({
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    <Loader2 className="animate-spin" aria-hidden="true" />
                     Loading…
                   </>
                 ) : (
                   <>
                     Show more comments
-                    <span className="font-mono tabular text-muted-foreground">
+                    <span className="font-bold tabular text-muted-foreground">
                       ({total - comments.length})
                     </span>
                   </>

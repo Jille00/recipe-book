@@ -2,11 +2,11 @@ import { cn } from "@/lib/utils";
 
 interface PageHeaderProps {
   title: React.ReactNode;
-  /** One line under the title, in slate. */
+  /** One line under the title, in the secondary text colour. */
   intro?: React.ReactNode;
   /** Something small above the title, e.g. a back link. */
   before?: React.ReactNode;
-  /** Beside the title: at most one orange (default) Button per page. */
+  /** Beside the title: at most one filled (default) Button per page. */
   action?: React.ReactNode;
   /** Id for the h1, so a section can be labelled by it. */
   titleId?: string;
@@ -14,7 +14,7 @@ interface PageHeaderProps {
 }
 
 /**
- * The top of a list page (STYLE_GUIDE 02/03): a Gloock h1 at 36-44px, a slate
+ * The top of a list page (STYLE_GUIDE 02/03): a condensed h1 at 60-96px, an
  * intro line, and the page's main action on the right (below on phones).
  */
 export function PageHeader({
@@ -32,12 +32,12 @@ export function PageHeader({
         <div className="min-w-0">
           <h1
             id={titleId}
-            className="font-display text-4xl leading-[1.1] tracking-[-0.01em] text-foreground break-words sm:text-[44px]"
+            className="font-display text-6xl leading-[0.88] text-foreground text-balance break-words sm:text-7xl lg:text-8xl"
           >
             {title}
           </h1>
           {intro && (
-            <p className="mt-2 max-w-2xl text-muted-foreground">{intro}</p>
+            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">{intro}</p>
           )}
         </div>
         {action && (

@@ -39,6 +39,7 @@ import {
 } from "@/lib/shopping-list/merge";
 import { MAX_ITEM_TEXT_LENGTH } from "@/lib/shopping-list/validation";
 import { cn } from "@/lib/utils";
+import type { RecipeColour } from "@/lib/recipe-colour";
 
 type ViewMode = "recipe" | "combined";
 
@@ -270,7 +271,7 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
               "All done. Everything is ticked off."
             ) : (
               <>
-                <span className="font-mono tabular text-foreground">{remaining}</span>{" "}
+                <span className="font-bold tabular text-foreground">{remaining}</span>{" "}
                 {remaining === 1 ? "item" : "items"} to buy
               </>
             )}
@@ -281,14 +282,14 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
             <>
               <Button variant="outline" size="sm" onClick={handleCopy}>
                 {copied ? (
-                  <Check className="h-4 w-4" aria-hidden="true" />
+                  <Check aria-hidden="true" />
                 ) : (
-                  <Copy className="h-4 w-4" aria-hidden="true" />
+                  <Copy aria-hidden="true" />
                 )}
                 Copy
               </Button>
               <Button variant="outline" size="sm" onClick={() => window.print()}>
-                <Printer className="h-4 w-4" aria-hidden="true" />
+                <Printer aria-hidden="true" />
                 Print
               </Button>
             </>
@@ -313,13 +314,13 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
           ref={inputRef}
         />
         <Button type="submit" className="h-12" isLoading={isAdding} disabled={!newItem.trim()}>
-          {!isAdding && <Plus className="h-4 w-4" aria-hidden="true" />}
+          {!isAdding && <Plus aria-hidden="true" />}
           Add
         </Button>
       </form>
 
       {empty ? (
-        // STYLE_GUIDE 04 empty state: a cup tile for an empty list.
+        // STYLE_GUIDE 04 empty state: a blank lemon label for an empty list.
         <EmptyState
           seed="shopping-list-empty"
           tags={["drinks"]}
@@ -340,7 +341,7 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
             <div
               role="group"
               aria-label="Show items"
-              className="inline-flex rounded-md border-[1.5px] border-border bg-card p-0.5"
+              className="inline-flex rounded-full bg-muted p-0.5"
             >
               {(
                 [
@@ -354,10 +355,10 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
                   aria-pressed={mode === value}
                   onClick={() => changeMode(value)}
                   className={cn(
-                    "inline-flex h-9 items-center gap-1.5 rounded-[4px] px-3 text-[13px] font-semibold tracking-[0.02em] transition-colors duration-(--duration-fast)",
+                    "inline-flex h-10 items-center gap-1.5 rounded-full px-3.5 text-sm font-bold transition-colors duration-(--duration-fast)",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                     mode === value
-                      ? "bg-secondary text-primary"
+                      ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -374,7 +375,7 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
                 onClick={() => clear("checked")}
                 disabled={checkedCount === 0}
               >
-                <ListChecks className="h-4 w-4" aria-hidden="true" />
+                <ListChecks aria-hidden="true" />
                 Clear checked
               </Button>
               <AlertDialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
@@ -384,17 +385,17 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
                     size="sm"
                     className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                   >
-                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    <Trash2 aria-hidden="true" />
                     Clear all
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="font-display text-[22px] leading-[1.3] font-normal">
+                    <AlertDialogTitle className="font-display text-3xl leading-[0.95]">
                       Clear your shopping list?
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      All <span className="font-mono tabular">{items.length}</span>{" "}
+                      All <span className="font-bold tabular">{items.length}</span>{" "}
                       {items.length === 1 ? "item" : "items"} will
                       be removed, including the ones you haven&apos;t ticked off.
                     </AlertDialogDescription>
@@ -425,6 +426,7 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
                       unit={line.unit}
                       checked={line.checked}
                       hint={line.sources.length > 0 ? line.sources.join(", ") : null}
+                      colours={line.colours}
                       onCheckedChange={(checked) => setChecked(line.itemIds, checked)}
                       onRemove={() => removeItems(line.itemIds)}
                     />
@@ -437,13 +439,19 @@ export function ShoppingListView({ initialItems }: ShoppingListViewProps) {
               {groups.map((group) => (
                 <Card key={group.recipeId ?? "other"} className="break-inside-avoid">
                   <CardContent>
-                    <h2 className="mb-2 font-display text-xl leading-[1.3] text-foreground">
+                    <h2 className="mb-2 flex items-center gap-3 font-display text-4xl leading-[0.95] text-foreground">
+                      {group.colour && (
+                        <span
+                          aria-hidden="true"
+                          className={cn(`recipe-${group.colour}`, "size-9 shrink-0 rounded-[10px] bg-recipe")}
+                        />
+                      )}
                       {group.recipeId === null ? (
                         "Other items"
                       ) : group.href ? (
                         <Link
                           href={group.href}
-                          className="rounded-sm transition-colors duration-(--duration-fast) hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           {group.title}
                         </Link>
@@ -482,6 +490,8 @@ interface ItemRowProps {
   checked: boolean;
   /** Where a combined line came from. */
   hint?: string | null;
+  /** One dot per recipe a combined line is for (STYLE_GUIDE 06). */
+  colours?: readonly RecipeColour[];
   onCheckedChange: (checked: boolean) => void;
   onRemove: () => void;
 }
@@ -492,6 +502,7 @@ function ItemRow({
   unit,
   checked,
   hint,
+  colours = [],
   onCheckedChange,
   onRemove,
 }: ItemRowProps) {
@@ -512,8 +523,8 @@ function ItemRow({
         aria-hidden="true"
         className="mt-1 hidden size-4 shrink-0 rounded-[4px] border border-current print:inline-block"
       />
-      {/* Amount in a fixed mono column so quantities line up down the list;
-          ticked lines go slate and are struck through. */}
+      {/* Amount in a fixed column of tabular figures so quantities line up
+          down the list; ticked lines go quiet and are struck through. */}
       <label
         htmlFor={id}
         className={cn(
@@ -521,27 +532,34 @@ function ItemRow({
           checked && "text-muted-foreground line-through"
         )}
       >
-        <span className="w-20 shrink-0 break-words font-mono text-sm leading-6 tabular sm:w-28">
+        <span className="w-20 shrink-0 break-words font-bold leading-6 tabular sm:w-28">
           {quantity}
         </span>
         <span className="min-w-0 flex-1 break-words">
           {text}
           {hint && (
-            <span className="block text-[13px] text-muted-foreground no-underline">
+            <span className="inline-block w-full text-[13px] text-muted-foreground">
               {hint}
             </span>
           )}
         </span>
       </label>
+      {colours.length > 0 && (
+        <span aria-hidden="true" className="mt-1.5 flex shrink-0 gap-1 print:hidden">
+          {colours.map((colour, index) => (
+            <span key={index} className={cn(`recipe-${colour}`, "size-3 rounded-full bg-recipe")} />
+          ))}
+        </span>
+      )}
       <Button
         type="button"
         variant="ghost"
-        size="icon-sm"
+        size="icon"
         onClick={onRemove}
         aria-label={`Remove ${label}`}
-        className="-my-1.5 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        className="-my-3 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
       >
-        <X className="h-4 w-4" aria-hidden="true" />
+        <X aria-hidden="true" />
       </Button>
     </li>
   );

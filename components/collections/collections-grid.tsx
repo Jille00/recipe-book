@@ -44,7 +44,7 @@ export function CollectionsGrid({ initialCollections }: CollectionsGridProps) {
   const handleCreate = async (name: string) => {
     const result = await createCollectionRequest(name);
     if (!result.ok) return result.error;
-    setCollections((prev) => [result.data, ...prev]);
+    setCollections((prev) => [{ ...result.data, colours: [] }, ...prev]);
     toast.success(`Created ${result.data.name}`);
     router.refresh();
     return null;
@@ -87,7 +87,7 @@ export function CollectionsGrid({ initialCollections }: CollectionsGridProps) {
             "Your own groups of recipes. Only you can see them."
           ) : (
             <>
-              <span className="font-mono tabular text-foreground">
+              <span className="font-bold tabular text-foreground">
                 {collections.length}
               </span>{" "}
               {collections.length === 1 ? "collection" : "collections"}. Only
@@ -95,11 +95,11 @@ export function CollectionsGrid({ initialCollections }: CollectionsGridProps) {
             </>
           )
         }
-        // When empty, the empty state carries the one orange action.
+        // When empty, the empty state carries the one filled action.
         action={
           collections.length > 0 ? (
             <Button onClick={() => setDialog({ kind: "create" })}>
-              <Plus className="h-4 w-4" aria-hidden="true" />
+              <Plus aria-hidden="true" />
               New collection
             </Button>
           ) : undefined
@@ -112,7 +112,7 @@ export function CollectionsGrid({ initialCollections }: CollectionsGridProps) {
           title="No collections yet"
           action={
             <Button onClick={() => setDialog({ kind: "create" })}>
-              <Plus className="h-4 w-4" aria-hidden="true" />
+              <Plus aria-hidden="true" />
               Start a collection
             </Button>
           }
@@ -123,9 +123,9 @@ export function CollectionsGrid({ initialCollections }: CollectionsGridProps) {
         </EmptyState>
       ) : (
         <>
-          <div className="stagger grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {collections.map((c) => (
-              <div key={c.id} className="animate-fade-in-up">
+              <div key={c.id}>
                 <CollectionCard
                   collection={c}
                   onRename={() => openFor("rename", c)}

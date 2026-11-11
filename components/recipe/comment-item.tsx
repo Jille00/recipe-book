@@ -174,9 +174,9 @@ export function CommentItem({
                   className="-my-2 -mr-2 shrink-0 text-muted-foreground hover:text-destructive"
                 >
                   {isDeleting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    <Loader2 className="animate-spin" aria-hidden="true" />
                   ) : (
-                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    <Trash2 aria-hidden="true" />
                   )}
                   <span className="sr-only">
                     Delete comment by {comment.userName}
@@ -189,7 +189,7 @@ export function CommentItem({
                 }}
               >
                 <AlertDialogHeader>
-                  <AlertDialogTitle className="font-display text-xl font-normal">
+                  <AlertDialogTitle className="font-display text-3xl">
                     Delete this comment?
                   </AlertDialogTitle>
                   <AlertDialogDescription>
@@ -209,7 +209,7 @@ export function CommentItem({
                     className={buttonVariants({ variant: "destructive" })}
                   >
                     {isDeleting && (
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      <Loader2 className="animate-spin" aria-hidden="true" />
                     )}
                     {isDeleting ? "Deleting…" : "Delete comment"}
                   </AlertDialogAction>

@@ -37,7 +37,7 @@ export function AccountField({ id, label, hint, error, ...inputProps }: AccountF
         </p>
       )}
       {error && (
-        <p id={errorId} className="text-[13px] text-destructive">
+        <p id={errorId} role="alert" className="text-[13px] text-destructive">
           {error}
         </p>
       )}
@@ -59,37 +59,28 @@ export function FormAlert({ message }: { message?: string | null }) {
 }
 
 /**
- * The header every account and profile card shares: an optional eyebrow, a
- * Gloock title (an h2 under the page's h1) and a line of guidance in slate.
+ * The header every account and profile card shares: a display title (an h2 under the page's h1) and a line of guidance.
  */
 export function AccountCardHeader({
   title,
   description,
-  eyebrow,
   className,
 }: {
   title: string;
   description?: ReactNode;
-  /** A small uppercase label above the title, only when it says something true. */
-  eyebrow?: string;
   className?: string;
 }) {
   return (
     <CardHeader className={cn("gap-1.5", className)}>
-      {eyebrow && (
-        <p className="text-xs font-medium tracking-[0.06em] text-muted-foreground uppercase">
-          {eyebrow}
-        </p>
-      )}
-      <h2 className="text-[22px] leading-tight text-foreground">{title}</h2>
+      <h2 className="text-3xl leading-[0.95] text-foreground">{title}</h2>
       {description && <CardDescription>{description}</CardDescription>}
     </CardHeader>
   );
 }
 
 /**
- * A quiet confirmation panel (e.g. "Check your inbox"): glaze surface, delft
- * icon, text in ink and slate.
+ * A quiet confirmation panel (e.g. "Check your inbox"): leek-soft surface,
+ * aubergine icon, text in the two text colours.
  */
 export function NoticePanel({
   icon,

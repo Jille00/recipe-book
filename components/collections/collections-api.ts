@@ -43,7 +43,7 @@ export interface CreatedCollection {
   createdAt: string | null;
   updatedAt: string | null;
   recipeCount: number;
-  coverImageUrl: string | null;
+  coverRecipes: { code: string; tags: string[] }[];
 }
 
 export const createCollectionRequest = (name: string) =>

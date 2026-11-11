@@ -126,13 +126,13 @@ export function CommentForm({ recipeId, code, onCommentAdded }: CommentFormProps
               : "text-muted-foreground"
           )}
         >
-          <span className="font-mono tabular">{charactersRemaining}</span> characters
+          <span className="tabular">{charactersRemaining}</span> characters
           remaining
         </span>
         <span role="status" aria-live="polite" className="sr-only">
           {counterAnnouncement}
         </span>
-        {/* Secondary: oranje is spent on the page's main action (Cook). */}
+        {/* Secondary: the filled pill is spent on the page's main action. */}
         <Button
           type="submit"
           variant="secondary"
@@ -140,7 +140,7 @@ export function CommentForm({ recipeId, code, onCommentAdded }: CommentFormProps
           disabled={isSubmitting || trimmedLength === 0 || isOverLimit}
           isLoading={isSubmitting}
         >
-          {!isSubmitting && <Send className="h-4 w-4" aria-hidden="true" />}
+          {!isSubmitting && <Send aria-hidden="true" />}
           Post comment
         </Button>
       </div>

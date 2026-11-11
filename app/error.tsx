@@ -32,7 +32,7 @@ export default function Error({
               <AlertTriangle className="size-6" aria-hidden="true" />
             </div>
 
-            <h1 className="mt-6 font-display text-[2.25rem] leading-[1.1] tracking-[-0.01em] text-foreground">
+            <h1 className="mt-6 font-display text-5xl leading-[0.95] text-foreground">
               Something boiled over
             </h1>
             <p className="mt-3 max-w-md text-muted-foreground">
@@ -41,7 +41,7 @@ export default function Error({
             </p>
 
             {error.digest && (
-              <p className="mt-4 font-mono text-xs tabular text-muted-foreground">
+              <p className="mt-4 text-xs text-muted-foreground">
                 Reference: {error.digest}
               </p>
             )}

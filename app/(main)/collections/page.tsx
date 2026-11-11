@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getUserCollections } from "@/lib/db/queries/collections";
+import { recipeColour } from "@/lib/recipe-colour";
 import { CollectionsGrid } from "@/components/collections/collections-grid";
 
 export const metadata: Metadata = {
@@ -23,11 +24,11 @@ export default async function CollectionsPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
       <CollectionsGrid
-        initialCollections={collections.map(({ id, name, recipeCount, coverImageUrl }) => ({
+        initialCollections={collections.map(({ id, name, recipeCount, coverRecipes }) => ({
           id,
           name,
           recipeCount,
-          coverImageUrl,
+          colours: coverRecipes.map((recipe) => recipeColour(recipe.code, recipe.tags)),
         }))}
       />
     </div>

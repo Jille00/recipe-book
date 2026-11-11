@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowLeft, Pencil, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui";
-import { DelftTile } from "@/components/delft/delft-tile";
+import { ColourStripes } from "@/components/recipe/recipe-colour";
+import { recipeColour } from "@/lib/recipe-colour";
 import { EmptyState } from "@/components/page/empty-state";
 import { RecipeCard } from "@/components/recipe/recipe-card";
 import type { RecipeCardData } from "@/types/recipe";
@@ -113,25 +114,25 @@ export function CollectionDetail({
       <header className="mb-8 sm:mb-10">
         <Link
           href="/collections"
-          className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-md text-sm font-medium text-muted-foreground transition-colors duration-(--duration-fast) hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="mb-4 inline-flex min-h-11 items-center gap-2 text-[15px] font-semibold text-foreground underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          <ArrowLeft className="size-[18px]" aria-hidden="true" />
           All collections
         </Link>
 
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-          {/* The collection's tile: the same seed as its card's wall. */}
+          {/* The collection's stripes: one for each recipe in it. */}
           <div className="flex min-w-0 items-center gap-5 sm:gap-6">
-            <DelftTile
-              seed={collection.id}
-              className="size-20 shrink-0 shadow-soft sm:size-28"
+            <ColourStripes
+              colours={recipes.slice(0, 8).map((recipe) => recipeColour(recipe.code, recipe.tags))}
+              className="h-20 w-14 shrink-0 overflow-hidden rounded-xl sm:h-28 sm:w-20"
             />
             <div className="min-w-0">
-              <h1 className="font-display text-4xl leading-[1.1] tracking-[-0.01em] text-foreground break-words sm:text-[44px]">
+              <h1 className="font-display text-6xl leading-[0.88] text-foreground break-words sm:text-8xl">
                 {name}
               </h1>
               <p className="mt-2 text-muted-foreground" aria-live="polite">
-                <span className="font-mono tabular text-foreground">
+                <span className="font-bold tabular text-foreground">
                   {recipes.length}
                 </span>{" "}
                 {recipes.length === 1 ? "recipe" : "recipes"}
@@ -140,7 +141,7 @@ export function CollectionDetail({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setRenameOpen(true)}>
-              <Pencil className="h-4 w-4" aria-hidden="true" />
+              <Pencil aria-hidden="true" />
               Rename
             </Button>
             <Button
@@ -149,7 +150,7 @@ export function CollectionDetail({
               onClick={() => setDeleteOpen(true)}
               className="text-destructive hover:bg-destructive/10 hover:text-destructive"
             >
-              <Trash2 className="h-4 w-4" aria-hidden="true" />
+              <Trash2 aria-hidden="true" />
               Delete
             </Button>
           </div>
@@ -172,21 +173,25 @@ export function CollectionDetail({
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {recipes.map((recipe) => (
-            <div key={recipe.id} className="relative">
-              <RecipeCard
-                recipe={recipe}
-                showAuthor={recipe.userId !== currentUserId}
-              />
-              {/* Above the card's stretched link, opposite the time badge. */}
-              <button
+            <div key={recipe.id} className="flex flex-col gap-1">
+              <div className="flex-1">
+                <RecipeCard
+                  recipe={recipe}
+                  showAuthor={recipe.userId !== currentUserId}
+                />
+              </div>
+              {/* Under the label, not on it: a label carries only its
+                  category, time, title and meta (STYLE_GUIDE 06). */}
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => void handleRemove(recipe)}
-                className="glass absolute top-3 left-3 z-20 flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-transform duration-150 hover:scale-110 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="h-11 self-end px-4 text-[15px] text-muted-foreground"
                 aria-label={`Remove ${recipe.title} from ${name}`}
-                title="Remove from collection"
               >
-                <X className="h-5 w-5" aria-hidden="true" />
-              </button>
+                <X aria-hidden="true" />
+                Remove
+              </Button>
             </div>
           ))}
         </div>

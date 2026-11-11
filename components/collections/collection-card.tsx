@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import {
@@ -9,13 +8,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui";
-import { DelftWall } from "@/components/delft/delft-tile";
+import { ColourStripes } from "@/components/recipe/recipe-colour";
+import type { RecipeColour } from "@/lib/recipe-colour";
 
 export interface CollectionCardData {
   id: string;
   name: string;
   recipeCount: number;
-  coverImageUrl: string | null;
+  /** The colours of its newest recipes, one stripe each. */
+  colours: readonly RecipeColour[];
 }
 
 interface CollectionCardProps {
@@ -25,31 +26,16 @@ interface CollectionCardProps {
 }
 
 /**
- * A collection in the /collections grid. Built like RecipeCard (STYLE_GUIDE
- * 04/05): 4:3 cover (a recipe photo, else a tile wall seeded by the
- * collection), white card, soft shadow lifting on hover, and a stretched
- * title link so the whole card opens the collection while the menu button
- * stays a separate control.
+ * A collection in the /collections grid (STYLE_GUIDE 04): a cover striped in
+ * the colours of its recipes, a white panel below, and a stretched title link
+ * so the whole card opens the collection while the menu button stays a
+ * separate control.
  */
 export function CollectionCard({ collection, onRename, onDelete }: CollectionCardProps) {
   return (
-    <article className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-[translate,box-shadow] duration-(--duration-slow) ease-out hover:-translate-y-1 hover:shadow-lifted">
-      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-        {collection.coverImageUrl ? (
-          <Image
-            src={collection.coverImageUrl}
-            alt=""
-            fill
-            className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          />
-        ) : (
-          <DelftWall
-            seed={collection.id}
-            tileSize={112}
-            className="transition-transform duration-500 ease-out group-hover:scale-105"
-          />
-        )}
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-[20px] bg-card transition-[translate,box-shadow] duration-(--duration-slow) ease-out hover:-translate-y-1 hover:shadow-lifted">
+      <div className="relative h-32 overflow-hidden">
+        <ColourStripes colours={collection.colours} />
 
         {/* Not modal: the rename and delete dialogs it opens manage focus
             and pointer locking themselves. */}
@@ -57,7 +43,7 @@ export function CollectionCard({ collection, onRename, onDelete }: CollectionCar
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="glass absolute top-3 right-3 z-20 flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-transform duration-150 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="absolute top-3 right-3 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-card text-foreground transition-transform duration-150 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               aria-label={`Options for ${collection.name}`}
             >
               <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
@@ -76,17 +62,17 @@ export function CollectionCard({ collection, onRename, onDelete }: CollectionCar
         </DropdownMenu>
       </div>
 
-      <div className="p-4 sm:p-5">
-        <h2 className="font-display text-xl leading-[1.3] text-foreground line-clamp-1 transition-colors duration-(--duration-fast) group-hover:text-primary sm:text-[22px]">
+      <div className="px-5 pt-4 pb-5">
+        <h2 className="font-display text-4xl leading-[0.95] text-foreground line-clamp-2">
           <Link
             href={`/collections/${collection.id}`}
-            className="after:absolute after:inset-0 after:z-10 after:content-[''] focus-visible:outline-none focus-visible:after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-primary focus-visible:after:ring-offset-2"
+            className="after:absolute after:inset-0 after:z-10 after:content-[''] focus-visible:outline-none focus-visible:after:rounded-[20px] focus-visible:after:ring-2 focus-visible:after:ring-primary focus-visible:after:ring-offset-2"
           >
             {collection.name}
           </Link>
         </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          <span className="font-mono tabular">{collection.recipeCount}</span>{" "}
+        <p className="mt-1.5 text-[15px] font-semibold text-muted-foreground">
+          <span className="tabular">{collection.recipeCount}</span>{" "}
           {collection.recipeCount === 1 ? "recipe" : "recipes"}
         </p>
       </div>

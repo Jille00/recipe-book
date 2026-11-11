@@ -1,47 +1,45 @@
 import Link from "next/link";
-import { DelftTile } from "@/components/delft/delft-tile";
 import { cn } from "@/lib/utils";
-
-/**
- * The Kookboek mark (STYLE_GUIDE 04 Navigation): a small Delft tile with the
- * windmill motif and the lowercase wordmark in Gloock. The seed is fixed, so
- * the mark is the same tile everywhere.
- */
-export const BRAND_TILE_SEED = "kookboek";
-export const BRAND_TILE_TAGS = ["dinner"] as const;
 
 interface BrandMarkProps {
   className?: string;
-  /** Tile edge in Tailwind size classes, e.g. "size-9". */
-  tileClassName?: string;
-  /** Wordmark size classes, e.g. "text-2xl". */
+  /** Height of the spines in Tailwind classes, e.g. "h-7". */
+  spinesClassName?: string;
+  /** Wordmark size classes, e.g. "text-4xl". */
   wordmarkClassName?: string;
 }
 
-export function BrandMark({ className, tileClassName, wordmarkClassName }: BrandMarkProps) {
+/**
+ * Three cookbook spines on a shelf, in tomato, lemon and basil. Sized by its
+ * height; the spines scale with it.
+ */
+export function Spines({ className }: { className?: string }) {
+  return (
+    <span aria-hidden="true" className={cn("flex h-7 items-end gap-[0.1em]", className)}>
+      <span className="recipe-tomato h-full w-[0.3em] rounded-[2px] bg-recipe" />
+      <span className="recipe-lemon h-3/4 w-[0.3em] rounded-[2px] bg-recipe" />
+      <span className="recipe-basil h-[90%] w-[0.3em] rounded-[2px] bg-recipe" />
+    </span>
+  );
+}
+
+/**
+ * The Kookboek mark (STYLE_GUIDE 04 Navigation): the three spines and the
+ * lowercase wordmark in the display face. It takes the text colour around it.
+ */
+export function BrandMark({ className, spinesClassName, wordmarkClassName }: BrandMarkProps) {
   return (
     <Link
       href="/"
       aria-label="Kookboek, home"
       className={cn(
-        "group inline-flex min-h-11 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "inline-flex min-h-11 items-end gap-2.5 rounded-md pb-1.5 font-display text-4xl leading-[0.8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        wordmarkClassName,
         className
       )}
     >
-      <DelftTile
-        seed={BRAND_TILE_SEED}
-        tags={BRAND_TILE_TAGS}
-        className={cn("size-9 rounded-[2px] shadow-soft", tileClassName)}
-      />
-      <span
-        aria-hidden="true"
-        className={cn(
-          "font-display text-2xl leading-none text-foreground transition-colors group-hover:text-primary",
-          wordmarkClassName
-        )}
-      >
-        kookboek
-      </span>
+      <Spines className={cn("h-[0.78em] text-[1em]", spinesClassName)} />
+      <span aria-hidden="true">kookboek</span>
     </Link>
   );
 }

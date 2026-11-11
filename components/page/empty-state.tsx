@@ -1,12 +1,12 @@
-import { DelftTile } from "@/components/delft/delft-tile";
+import { ColourSwatch } from "@/components/recipe/recipe-colour";
 import { cn } from "@/lib/utils";
 
 interface EmptyStateProps {
-  /** Seed for the tile, so the same empty page always shows the same tile. */
+  /** Seed for the swatch, so the same empty page always shows the same colour. */
   seed: string;
-  /** Picks the tile's motif, e.g. ["drinks"] for a cup. */
+  /** Picks the swatch's colour, e.g. ["drinks"] for lemon. */
   tags?: readonly string[];
-  /** What's missing, in Gloock. */
+  /** What's missing, in the display face. */
   title: React.ReactNode;
   /** One line of guidance. */
   children?: React.ReactNode;
@@ -18,8 +18,8 @@ interface EmptyStateProps {
 }
 
 /**
- * STYLE_GUIDE 04 Empty states: a single Delft tile, a Gloock title that says
- * what's missing, one line of guidance, one action.
+ * STYLE_GUIDE 04 Empty states: one blank label waiting for a recipe, a title
+ * that says what's missing, one line of guidance, one action.
  */
 export function EmptyState({
   seed,
@@ -33,12 +33,12 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center rounded-xl border border-border bg-card px-6 py-12 text-center shadow-soft sm:py-16",
+        "flex flex-col items-center rounded-3xl bg-card px-6 py-12 text-center sm:py-16",
         className
       )}
     >
-      <DelftTile seed={seed} tags={tags} className="size-24 sm:size-28" />
-      <Heading className="mt-6 font-display text-2xl leading-[1.2] text-foreground">
+      <ColourSwatch seed={seed} tags={tags} className="h-28 w-24 rounded-2xl sm:h-32 sm:w-28" />
+      <Heading className="mt-6 font-display text-4xl leading-[0.95] text-foreground">
         {title}
       </Heading>
       {children && (

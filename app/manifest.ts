@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
       "Create, organize, and share your favorite recipes with friends and family.",
     start_url: "/",
     display: "standalone",
-    background_color: "#f4f6fa",
-    theme_color: "#1d3c8c",
+    background_color: "#f1f4e8",
+    theme_color: "#2d1b33",
     icons: [
       {
         src: "/icon-192.png",

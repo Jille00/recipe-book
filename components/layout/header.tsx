@@ -187,12 +187,12 @@ export function Header({ initialUser }: HeaderProps) {
     <button
       type="button"
       aria-label={`Account menu${user?.name ? ` for ${user.name}` : ""}`}
-      className="flex h-11 items-center gap-2 rounded-md px-1.5 transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="flex h-11 items-center gap-2 rounded-full pr-2.5 pl-1.5 transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       <Avatar className="size-8">
         {/* Decorative: the name is spelled out right next to it. */}
         <AvatarImage src={user?.image || undefined} alt="" />
-        <AvatarFallback className="bg-secondary text-xs font-medium text-secondary-foreground">
+        <AvatarFallback className="recipe-lemon bg-recipe text-xs font-bold text-on-recipe">
           {getInitials(user?.name)}
         </AvatarFallback>
       </Avatar>
@@ -204,18 +204,18 @@ export function Header({ initialUser }: HeaderProps) {
   );
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/85 backdrop-blur-md backdrop-saturate-150 print:hidden">
+    <header className="sticky top-0 z-50 w-full bg-background/85 backdrop-blur-md backdrop-saturate-150 print:hidden">
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
 
       <nav
         aria-label="Main"
-        className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8"
+        className="mx-auto flex h-[4.75rem] max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8"
       >
         <BrandMark />
 
-        {/* Desktop navigation. Active: delft text with a 2px delft underline. */}
+        {/* Desktop navigation. Active: an aubergine pill. */}
         <div className="hidden md:flex md:items-center md:gap-1">
           {sessionResolved
             ? filteredNav.map((item) => {
@@ -226,10 +226,10 @@ export function Header({ initialUser }: HeaderProps) {
                     href={item.href}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "flex h-11 items-center rounded-md px-3 text-sm font-medium decoration-2 underline-offset-[6px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                      "flex h-11 items-center rounded-full px-4 text-base font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                       isActive
-                        ? "text-primary underline decoration-primary"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-foreground hover:bg-accent"
                     )}
                   >
                     {item.name}
@@ -237,7 +237,7 @@ export function Header({ initialUser }: HeaderProps) {
                 );
               })
             : Array.from({ length: 3 }).map((_, index) => (
-                <Skeleton key={index} className="mx-1 h-6 w-20 rounded-md" />
+                <Skeleton key={index} className="mx-1 h-6 w-20 rounded-full" />
               ))}
         </div>
 
@@ -251,7 +251,7 @@ export function Header({ initialUser }: HeaderProps) {
             </div>
           ) : isAuthenticated ? (
             <div className="flex items-center gap-2">
-              {/* Outline: a page's own main action keeps the orange. */}
+              {/* Outline: the filled pill is for a page's own main action. */}
               <Button asChild variant="outline" size="sm">
                 <Link href="/recipes/new">
                   <Plus aria-hidden="true" />
@@ -306,7 +306,7 @@ export function Header({ initialUser }: HeaderProps) {
           aria-label={mobileMenuOpen ? "Close main menu" : "Open main menu"}
           aria-expanded={mobileMenuOpen}
           aria-controls={MOBILE_MENU_ID}
-          className="flex size-11 items-center justify-center rounded-md transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
+          className="flex size-11 items-center justify-center rounded-full transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
           onClick={() => setMobileMenuOpen((open) => !open)}
         >
           {mobileMenuOpen ? (
@@ -322,7 +322,7 @@ export function Header({ initialUser }: HeaderProps) {
         <div
           id={MOBILE_MENU_ID}
           ref={mobileMenuRef}
-          className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-border bg-background md:hidden"
+          className="max-h-[calc(100dvh-4.75rem)] overflow-y-auto border-t border-border bg-background md:hidden"
         >
           <nav aria-label="Mobile" className="space-y-1 px-4 py-3">
             {sessionResolved
@@ -335,9 +335,9 @@ export function Header({ initialUser }: HeaderProps) {
                       href={item.href}
                       aria-current={isActive ? "page" : undefined}
                       className={cn(
-                        "flex min-h-11 items-center gap-3 rounded-md px-3 text-base font-medium transition-colors duration-150",
+                        "flex min-h-11 items-center gap-3 rounded-full px-4 text-base font-semibold transition-colors duration-150",
                         isActive
-                          ? "bg-secondary text-secondary-foreground"
+                          ? "bg-primary text-primary-foreground"
                           : "text-muted-foreground hover:bg-accent hover:text-foreground"
                       )}
                       onClick={() => closeMobileMenu()}
@@ -373,7 +373,7 @@ export function Header({ initialUser }: HeaderProps) {
                   <Avatar className="size-10">
                     {/* Decorative: the name is spelled out right next to it. */}
                     <AvatarImage src={user?.image || undefined} alt="" />
-                    <AvatarFallback className="bg-secondary font-medium text-secondary-foreground">
+                    <AvatarFallback className="recipe-lemon bg-recipe font-bold text-on-recipe">
                       {getInitials(user?.name)}
                     </AvatarFallback>
                   </Avatar>
@@ -388,7 +388,7 @@ export function Header({ initialUser }: HeaderProps) {
                     key={item.href}
                     href={item.href}
                     aria-current={isActivePath(pathname, item.href) ? "page" : undefined}
-                    className="flex min-h-11 items-center gap-3 rounded-md px-3 text-base font-medium text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground aria-[current=page]:bg-secondary aria-[current=page]:text-secondary-foreground"
+                    className="flex min-h-11 items-center gap-3 rounded-full px-4 text-base font-semibold text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground aria-[current=page]:bg-primary aria-[current=page]:text-primary-foreground [&[aria-current=page]>svg]:text-current"
                     onClick={() => closeMobileMenu()}
                   >
                     <item.icon className="size-5 text-primary" aria-hidden="true" />
@@ -401,7 +401,7 @@ export function Header({ initialUser }: HeaderProps) {
                 <button
                   type="button"
                   onClick={handleSignOut}
-                  className="flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-base font-medium text-destructive transition-colors duration-150 hover:bg-destructive/10"
+                  className="flex min-h-11 w-full items-center gap-3 rounded-full px-4 text-base font-semibold text-destructive transition-colors duration-150 hover:bg-destructive/10"
                 >
                   <LogOut className="size-5" aria-hidden="true" />
                   Sign out

@@ -51,7 +51,7 @@ export function DeleteCollectionDialog({
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className="font-display text-[22px] leading-[1.3] font-normal">
+          <AlertDialogTitle className="font-display text-3xl leading-[0.95]">
             Delete &ldquo;{name}&rdquo;?
           </AlertDialogTitle>
           <AlertDialogDescription>

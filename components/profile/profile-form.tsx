@@ -183,7 +183,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
             <Avatar className="size-16 sm:size-20">
               {/* Decorative: the name is spelled out right next to it. */}
               <AvatarImage src={user.image || undefined} alt="" />
-              <AvatarFallback className="bg-secondary font-display text-2xl text-secondary-foreground">
+              <AvatarFallback className="bg-secondary font-display text-4xl text-secondary-foreground">
                 {getInitials(user.name)}
               </AvatarFallback>
             </Avatar>
@@ -213,7 +213,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
             <div className="relative">
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 font-mono text-base text-muted-foreground"
+                className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-base text-muted-foreground"
               >
                 /u/
               </span>
@@ -230,12 +230,12 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
                 maxLength={31}
                 aria-invalid={handleError ? true : undefined}
                 aria-describedby={handleError ? "handle-hint handle-error" : "handle-hint"}
-                className="pl-[3.25rem] font-mono"
+                className="pl-[3.25rem]"
               />
             </div>
             <p id="handle-hint" className="text-[13px] text-muted-foreground">
               Your public page with your public recipes:{" "}
-              <span className="font-mono break-all text-primary">
+              <span className="break-all text-primary">
                 /u/{formData.handle.trim() || "your-handle"}
               </span>
               . 3 to 30 lowercase letters, numbers or hyphens. Leave empty to
@@ -249,7 +249,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
             {savedHandle && (
               <Link
                 href={profilePath(savedHandle)}
-                className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:text-primary-hover hover:underline"
+                className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold text-foreground underline decoration-2 underline-offset-4 hover:decoration-[3px] rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
                 View your public profile
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -327,7 +327,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
                   className={UNIT_RADIO}
                 />
                 <div className="flex-1">
-                  <p className="font-medium text-foreground">Imperial</p>
+                  <p className="text-[15px] font-bold text-foreground">Imperial</p>
                   <p className="text-sm text-muted-foreground">
                     Cups, tablespoons, teaspoons, ounces, pounds, Fahrenheit
                   </p>
@@ -349,7 +349,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
                   className={UNIT_RADIO}
                 />
                 <div className="flex-1">
-                  <p className="font-medium text-foreground">Metric</p>
+                  <p className="text-[15px] font-bold text-foreground">Metric</p>
                   <p className="text-sm text-muted-foreground">
                     Milliliters, liters, grams, kilograms, Celsius
                   </p>
@@ -368,7 +368,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
       {/* Save Button */}
       <div className="flex justify-end">
         <Button type="submit" disabled={isSubmitting || !hasChanges}>
-          {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+          {isSubmitting && <Loader2 className="animate-spin" aria-hidden="true" />}
           {isSubmitting ? "Saving..." : "Save changes"}
         </Button>
       </div>

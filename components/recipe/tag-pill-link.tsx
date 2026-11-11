@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { DelftTile } from "@/components/delft/delft-tile";
+import { ColourDot } from "@/components/recipe/recipe-colour";
 import { cn } from "@/lib/utils";
 import { tagPath } from "@/lib/tag-pages";
 
@@ -11,25 +11,25 @@ interface TagPillLinkProps {
 }
 
 /**
- * A tag as a glaze pill with delft text (STYLE_GUIDE 04 "Tag pills") linking
- * to its page. A tiny tile of the tag's motif leads, the same one the tag
- * wears on /tags and in the /browse category pills.
+ * A tag as a white pill (STYLE_GUIDE 04 "Chips") linking to its page. A dot
+ * of the tag's colour leads, the same colour the tag wears on /tags and in
+ * the /browse category pills.
  */
 export function TagPillLink({ tag, count, className }: TagPillLinkProps) {
   return (
     <Link
       href={tagPath(tag.slug)}
       className={cn(
-        // 36px pill; the ::after stretches the hit area to 44px, which an 8px
+        // 40px pill; the ::after stretches the hit area to 44px, which an 8px
         // row gap leaves room for.
-        "relative inline-flex h-9 items-center gap-2 rounded-full bg-secondary pr-3.5 pl-1.5 text-[13px] font-medium text-primary transition-colors duration-(--duration-fast) after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] hover:bg-glaze-line focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:hover:bg-night-line",
+        "relative inline-flex h-10 items-center gap-2 rounded-full border-[1.5px] border-border bg-card px-4 text-[15px] font-semibold text-foreground transition-colors duration-(--duration-fast) after:absolute after:inset-x-0 after:-inset-y-0.5 after:content-[''] hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className
       )}
     >
-      <DelftTile seed={tag.slug} tags={[tag.slug]} className="size-6" />
+      <ColourDot seed={tag.slug} tags={[tag.slug]} />
       {tag.name}
       {count !== undefined && (
-        <span className="font-mono text-xs tabular text-muted-foreground">
+        <span className="text-sm tabular text-muted-foreground">
           <span className="sr-only">(</span>
           {count}
           <span className="sr-only"> {count === 1 ? "recipe" : "recipes"})</span>

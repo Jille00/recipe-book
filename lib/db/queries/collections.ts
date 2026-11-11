@@ -1,5 +1,5 @@
 import { and, desc, eq, or, sql } from "drizzle-orm";
-import { recipeTagSlugs } from "./tag-slugs";
+import { recipeTagNames } from "./tag-names";
 import { db, collection, collectionRecipe, favorite, recipe, user } from "@/lib/db";
 import {
   MAX_COLLECTIONS_PER_USER,
@@ -19,20 +19,25 @@ function listableFor(userId: string) {
   return or(eq(recipe.isPublic, true), eq(recipe.userId, userId));
 }
 
+/** A cover shows at most this many stripes. */
+const COVER_STRIPES = 8;
+
 export interface CollectionSummary {
   id: string;
   name: string;
   createdAt: Date | null;
   updatedAt: Date | null;
   recipeCount: number;
-  coverImageUrl: string | null;
+  /** Its newest recipes (up to 8), for the stripes on its cover. */
+  coverRecipes: { code: string; tags: string[] }[];
   /** Only set when a recipe id was asked about. */
   containsRecipe?: boolean;
 }
 
 /**
  * The user's collections, newest first, with how many recipes each lists and
- * the photo of the most recently added one as its cover. Pass `recipeId` to
+ * its newest recipes' codes and tags (what the cover's stripes are coloured
+ * from). Pass `recipeId` to
  * also learn which collections already hold that recipe.
  */
 export async function getUserCollections(
@@ -49,7 +54,7 @@ export async function getUserCollections(
       createdAt: collection.createdAt,
       updatedAt: collection.updatedAt,
       recipeCount: sql<number>`count(${recipe.id})::int`,
-      coverImageUrl: sql<string | null>`(array_agg(${recipe.imageUrl} order by ${collectionRecipe.addedAt} desc) filter (where ${recipe.imageUrl} is not null))[1]`,
+      coverRecipes: sql<{ code: string; tags: string[] }[]>`coalesce(json_agg(json_build_object('code', ${recipe.code}, 'tags', ${recipeTagNames}) order by ${collectionRecipe.addedAt} desc) filter (where ${recipe.id} is not null), '[]'::json)`,
       containsRecipe: recipeId
         ? sql<boolean>`coalesce(bool_or(${collectionRecipe.recipeId} = ${recipeId}), false)`
         : sql<boolean>`false`,
@@ -62,7 +67,8 @@ export async function getUserCollections(
     .orderBy(desc(collection.createdAt), desc(collection.id));
 
   return rows.map((row) => {
-    const { containsRecipe, ...rest } = row;
+    const { containsRecipe, coverRecipes, ...summary } = row;
+    const rest = { ...summary, coverRecipes: coverRecipes.slice(0, COVER_STRIPES) };
     return recipeId ? { ...rest, containsRecipe } : rest;
   });
 }
@@ -239,7 +245,7 @@ export async function getCollectionRecipes(
       servings: recipe.servings,
       difficulty: recipe.difficulty,
       imageUrl: recipe.imageUrl,
-      tags: recipeTagSlugs,
+      tags: recipeTagNames,
       isPublic: recipe.isPublic,
       code: recipe.code,
       createdAt: recipe.createdAt,

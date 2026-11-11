@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RECIPE_COLOURS } from "@/lib/recipe-colour";
 
 export const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -101,6 +102,8 @@ const recipeFields = {
   cook_time_minutes: z.number().int().nonnegative().max(100_000).optional().nullable(),
   servings: z.number().int().positive().max(10_000).optional().nullable(),
   difficulty: z.enum(["easy", "medium", "hard"]).optional().nullable(),
+  // null (or absent) means automatic: the colour follows the tags.
+  colour: z.enum(RECIPE_COLOURS).optional().nullable(),
   // http(s) only: z.url() on its own also accepts javascript:, data: and file:.
   image_url: z
     .url({ protocol: /^https?$/, message: "Image must be an http(s) URL" })

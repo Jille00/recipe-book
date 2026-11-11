@@ -55,6 +55,8 @@ interface CookModeProps {
   code?: string;
   /** Tag names, which pick the recipe's colour. */
   tags?: readonly string[];
+  /** The colour the cook picked for the recipe, when there is one. */
+  colour?: string | null;
   title: string;
   /** Already scaled and unit-converted (recipe-detail's convertedIngredients) */
   ingredients: CookIngredient[];
@@ -98,7 +100,15 @@ function storeStep(recipeId: string, step: number | null) {
  * a tickable ingredient list, timers for the durations in each step, and the
  * screen kept awake while it is open.
  */
-export function CookMode({ recipeId, code, tags, title, ingredients, instructions }: CookModeProps) {
+export function CookMode({
+  recipeId,
+  code,
+  tags,
+  colour,
+  title,
+  ingredients,
+  instructions,
+}: CookModeProps) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [showIngredients, setShowIngredients] = useState(false);
@@ -278,7 +288,7 @@ export function CookMode({ recipeId, code, tags, title, ingredients, instruction
         // The whole screen takes the recipe's colour (STYLE_GUIDE 06):
         // `recipe-surface` remaps the tokens for everything inside.
         className={cn(
-          recipeColourClass(code ?? recipeId, tags),
+          recipeColourClass(code ?? recipeId, tags, colour),
           "recipe-surface inset-0 top-0 left-0 flex h-dvh w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 p-0 shadow-none sm:max-w-none"
         )}
       >

@@ -1,4 +1,5 @@
 import type { NutritionInfo } from "./nutrition";
+import type { RecipeColour } from "@/lib/recipe-colour";
 
 export interface Ingredient {
   id: string;
@@ -28,6 +29,8 @@ export interface Recipe {
   servings: number | null;
   difficulty: Difficulty | null;
   imageUrl: string | null;
+  /** The colour the cook picked; null means automatic (tags, then code). */
+  colour?: RecipeColour | null;
   nutrition: NutritionInfo | null;
   /** Listed on Browse and in search engines. Unlisted recipes are still
    *  viewable by anyone who has the link. */
@@ -82,6 +85,7 @@ export interface CreateRecipeInput {
   servings?: number;
   difficulty?: Difficulty;
   imageUrl?: string;
+  colour?: RecipeColour | null;
   nutrition?: NutritionInfo | null;
   isPublic?: boolean;
   tagIds?: string[];

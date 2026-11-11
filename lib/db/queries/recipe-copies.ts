@@ -27,6 +27,7 @@ export async function copyRecipe(
         servings: recipe.servings,
         difficulty: recipe.difficulty,
         imageUrl: recipe.imageUrl,
+        colour: recipe.colour,
         nutrition: recipe.nutrition,
       })
       .from(recipe)

@@ -87,6 +87,7 @@ export async function getPublicRecipesByUser(
         difficulty: recipe.difficulty,
         imageUrl: recipe.imageUrl,
         tags: recipeTagNames,
+        colour: recipe.colour,
         isPublic: recipe.isPublic,
         code: recipe.code,
         createdAt: recipe.createdAt,

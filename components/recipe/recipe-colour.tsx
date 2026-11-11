@@ -6,6 +6,8 @@ interface ColourProps {
   seed: string;
   /** Tag names or slugs; the most specific recognised one picks the colour. */
   tags?: readonly string[] | null;
+  /** The colour the cook picked, when there is one: it wins over the tags. */
+  colour?: string | null;
   className?: string;
 }
 
@@ -18,6 +20,7 @@ interface ColourProps {
 export function ColourBlock({
   seed,
   tags,
+  colour,
   className,
   children,
 }: ColourProps & { children?: React.ReactNode }) {
@@ -25,7 +28,7 @@ export function ColourBlock({
     <div
       data-recipe-cover={children ? undefined : ""}
       aria-hidden={children ? undefined : true}
-      className={cn(recipeColourClass(seed, tags), "h-full w-full bg-recipe text-on-recipe", className)}
+      className={cn(recipeColourClass(seed, tags, colour), "h-full w-full bg-recipe text-on-recipe", className)}
     >
       {children}
     </div>
@@ -33,21 +36,21 @@ export function ColourBlock({
 }
 
 /** A small square of the colour: tag pills, list rows, empty states. */
-export function ColourSwatch({ seed, tags, className }: ColourProps) {
+export function ColourSwatch({ seed, tags, colour, className }: ColourProps) {
   return (
     <span
       aria-hidden="true"
-      className={cn(recipeColourClass(seed, tags), "block shrink-0 rounded-lg bg-recipe", className)}
+      className={cn(recipeColourClass(seed, tags, colour), "block shrink-0 rounded-lg bg-recipe", className)}
     />
   );
 }
 
 /** A dot of the colour, e.g. which recipe a shopping-list line is for. */
-export function ColourDot({ seed, tags, className }: ColourProps) {
+export function ColourDot({ seed, tags, colour, className }: ColourProps) {
   return (
     <span
       aria-hidden="true"
-      className={cn(recipeColourClass(seed, tags), "block size-3 shrink-0 rounded-full bg-recipe", className)}
+      className={cn(recipeColourClass(seed, tags, colour), "block size-3 shrink-0 rounded-full bg-recipe", className)}
     />
   );
 }

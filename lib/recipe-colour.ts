@@ -1,8 +1,8 @@
 /**
  * Recipe colours: every recipe takes the colour of what's in it (STYLE_GUIDE
- * 06). The colour comes from the recipe's tags, most specific first; a recipe
- * whose tags say nothing gets one picked by a seed (its share code), so it
- * never changes between visits.
+ * 06). The cook can pick one in the editor. Otherwise it comes from the
+ * recipe's tags, most specific first; a recipe whose tags say nothing gets
+ * one picked by a seed (its share code), so it never changes between visits.
  *
  * The colour values live in app/globals.css as `.recipe-<name>` classes.
  */
@@ -54,12 +54,33 @@ export function colourForTags(tags: readonly string[] | null | undefined): Recip
   return null;
 }
 
-/** A recipe's colour. Same seed and tags, same colour, everywhere. */
-export function recipeColour(seed: string, tags?: readonly string[] | null): RecipeColour {
+/** Whether a value (from a form, a query, a database row) is one of the nine. */
+export function isRecipeColour(value: unknown): value is RecipeColour {
+  return typeof value === "string" && (RECIPE_COLOURS as readonly string[]).includes(value);
+}
+
+/** The colour a recipe gets when its cook hasn't picked one. */
+export function automaticRecipeColour(seed: string, tags?: readonly string[] | null): RecipeColour {
   return colourForTags(tags) ?? RECIPE_COLOURS[hashSeed(seed || "kookboek") % RECIPE_COLOURS.length];
 }
 
+/**
+ * A recipe's colour: the one its cook picked, else the automatic one. Same
+ * recipe, same colour, everywhere.
+ */
+export function recipeColour(
+  seed: string,
+  tags?: readonly string[] | null,
+  chosen?: string | null
+): RecipeColour {
+  return isRecipeColour(chosen) ? chosen : automaticRecipeColour(seed, tags);
+}
+
 /** The class that puts a recipe's colour in scope: `bg-recipe`, `text-on-recipe`. */
-export function recipeColourClass(seed: string, tags?: readonly string[] | null): string {
-  return `recipe-${recipeColour(seed, tags)}`;
+export function recipeColourClass(
+  seed: string,
+  tags?: readonly string[] | null,
+  chosen?: string | null
+): string {
+  return `recipe-${recipeColour(seed, tags, chosen)}`;
 }

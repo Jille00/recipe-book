@@ -33,6 +33,8 @@ interface ImageUploadProps {
    */
   tileSeed?: string;
   tileTags?: readonly string[];
+  /** The colour the cook picked, which wins over the tags. */
+  tileColour?: string | null;
 }
 
 export function ImageUpload({
@@ -41,6 +43,7 @@ export function ImageUpload({
   recipeContext,
   tileSeed,
   tileTags,
+  tileColour,
 }: ImageUploadProps) {
   // "preparing" = shrinking the photo in the browser, "uploading" = POSTing it.
   const [uploadPhase, setUploadPhase] = useState<
@@ -319,6 +322,7 @@ export function ImageUpload({
             <ColourBlock
               seed={tileSeed}
               tags={tileTags}
+              colour={tileColour}
               className="absolute inset-0"
             />
           )}

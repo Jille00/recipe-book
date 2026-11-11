@@ -293,7 +293,7 @@ export function RecipeDetail({
     !!recipe.difficulty;
 
   return (
-    <article className={recipeColourClass(recipe.code, tagNames)}>
+    <article className={recipeColourClass(recipe.code, tagNames, recipe.colour)}>
       {/* Hero: the whole band takes the recipe's colour (STYLE_GUIDE 06).
           `recipe-surface` makes every control inside follow it. */}
       <div className="recipe-surface">
@@ -449,6 +449,7 @@ export function RecipeDetail({
                   recipeId={recipe.id}
                   code={recipe.code}
                   tags={tagNames}
+                  colour={recipe.colour}
                   title={recipe.title}
                   ingredients={convertedIngredients}
                   instructions={convertedInstructions}

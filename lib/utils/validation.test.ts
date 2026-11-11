@@ -160,6 +160,7 @@ describe("recipeSchema (create)", () => {
       ["negative prep time", { prep_time_minutes: -1 }],
       ["fractional cook time", { cook_time_minutes: 1.5 }],
       ["an unknown difficulty", { difficulty: "extreme" }],
+      ["an unknown colour", { colour: "chartreuse" }],
       ["an invalid image url", { image_url: "not-a-url" }],
       ["a non-uuid tag id", { tag_ids: ["tag-1"] }],
       ["a non-boolean is_public", { is_public: "yes" }],

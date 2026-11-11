@@ -18,6 +18,8 @@ export interface RecipeFormSnapshotInput {
   servings: string;
   difficulty: string;
   imageUrl: string;
+  /** "" for automatic. */
+  colour: string;
   tagIds: readonly string[];
   isPublic: boolean;
   nutrition: unknown;
@@ -36,6 +38,7 @@ export function recipeFormSnapshot(values: RecipeFormSnapshotInput): string {
     values.servings.trim(),
     values.difficulty,
     values.imageUrl,
+    values.colour,
     [...new Set(values.tagIds)].sort(),
     values.isPublic,
     values.nutrition ?? null,

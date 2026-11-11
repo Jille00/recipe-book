@@ -1,5 +1,6 @@
 import { eq, and, asc, desc, sql, or } from "drizzle-orm";
 import { recipeTagNames } from "./tag-names";
+import type { RecipeColour } from "@/lib/recipe-colour";
 import { db, recipe, user, recipeTag, favorite, profile } from "@/lib/db";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils/slug";
 import type { Ingredient, Instruction, Difficulty, RecipeCardData } from "@/types/recipe";
@@ -19,6 +20,7 @@ export interface RecipeWithDetails {
   servings: number | null;
   difficulty: Difficulty | null;
   imageUrl: string | null;
+  colour?: RecipeColour | null;
   nutrition: NutritionInfo | null;
   isPublic: boolean | null;
   code: string;
@@ -47,6 +49,7 @@ export async function getRecipesByUserId(
       difficulty: recipe.difficulty,
       imageUrl: recipe.imageUrl,
       tags: recipeTagNames,
+      colour: recipe.colour,
       isPublic: recipe.isPublic,
       code: recipe.code,
       createdAt: recipe.createdAt,
@@ -260,6 +263,7 @@ interface CreateRecipeInput {
   cook_time_minutes?: number | null;
   servings?: number | null;
   difficulty?: Difficulty | null;
+  colour?: RecipeColour | null;
   image_url?: string | null;
   nutrition?: NutritionInfo | null;
   is_public?: boolean;
@@ -293,6 +297,7 @@ export async function createRecipe(userId: string, data: CreateRecipeInput) {
         servings: data.servings || null,
         difficulty: data.difficulty || null,
         imageUrl: data.image_url || null,
+        colour: data.colour ?? null,
         nutrition: data.nutrition || null,
         isPublic: data.is_public || false,
       })
@@ -367,6 +372,7 @@ export async function updateRecipe(
     if (data.servings !== undefined) updateData.servings = data.servings;
     if (data.difficulty !== undefined) updateData.difficulty = data.difficulty;
     if (data.image_url !== undefined) updateData.imageUrl = data.image_url;
+    if (data.colour !== undefined) updateData.colour = data.colour;
     if (data.nutrition !== undefined) updateData.nutrition = data.nutrition;
     if (data.is_public !== undefined) updateData.isPublic = data.is_public;
 

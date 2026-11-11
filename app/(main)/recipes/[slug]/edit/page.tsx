@@ -81,6 +81,7 @@ export default async function EditRecipePage({ params }: Props) {
     servings: recipe.servings,
     difficulty: recipe.difficulty,
     image_url: recipe.imageUrl,
+    colour: recipe.colour ?? null,
     nutrition: recipe.nutrition,
     tag_ids: recipeTags.map((t) => t.id),
     is_public: recipe.isPublic ?? false,

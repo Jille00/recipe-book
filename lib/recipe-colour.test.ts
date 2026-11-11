@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 import { AA_TEXT, contrastRatio } from "./color-contrast";
 import {
   RECIPE_COLOURS,
+  automaticRecipeColour,
   colourForTags,
+  isRecipeColour,
   hashSeed,
   recipeColour,
   recipeColourClass,
@@ -64,6 +66,28 @@ describe("recipeColour", () => {
   it("spreads untagged recipes over several colours", () => {
     const seen = new Set(Array.from({ length: 60 }, (_, i) => recipeColour(`recipe-${i}`)));
     expect(seen.size).toBeGreaterThanOrEqual(6);
+  });
+});
+
+describe("a colour the cook picked", () => {
+  it("wins over the tags and the seed", () => {
+    expect(recipeColour("vqbjxsxze3jx", ["Seafood"], "butter")).toBe("butter");
+    expect(recipeColourClass("vqbjxsxze3jx", ["Seafood"], "butter")).toBe("recipe-butter");
+  });
+
+  it("falls back to automatic when nothing, or nonsense, is stored", () => {
+    const automatic = automaticRecipeColour("vqbjxsxze3jx", ["Seafood"]);
+    expect(automatic).toBe("sea");
+    expect(recipeColour("vqbjxsxze3jx", ["Seafood"], null)).toBe(automatic);
+    expect(recipeColour("vqbjxsxze3jx", ["Seafood"], "")).toBe(automatic);
+    expect(recipeColour("vqbjxsxze3jx", ["Seafood"], "chartreuse")).toBe(automatic);
+  });
+
+  it("recognises exactly the nine names", () => {
+    for (const colour of RECIPE_COLOURS) expect(isRecipeColour(colour)).toBe(true);
+    for (const value of ["", "Tomato", "recipe-tomato", null, undefined, 3]) {
+      expect(isRecipeColour(value)).toBe(false);
+    }
   });
 });
 

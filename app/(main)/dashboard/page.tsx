@@ -165,7 +165,7 @@ export default async function DashboardPage() {
                               sizes="48px"
                             />
                           ) : (
-                            <ColourSwatch seed={recipe.code} tags={recipe.tags} className="size-full rounded-none" />
+                            <ColourSwatch seed={recipe.code} tags={recipe.tags} colour={recipe.colour} className="size-full rounded-none" />
                           )}
                         </div>
                         <div className="min-w-0 flex-1">

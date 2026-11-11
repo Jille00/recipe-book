@@ -52,7 +52,7 @@ export function RecipeCard({
     // clickable without nesting the favorite <button> inside an <a>.
     <article
       className={cn(
-        recipeColourClass(recipe.code, recipe.tags),
+        recipeColourClass(recipe.code, recipe.tags, recipe.colour),
         "group relative flex h-full flex-col overflow-hidden rounded-[20px] bg-recipe text-on-recipe transition-[translate,box-shadow] duration-(--duration-slow) ease-out hover:-translate-y-1 hover:shadow-lifted",
         !recipe.imageUrl && "min-h-[21rem]"
       )}

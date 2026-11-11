@@ -71,6 +71,13 @@
       "when": 1790797367525,
       "tag": "0009_rating_aggregates_and_search",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794392806553,
+      "tag": "0010_recipe_colour",
+      "breakpoints": true
     }
   ]
 }

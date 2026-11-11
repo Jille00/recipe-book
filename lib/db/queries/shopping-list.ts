@@ -63,6 +63,7 @@ export async function getShoppingList(userId: string): Promise<ShoppingListItem[
       recipeIsPublic: recipe.isPublic,
       recipeUserId: recipe.userId,
       recipeTags: recipeTagNames,
+      recipeColour: recipe.colour,
     })
     .from(shoppingListItem)
     .leftJoin(recipe, eq(shoppingListItem.recipeId, recipe.id))
@@ -81,7 +82,7 @@ export async function getShoppingList(userId: string): Promise<ShoppingListItem[
     return toItem(row, {
       title: row.recipeTitle,
       href: linkable ? recipePath({ code: row.recipeCode!, slug: row.recipeSlug! }) : null,
-      colour: row.recipeCode !== null ? recipeColour(row.recipeCode, row.recipeTags) : null,
+      colour: row.recipeCode !== null ? recipeColour(row.recipeCode, row.recipeTags, row.recipeColour) : null,
     });
   });
 }

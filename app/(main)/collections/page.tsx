@@ -28,7 +28,7 @@ export default async function CollectionsPage() {
           id,
           name,
           recipeCount,
-          colours: coverRecipes.map((recipe) => recipeColour(recipe.code, recipe.tags)),
+          colours: coverRecipes.map((recipe) => recipeColour(recipe.code, recipe.tags, recipe.colour)),
         }))}
       />
     </div>

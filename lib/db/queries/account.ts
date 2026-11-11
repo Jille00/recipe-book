@@ -63,6 +63,7 @@ export async function loadAccountExportSource(userId: string): Promise<ExportSou
           servings: recipe.servings,
           difficulty: recipe.difficulty,
           imageUrl: recipe.imageUrl,
+          colour: recipe.colour,
           nutrition: recipe.nutrition,
           isPublic: recipe.isPublic,
           copiedFromId: recipe.copiedFromId,

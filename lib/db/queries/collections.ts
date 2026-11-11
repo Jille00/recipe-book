@@ -29,7 +29,7 @@ export interface CollectionSummary {
   updatedAt: Date | null;
   recipeCount: number;
   /** Its newest recipes (up to 8), for the stripes on its cover. */
-  coverRecipes: { code: string; tags: string[] }[];
+  coverRecipes: { code: string; tags: string[]; colour: string | null }[];
   /** Only set when a recipe id was asked about. */
   containsRecipe?: boolean;
 }
@@ -56,7 +56,7 @@ export async function getUserCollections(
       createdAt: collection.createdAt,
       updatedAt: collection.updatedAt,
       recipeCount: sql<number>`count(${recipe.id})::int`,
-      coverRecipes: sql<{ code: string; tags: string[] }[]>`coalesce(to_json((array_agg(json_build_object('code', ${recipe.code}, 'tags', ${recipeTagNames}) order by ${collectionRecipe.addedAt} desc) filter (where ${recipe.id} is not null))[1:${sql.raw(String(COVER_STRIPES))}]), '[]'::json)`,
+      coverRecipes: sql<{ code: string; tags: string[]; colour: string | null }[]>`coalesce(to_json((array_agg(json_build_object('code', ${recipe.code}, 'tags', ${recipeTagNames}, 'colour', ${recipe.colour}) order by ${collectionRecipe.addedAt} desc) filter (where ${recipe.id} is not null))[1:${sql.raw(String(COVER_STRIPES))}]), '[]'::json)`,
       containsRecipe: recipeId
         ? sql<boolean>`coalesce(bool_or(${collectionRecipe.recipeId} = ${recipeId}), false)`
         : sql<boolean>`false`,
@@ -247,6 +247,7 @@ export async function getCollectionRecipes(
       difficulty: recipe.difficulty,
       imageUrl: recipe.imageUrl,
       tags: recipeTagNames,
+      colour: recipe.colour,
       isPublic: recipe.isPublic,
       code: recipe.code,
       createdAt: recipe.createdAt,

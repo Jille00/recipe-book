@@ -204,6 +204,7 @@ One blank label (`ColourSwatch`) in the colour that fits, a display title that s
 
 `lib/recipe-colour.ts` (pure, tested), `components/recipe/recipe-colour.tsx`, and the `.recipe-*` classes in `app/globals.css`.
 
+- **Picked by the cook:** the editor's Colour section offers Automatic plus the nine swatches. A picked colour is stored on the recipe (`recipe.colour`) and wins over everything below. Automatic stores nothing.
 - **From the tags**, most specific first: seafood → sea, soups & stews → carrot, desserts → beet, bread → rye, baking → butter, breakfast and drinks → lemon, vegan/vegetarian/salads → basil, pasta/meat/poultry → tomato, dinner → plum.
 - **Otherwise from the seed:** the recipe's share code (`recipe.code`) picks one of the nine. Same recipe, same colour, forever.
 - **In scope:** a `.recipe-<name>` class sets `--recipe` and `--on-recipe` for everything inside it. Use `bg-recipe text-on-recipe`, or the reverse for a pill on the block.

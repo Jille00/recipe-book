@@ -124,7 +124,7 @@ export function CollectionDetail({
           {/* The collection's stripes: one for each recipe in it. */}
           <div className="flex min-w-0 items-center gap-5 sm:gap-6">
             <ColourStripes
-              colours={recipes.slice(0, 8).map((recipe) => recipeColour(recipe.code, recipe.tags))}
+              colours={recipes.slice(0, 8).map((recipe) => recipeColour(recipe.code, recipe.tags, recipe.colour))}
               className="h-20 w-14 shrink-0 overflow-hidden rounded-xl sm:h-28 sm:w-20"
             />
             <div className="min-w-0">

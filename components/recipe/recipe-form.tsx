@@ -31,7 +31,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ImageUpload } from "@/components/recipe/image-upload";
 import { ColourDot } from "@/components/recipe/recipe-colour";
-import { colourForTags } from "@/lib/recipe-colour";
+import {
+  RECIPE_COLOURS,
+  automaticRecipeColour,
+  colourForTags,
+  type RecipeColour,
+} from "@/lib/recipe-colour";
 import { NutritionDisplay } from "@/components/recipe/nutrition-display";
 import { ResetLinkSection } from "@/components/recipe/reset-link-section";
 import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
@@ -47,6 +52,7 @@ import {
   Plus,
   X,
   AlertCircle,
+  Check,
   Camera,
   Sparkles,
   AlertTriangle,
@@ -130,6 +136,19 @@ const UNIT_OPTIONS: Array<{
   { value: "to taste", label: "to taste", system: "common" },
 ];
 
+// Spoken and written names for the picker (the token names, capitalised).
+const COLOUR_NAMES: Record<RecipeColour, string> = {
+  tomato: "Tomato",
+  carrot: "Carrot",
+  lemon: "Lemon",
+  basil: "Basil",
+  sea: "Sea",
+  plum: "Plum",
+  beet: "Beet",
+  rye: "Rye",
+  butter: "Butter",
+};
+
 interface RecipeFormProps {
   tags: Tag[];
   initialData?: {
@@ -142,6 +161,8 @@ interface RecipeFormProps {
     cook_time_minutes: number | null;
     servings: number | null;
     difficulty: Difficulty | null;
+    /** The colour picked earlier; null or absent means automatic. */
+    colour?: RecipeColour | null;
     image_url: string | null;
     nutrition: NutritionInfo | null;
     tag_ids: string[];
@@ -211,6 +232,8 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
     initialData?.difficulty || ""
   );
   const [imageUrl, setImageUrl] = useState(initialData?.image_url || "");
+  // "" is automatic: the colour follows the tags (then the share code).
+  const [colour, setColour] = useState<RecipeColour | "">(initialData?.colour || "");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
     initialData?.tag_ids || []
   );
@@ -272,6 +295,7 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
     servings,
     difficulty,
     imageUrl,
+    colour,
     tagIds: selectedTagIds,
     isPublic,
     nutrition,
@@ -523,6 +547,7 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
       servings: servings ? parseInt(servings) : null,
       difficulty: difficulty || null,
       image_url: imageUrl || null,
+      colour: colour || null,
       // The basis key travels with the nutrition, so the editor can still
       // tell later whether these numbers match the recipe.
       nutrition: nutrition
@@ -605,7 +630,12 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
   const tileTags = tags
     .filter((tag) => selectedTagIds.includes(tag.id))
     .map((tag) => tag.name);
-  const colourKnown = Boolean(tileSeed) || colourForTags(tileTags) !== null;
+  const automaticKnown = Boolean(tileSeed) || colourForTags(tileTags) !== null;
+  const automaticColour = automaticKnown
+    ? automaticRecipeColour(tileSeed ?? "new", tileTags)
+    : null;
+  const colourKnown = colour !== "" || automaticKnown;
+  const shownColour = colour || automaticColour;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
@@ -729,6 +759,91 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
         </div>
       </FormSection>
 
+      {/* Colour: automatic from the tags, or one the cook picks */}
+      <FormSection
+        id="colour"
+        title="Colour"
+        description="Every recipe has a colour. It follows your tags unless you pick one."
+      >
+        <div className="flex flex-wrap items-start gap-x-8 gap-y-6">
+          <fieldset className="min-w-0 flex-1 basis-72">
+            <legend className="sr-only">Recipe colour</legend>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="inline-flex h-11 cursor-pointer items-center rounded-full border-[1.5px] border-border bg-card px-4 text-[15px] font-semibold text-foreground transition-colors duration-(--duration-fast) hover:border-foreground has-[:checked]:border-primary has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-card">
+                <input
+                  type="radio"
+                  name="recipe-colour"
+                  value=""
+                  checked={colour === ""}
+                  onChange={() => setColour("")}
+                  className="sr-only"
+                />
+                Automatic
+              </label>
+              {RECIPE_COLOURS.map((option) => (
+                <label
+                  key={option}
+                  title={COLOUR_NAMES[option]}
+                  className={cn(
+                    `recipe-${option}`,
+                    "flex size-11 cursor-pointer items-center justify-center rounded-full bg-recipe text-on-recipe transition-transform duration-(--duration-fast) hover:scale-110 has-[:checked]:ring-[3px] has-[:checked]:ring-foreground has-[:checked]:ring-offset-[3px] has-[:checked]:ring-offset-card has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-[3px] has-[:focus-visible]:ring-offset-card"
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="recipe-colour"
+                    value={option}
+                    checked={colour === option}
+                    onChange={() => setColour(option)}
+                    className="peer sr-only"
+                  />
+                  <span className="sr-only">{COLOUR_NAMES[option]}</span>
+                  <Check
+                    className="hidden size-5 peer-checked:block"
+                    strokeWidth={3}
+                    aria-hidden="true"
+                  />
+                </label>
+              ))}
+            </div>
+            {/* The name in words: colour is never the only carrier. */}
+            <p className="mt-4 text-[15px] text-muted-foreground" aria-live="polite">
+              {colour !== "" ? (
+                <>
+                  <span className="font-bold text-foreground">{COLOUR_NAMES[colour]}</span>, picked
+                  by you.
+                </>
+              ) : automaticColour ? (
+                <>
+                  <span className="font-bold text-foreground">
+                    {COLOUR_NAMES[automaticColour]}
+                  </span>
+                  {colourForTags(tileTags) !== null
+                    ? ", from your tags."
+                    : ", chosen for this recipe because no tag decides it."}
+                </>
+              ) : (
+                "No tag decides the colour yet. Pick a tag above or a colour here."
+              )}
+            </p>
+          </fieldset>
+
+          {/* A small version of the label, so the choice is seen in place. */}
+          <div
+            aria-hidden="true"
+            className={cn(
+              shownColour ? `recipe-${shownColour} bg-recipe text-on-recipe` : "bg-muted text-muted-foreground",
+              "flex h-44 w-full max-w-64 flex-col justify-between rounded-[20px] p-4"
+            )}
+          >
+            <span className="truncate text-sm font-bold">{tileTags[0]}</span>
+            <span className="font-display text-4xl leading-[0.9] line-clamp-3 hyphens-auto">
+              {title.trim() || "Your recipe"}
+            </span>
+          </div>
+        </div>
+      </FormSection>
+
       {/* Photo, with the recipe's colour as the stand-in */}
       <FormSection
         id="photo"
@@ -738,7 +853,7 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
             ? "Without a photo, the recipe's colour is its cover."
             : colourKnown
               ? "Until you add a photo, the recipe's label is a block of this colour."
-              : "Pick a category to choose this recipe's colour."
+              : "Pick a category or a colour above to choose this recipe's colour."
         }
       >
         {/* No seed means no colour block is drawn; the neutral block shows through. */}
@@ -748,6 +863,7 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
           onChange={setImageUrl}
           tileSeed={colourKnown ? (tileSeed ?? "new") : undefined}
           tileTags={tileTags}
+          tileColour={colour || null}
           recipeContext={{
             title,
             description,

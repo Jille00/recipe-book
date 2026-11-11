@@ -9,6 +9,7 @@ export interface MosaicRecipe {
   slug: string;
   title: string;
   tags?: readonly string[] | null;
+  colour?: string | null;
 }
 
 interface RecipeMosaicProps {
@@ -71,7 +72,7 @@ export function RecipeMosaic({ recipes, className }: RecipeMosaicProps) {
             <Link
               href={recipePath(recipe)}
               className={cn(
-                recipeColourClass(recipe.code, recipe.tags),
+                recipeColourClass(recipe.code, recipe.tags, recipe.colour),
                 block,
                 "flex flex-col justify-between overflow-hidden p-3.5 transition-[translate,box-shadow] hover:-translate-y-1 hover:shadow-lifted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:p-4"
               )}

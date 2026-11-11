@@ -8,8 +8,9 @@ import { getRecipesByUserId, getUserRecipeStats } from "@/lib/db/queries/recipes
 import { getFavoriteCount } from "@/lib/db/queries/favorites";
 import { getUserTagCount } from "@/lib/db/queries/tags";
 import { recipePath } from "@/lib/recipe-url";
+import { formatMinutes } from "@/lib/utils/format-time";
 import { Button, Card, CardHeader, CardContent } from "@/components/ui";
-import { DelftTile } from "@/components/delft/delft-tile";
+import { ColourSwatch } from "@/components/recipe/recipe-colour";
 import {
   Plus,
   BookOpen,
@@ -85,10 +86,10 @@ export default async function DashboardPage() {
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-display text-[2.25rem] leading-[1.1] tracking-[-0.01em] text-foreground sm:text-[2.75rem]">
+          <h1 className="font-display text-6xl leading-[0.88] text-foreground sm:text-7xl lg:text-8xl">
             Dashboard
           </h1>
-          <p className="mt-2 text-muted-foreground">
+          <p className="mt-4 text-lg text-muted-foreground">
             Welcome back{session.user.name ? `, ${session.user.name}` : ""}. Here&apos;s your cookbook at a glance.
           </p>
         </div>
@@ -100,15 +101,15 @@ export default async function DashboardPage() {
         </Button>
       </div>
 
-      {/* Stats: quiet cards, numbers in Plex Mono */}
+      {/* Stats: quiet cards, numbers in tabular figures */}
       <dl className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stats.map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-border bg-card p-5 shadow-soft">
-            <dt className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">
-              <stat.icon className="size-4 text-primary" aria-hidden="true" />
+          <div key={stat.label} className="rounded-3xl bg-card p-5">
+            <dt className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
+              <stat.icon className="size-[18px]" aria-hidden="true" />
               {stat.label}
             </dt>
-            <dd className="mt-3 font-mono text-3xl font-medium tabular text-foreground">
+            <dd className="mt-3 font-display text-5xl leading-none tabular text-foreground">
               {stat.value}
             </dd>
             <dd className="mt-1 text-sm text-muted-foreground">{stat.description}</dd>
@@ -119,11 +120,11 @@ export default async function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
-            <h2 className="text-[1.375rem] leading-tight">Recent recipes</h2>
+            <h2 className="text-4xl leading-[0.95]">Recent recipes</h2>
             {recipes.length > 0 && (
               <Link
                 href="/recipes"
-                className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline-offset-4 hover:underline"
+                className="inline-flex min-h-11 items-center font-bold text-foreground underline decoration-2 underline-offset-4 hover:decoration-[3px] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
                 View all
               </Link>
@@ -132,10 +133,10 @@ export default async function DashboardPage() {
           <CardContent>
             {recipes.length === 0 ? (
               <div className="flex flex-col items-center py-8 text-center">
-                <DelftTile seed="kookboek-empty-dashboard" tags={["dinner"]} className="size-24 rounded-[2px] shadow-soft" />
-                <h3 className="mt-6 text-xl text-foreground">No recipes yet</h3>
+                <ColourSwatch seed="kookboek-empty-dashboard" tags={["dinner"]} className="h-28 w-24 rounded-2xl" />
+                <h3 className="mt-6 text-3xl text-foreground">No recipes yet</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Add your first one and it gets its own tile.
+                  Add your first one and it gets its own colour.
                 </p>
                 <Button asChild variant="outline" className="mt-5">
                   <Link href="/recipes/new">
@@ -152,9 +153,9 @@ export default async function DashboardPage() {
                     <li key={recipe.id}>
                       <Link
                         href={recipePath(recipe)}
-                        className="group flex items-center gap-4 rounded-md px-2 py-3 transition-colors duration-150 hover:bg-accent"
+                        className="group flex items-center gap-4 rounded-xl px-2 py-3 transition-colors duration-150 hover:bg-accent"
                       >
-                        <div className="relative size-12 flex-shrink-0 overflow-hidden rounded-[2px] bg-muted">
+                        <div className="relative size-12 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
                           {recipe.imageUrl ? (
                             <Image
                               src={recipe.imageUrl}
@@ -164,11 +165,11 @@ export default async function DashboardPage() {
                               sizes="48px"
                             />
                           ) : (
-                            <DelftTile seed={recipe.code} tags={recipe.tags} className="size-full" />
+                            <ColourSwatch seed={recipe.code} tags={recipe.tags} className="size-full rounded-none" />
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium text-foreground transition-colors duration-150 group-hover:text-primary">
+                          <p className="truncate font-semibold text-foreground">
                             {recipe.title}
                           </p>
                           {recipe.description && (
@@ -178,8 +179,8 @@ export default async function DashboardPage() {
                           )}
                         </div>
                         {totalMinutes > 0 && (
-                          <span className="hidden flex-shrink-0 font-mono text-xs tabular text-muted-foreground sm:inline">
-                            {totalMinutes} min
+                          <span className="hidden flex-shrink-0 text-sm font-bold tabular text-muted-foreground sm:inline">
+                            {formatMinutes(totalMinutes)}
                           </span>
                         )}
                         <ChevronRight className="size-4 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -194,14 +195,14 @@ export default async function DashboardPage() {
 
         <Card className="self-start">
           <CardHeader>
-            <h2 className="text-[1.375rem] leading-tight">Go to</h2>
+            <h2 className="text-4xl leading-[0.95]">Go to</h2>
           </CardHeader>
           <CardContent>
             <nav aria-label="Quick links" className="grid gap-2">
               {quickActions.map((action) => (
                 <Button key={action.href} asChild variant="outline" className="justify-start">
                   <Link href={action.href}>
-                    <action.icon className="text-primary" aria-hidden="true" />
+                    <action.icon aria-hidden="true" />
                     {action.title}
                   </Link>
                 </Button>

@@ -1,64 +1,68 @@
 # Kookboek
 
-## Design System & Style Guide: Delft
+## Design System & Style Guide: Oogst
 
-Kookboek is a personal cookbook for home cooks: the recipes you actually make, kept in one place and shared by link. The design borrows from the most Dutch of kitchen objects, the Delft tile: white glazed porcelain, cobalt paint, and a wall of tiles whose corner ornaments join into a second pattern where they meet.
+Kookboek is a personal cookbook for home cooks: the recipes you actually make, kept in one place and shared by link. The design is called Oogst, Dutch for harvest. Every recipe takes the colour of what's in it, and that colour follows the recipe everywhere: its label, its page, cook mode and the dots on the shopping list.
 
-Every recipe gets its own tile. That is the one memorable thing in this system; everything around it stays quiet.
+Every recipe has a colour. That is the one memorable thing in this system; everything around it stays quiet.
+
+Design source: the Figma file "Kookboek — Redesign", page "Oogst redesign".
 
 ---
 
 ## 00 — Design Philosophy
 
-- **Porcelain, not paper.** Cool white grounds, crisp edges, no textures or grain.
-- **Cobalt does the talking.** Delft blue carries the brand: links, icons, selected states, tiles.
-- **One orange thing per page.** Dutch oranje is reserved for the main action (the default button). If a page has two orange buttons, one of them is wrong.
-- **The tile is the signature.** Recipes without a photo show their tile wall instead of a placeholder. Don't add other decoration to compete with it.
-- **Numbers line up.** Amounts, times and counts use the mono face with tabular figures.
+- **Colour is the recipe's.** The nine recipe colours belong to recipes and categories. The interface itself is aubergine on leek and never borrows them for decoration.
+- **Flat.** Colour separates surfaces, not shadow or borders. Only things that float (menus, dialogs, a card under the pointer) cast a shadow.
+- **One filled pill per page.** The main action is the filled aubergine button. Everything else a page offers is an outline.
+- **The label is the signature.** A recipe without a photo is never a grey placeholder: it is a block of its own colour with its name set large. Don't add other decoration to compete with it.
+- **Names set large.** Titles use the condensed display face, tight and big. Size carries hierarchy; there are no small uppercase labels.
+- **Numbers line up.** Amounts, times and counts use tabular figures in bold.
 - **Plain words.** Sentence case, active verbs, English UI. A button says what it does ("Save recipe"), and its toast repeats it ("Recipe saved").
 
 ---
 
 ## 01 — Color Palette
 
-All values are defined in `app/globals.css` (`@theme inline`) and checked for WCAG AA in `lib/color-contrast.test.ts`.
+All values are defined in `app/globals.css` and checked for WCAG AA in `lib/color-contrast.test.ts` and `lib/recipe-colour.test.ts`.
 
-### Delft (brand)
-
-| Token | Hex | Use |
-|---|---|---|
-| `delft` | `#1D3C8C` | Links, icons, headings accents, tile paint. 10.11:1 on white |
-| `delft-deep` | `#142B66` | Hover for delft |
-| `delft-light` | `#8FB1F2` | Delft on dark surfaces. 7.42:1 on night-card |
-
-### Porcelain (neutrals)
+### Interface
 
 | Token | Hex | Use |
 |---|---|---|
-| `porcelain` | `#F4F6FA` | Page background |
-| white | `#FFFFFF` | Cards, inputs, popovers ("glaze") |
-| `glaze` | `#E3E9F5` | Quiet surfaces: pills, muted panels, tile ground edge |
-| `glaze-line` | `#D4DCEC` | Decorative lines, card edges (not for form controls) |
-| `pewter` | `#737F9C` | Form-control edges. 4.00:1 on white, 3.29:1 on glaze |
-| `slate` | `#4F5B75` | Secondary text. 6.81:1 on white |
-| `ink` | `#141B2D` | Body text. 17.15:1 on white |
+| `ink` (aubergine) | `#2D1B33` | Text, main buttons, field edges. 16.0:1 on white |
+| `fig` | `#6A5A70` | Secondary text. 5.69:1 on leek, 5.21:1 on leek-soft |
+| `leek` | `#F1F4E8` | Page background |
+| white | `#FFFFFF` | Panels, fields, popovers |
+| `leek-soft` | `#E6EBD9` | Quiet fills: pill tracks, hover, muted panels |
+| `leek-line` | `#D8DEC8` | Dividers, chip edges |
 
-### Oranje (main action only)
+### Recipe colours
 
-| Token | Hex | Use |
-|---|---|---|
-| `oranje` | `#C24E12` | Default button. White text 4.78:1 |
-| `oranje-deep` | `#A3410E` | Hover |
-| `oranje-bright` | `#FF8A45` | Default button at night. Night text 7.82:1 |
+Each colour is a pair: the block, and the text that reads on it (at least 4.5:1).
+
+| Name | Block | Text on it | Ratio | Used for |
+|---|---|---|---|---|
+| tomato | `#C9331C` | `#FFF4DC` | 4.84 | Pasta, sauces, meat, poultry |
+| carrot | `#F08A24` | `#2D1B33` | 6.36 | Soups, stews |
+| lemon | `#F4C92F` | `#2D1B33` | 10.06 | Breakfast, eggs, drinks |
+| basil | `#25703F` | `#F8E9B4` | 4.99 | Vegetables, salads, vegan |
+| sea | `#27699E` | `#F3F0DA` | 5.08 | Fish, seafood |
+| plum | `#4E2B63` | `#F4D9A8` | 8.29 | Dinner, and the default |
+| beet | `#AE2159` | `#FFE9D6` | 5.66 | Desserts, fruit |
+| rye | `#C99A5B` | `#2D1B33` | 6.27 | Bread, grains |
+| butter | `#F8E9B4` | `#2D1B33` | 13.15 | Baking |
+
+At night plum is lifted to `#6B3D86` so it doesn't sink into the page.
 
 ### Status
 
 | Token | Day | Night | Use |
 |---|---|---|---|
-| success | `#2B6E4F` | `#6FD3A2` | Easy, confirmations |
-| warning | `#8A5A00` | `#F2C14E` | Medium, "outdated" notices |
-| danger | `#B3261E` | `#FF8A80` | Hard, destructive actions, errors |
-| gold | `#D99A1C` | same | Rating stars (graphic only, never text) |
+| success | `#2B6E4F` | `#6FD3A2` | Confirmations |
+| warning | `#8A5A00` | `#F2C14E` | "Outdated" notices |
+| danger | `#B3261E` | `#FF8A80` | Destructive actions, errors |
+| gold | `#F08A24` | same | Rating stars (graphic only, never text) |
 
 Status badges use the colour as text on a 10% tint of itself (15% at night).
 
@@ -67,53 +71,56 @@ Status badges use the colour as text on a 10% tint of itself (15% at night).
 Components use the semantic names, never raw hex:
 
 ```
-background  porcelain / night          foreground  ink / #E7ECF6
-card        white / night-card         muted-foreground  slate / mist
-primary     delft / delft-light        primary-foreground  white / night
-cta         oranje / oranje-bright     cta-foreground  white / night
-surface, secondary, muted, accent      glaze / night-muted
-border      glaze-line / night-line    input  pewter / #6F80A8
-destructive danger / danger-light      ring   delft / delft-light
+background  leek / night               foreground  ink / #F3EEE0
+card        white / night-card         muted-foreground  fig / #C4B5C9
+primary     ink / butter               primary-foreground  white / night
+cta         ink / butter               cta-foreground  white / night
+surface, secondary, muted, accent      leek-soft / #36223F
+border      leek-line / #4A3554        input  ink / #A794AD
+destructive danger / danger-light      ring   ink / butter
+recipe      the recipe colour in scope on-recipe  the text that reads on it
 ```
-
-`bg-primary` is Delft, not orange. Orange only comes from `bg-cta` (the default Button variant).
 
 ---
 
 ## 02 — Typography
 
+One superfamily at two widths.
+
 | Role | Face | Notes |
 |---|---|---|
-| Display | **Gloock** (`font-display`) | Titles only: page h1, recipe titles, section headings. One weight (400); never bold it. |
-| Interface | **Hanken Grotesk** (`font-sans`) | Everything you read and press. 400 body, 500 labels, 600 buttons. |
-| Data | **IBM Plex Mono** (`font-mono` + `tabular`) | Amounts, times, servings, counts, step timers. |
+| Display | **Sofia Sans Extra Condensed** (`font-display`) | Titles: page h1, recipe names, section headings, big numbers. Always ExtraBold (800). |
+| Interface | **Sofia Sans** (`font-sans`) | Everything you read and press. 400 body, 600 labels, 700 buttons and amounts. |
 
-`html` sets `font-synthesis-weight: none`: asking Gloock for `font-semibold` renders regular, not a smeared fake bold. Don't put `font-semibold` on display text; size carries hierarchy.
+There is no mono face. `font-mono` maps to Sofia Sans, and `tabular` (or `font-mono`) turns on tabular figures.
+
+`html` sets `font-synthesis-weight: none`, so a missing weight renders as the real one rather than a smeared fake bold.
 
 ### Type scale
 
 | Name | Size / line-height | Face |
 |---|---|---|
-| Hero | 56–72px / 1.02, tracking -0.02em | Gloock |
-| H1 | 36–44px / 1.1, tracking -0.01em | Gloock |
-| H2 | 28px / 1.2 | Gloock |
-| H3 | 20–22px / 1.3 | Gloock |
-| Body | 16px / 1.6 | Hanken |
-| Small | 14px / 1.5 | Hanken |
-| Label / eyebrow | 12–13px, 500, tracking 0.06em, uppercase | Hanken |
-| Data | 13–15px, tabular | Plex Mono |
+| Hero | 92–160px / 0.84 | Display |
+| H1 | 60–96px / 0.88 | Display |
+| H2 | 44–60px / 0.95 | Display |
+| H3 | 30–36px / 0.95 | Display |
+| Label title | 44–48px / 0.9, up to three lines, balanced | Display |
+| Lead | 20px / 1.5 | Sofia Sans |
+| Body | 16–17px / 1.5 | Sofia Sans |
+| Small | 14–15px / 1.5 | Sofia Sans |
+| Label | 14–15px, 600–700, sentence case | Sofia Sans |
 
-Eyebrows (small uppercase labels above a title) are allowed only when they say something true, e.g. a recipe's category above its title.
+No uppercase labels and no letter-spacing on small text. A line above a title is allowed only when it says something true, e.g. a recipe's category, and it is set as a bold underlined link.
 
 ---
 
 ## 03 — Spacing & Layout
 
-- 4px base; common steps 8, 12, 16, 24, 32, 48, 64.
-- Page container: `max-w-6xl` (1152px), `px-4 sm:px-6 lg:px-8`. Reading pages (recipe, recipe editor) `max-w-4xl`; single-column settings pages (account, profile) `max-w-2xl`.
-- Section rhythm: 48px between sections on desktop, 32px on mobile.
-- Grids: recipe cards 1 / 2 / 3 columns (sm / lg), 24px gap.
-- Radius: `--radius` 6px. Buttons and inputs `rounded-lg` (6px), cards `rounded-xl` (10px), pills `rounded-full`. Tiles have the square corners of the object they depict (2px at most).
+- 4px base; common steps 8, 12, 16, 24, 32, 48, 64, 88.
+- Page container: `max-w-6xl` (1152px), `px-4 sm:px-6 lg:px-8`. The recipe page and the home hero use the full container; single-column settings pages (account, profile) `max-w-2xl`.
+- Section rhythm: 64–88px between sections on desktop, 48px on mobile.
+- Grids: recipe labels 1 / 2 / 3 columns (sm / lg), four across on the home page; 24px gap.
+- Radius: `--radius` 12px. Buttons, chips and segmented controls are full pills; fields `rounded-xl` (16px); labels 20px; panels `rounded-3xl` (24px).
 
 ---
 
@@ -123,109 +130,144 @@ Eyebrows (small uppercase labels above a title) are allowed only when they say s
 
 | Variant | Look | When |
 |---|---|---|
-| `default` | Oranje, white text, uppercase, tracking 0.06em | The one main action on a page |
-| `outline` | White with a 1.5px glaze-line edge, ink text; hover delft edge | Everything else a page offers |
-| `secondary` | Glaze fill, delft text | Toggles, secondary actions inside cards |
-| `ghost` | Slate text, glaze on hover | Toolbars, icon buttons |
+| `default` | Aubergine pill, white text | The one main action on a page |
+| `outline` | 2px aubergine outline; fills on hover | Everything else a page offers |
+| `secondary` | Leek-soft fill | Toggles, secondary actions inside panels |
+| `ghost` | Text only, leek-soft on hover | Toolbars, icon buttons |
 | `destructive` | Danger fill | Confirm-delete buttons inside dialogs only |
-| `link` | Delft text, underline on hover | Inline actions |
+| `link` | Bold, 2px underline | Inline actions |
+| `on-recipe`, `on-recipe-outline` | The recipe pair, inverted or outlined | A button on a colour block outside a `recipe-surface` |
 
-Sizes: sm 36px, default 44px, lg 52px; icon buttons 44px (touch target).
+Sizes: sm 40px, default 48px, lg 56px; icon buttons 48px.
 
-### Card (`components/ui/card.tsx`)
+### Panel (`components/ui/card.tsx`)
 
-White on the porcelain page, 1px `border` edge, `rounded-xl`, `shadow-soft`. Recipe cards lift 4px to `shadow-lifted` on hover.
+White on the leek page, `rounded-3xl`, no border and no shadow.
 
-### Recipe card
+### Recipe label (`components/recipe/recipe-card.tsx`)
 
-- Cover: the photo, or the recipe's **tile wall** (`DelftWall`, tile ~112px) when there's no photo.
-- Time badge: glass pill, top-right, Plex Mono.
-- Title: Gloock 20–22px, one line.
-- Meta row: servings and rating in Plex Mono; difficulty as a status badge. Time lives only on the cover badge.
-- Author: slate, linked to `/u/{handle}` when set.
+- The whole card is a block of the recipe's colour, 20px radius, at least 336px tall.
+- Category top left, time pill top right (the pair inverted), nothing else up there.
+- Title bottom left in the display face, up to three balanced lines.
+- Meta row under the title: "Serves 4", rating, difficulty, author. A favorite pill sits bottom right.
+- With a photo: the photo fills the top at 4:3 and the colour stays as the band that carries the name.
+- On hover the label lifts 4px and casts `shadow-lifted`.
 
-### Inputs
+### Fields
 
-48px, white, 1.5px `input` (pewter) edge, `rounded-md`, 16px text. Focus: delft border and a 3px `primary/15` halo. Error: danger border and halo, message below in danger 13px, linked with `aria-describedby`.
+52px, white, 1.5px ink edge, `rounded-xl`, 17px text. Focus: a 3px ink halo. Error: danger border and halo, message below in danger 13px, linked with `aria-describedby`.
 
-### Tag pills
+### Chips
 
-`rounded-full`, glaze background, delft text, 12–13px, 500. At night: night-muted with delft-light text.
+40px pills: white, 1.5px leek-line edge, 15px semibold, led by a dot of the category's colour. The selected chip is an aubergine pill. Categories on the home page and `/tags` are large pills filled with their own colour (`CategoryPills`).
+
+### Checkbox, radio, switch
+
+20px, drawn in a 2px ink edge on white like fields; checked is filled aubergine. A switch that is off is an outlined track with an ink thumb, and on it is the filled pill, so the two states never look alike.
+
+### Menus, popovers, dialogs, toasts
+
+Anything that floats is white, has no edge, and casts `shadow-lifted`. Menus and popovers have a 16px radius with 12px-radius rows at 15px; dialogs and sheets are panels (`rounded-3xl`) over an aubergine scrim; tooltips are small aubergine blocks. They render outside the page, so inside a recipe-coloured surface they stay white.
+
+### Pagination
+
+Ghost pills; the current page is the filled aubergine pill.
+
+### Segmented control
+
+A leek-soft track with the active segment as an aubergine pill (`Tabs`, the shopping list's view switch, the theme switch).
 
 ### Navigation
 
-Sticky header on porcelain with a glaze-line bottom edge (glass while scrolling). Left: the tile mark + "kookboek" wordmark in Gloock. Active link: delft text with a 2px delft underline offset 6px.
+Sticky header on the leek page (glass while scrolling). Left: three cookbook spines in tomato, lemon and basil, and the "kookboek" wordmark in the display face. The active link is an aubergine pill. The footer is an aubergine band by day and card-coloured at night.
+
+### Collections
+
+A collection's cover is a row of stripes, one per recipe in it, in those recipes' colours (`ColourStripes`).
 
 ### Empty states
 
-A single `DelftTile` (96–120px) with the motif that fits (e.g. a cup for an empty shopping list), a Gloock title that says what's missing, one line of guidance, one action.
+One blank label (`ColourSwatch`) in the colour that fits, a display title that says what's missing, one line of guidance, one action.
 
 ---
 
 ## 05 — Motion & Interaction
 
-- Durations: fast 150ms (hover/color), normal 250ms (popovers), slow 400ms (cards lift).
+- Durations: fast 150ms (hover/color), normal 250ms (popovers), slow 400ms (labels lift).
 - Easing: `ease-out` (`cubic-bezier(0.33, 1, 0.68, 1)`) for entering, `ease-in-out` for toggles.
-- One orchestrated moment: the home page tile wall settles in (tiles fade and rise with a short stagger). Elsewhere, motion is limited to hover lift, focus, and dialog open/close.
+- One orchestrated moment: the home page's wall of colour settles in, block after block. Elsewhere, motion is limited to hover lift, focus, and dialog open/close.
 - `prefers-reduced-motion`: all animation and transitions collapse to instant (see `globals.css`).
 
 ---
 
-## 06 — The Delft Tile (signature)
+## 06 — Recipe Colour (signature)
 
-`lib/delft-tile.ts` (pure, tested) and `components/delft/delft-tile.tsx` (SVG).
+`lib/recipe-colour.ts` (pure, tested), `components/recipe/recipe-colour.tsx`, and the `.recipe-*` classes in `app/globals.css`.
 
-- **Seed:** the recipe's share code (`recipe.code`). Same recipe, same tile, forever.
-- **Motif** from the recipe's tags, most specific first: seafood → fish, soups & stews → bowl, desserts → tulip, baking/bread/pasta → wheat, breakfast → sun, drinks → cup, poultry → hen, meat → pot, vegan/vegetarian/salads → sprig, dinner → windmill. Untagged recipes get a seeded fallback (rosette, tulip, windmill, sprig).
-- **Seeded variation:** corner style (ox-head, spider, fleur, quarter), a slight tilt, optional painted ring, wash strength, line weight.
-- **Colours:** `--tile-ground`, `--tile-ground-edge`, `--tile-paint`, `--tile-line`. Day: cobalt on porcelain. Night: pale blue on cobalt.
+- **From the tags**, most specific first: seafood → sea, soups & stews → carrot, desserts → beet, bread → rye, baking → butter, breakfast and drinks → lemon, vegan/vegetarian/salads → basil, pasta/meat/poultry → tomato, dinner → plum.
+- **Otherwise from the seed:** the recipe's share code (`recipe.code`) picks one of the nine. Same recipe, same colour, forever.
+- **In scope:** a `.recipe-<name>` class sets `--recipe` and `--on-recipe` for everything inside it. Use `bg-recipe text-on-recipe`, or the reverse for a pill on the block.
+- **A whole surface:** add `recipe-surface` next to the `.recipe-*` class and the semantic tokens are remapped to the pair, so buttons, borders and text inside follow without per-component styling. The recipe page's hero and cook mode work this way.
 
 | Component | Use |
 |---|---|
-| `<DelftTile seed tags />` | A single tile: logo mark, empty states, tag headers, small marks |
-| `<DelftWall seed tags tileSize />` | The tile repeated as a wall: covers without a photo (cards, recipe hero, collections) |
+| `<ColourBlock seed tags />` | A block that fills its box: the cover stand-in behind the photo upload |
+| `<ColourSwatch seed tags />` | A small square: list rows, empty states, category headers |
+| `<ColourDot seed tags />` | A 12px dot: chips, and which recipe a shopping-list line is for |
+| `<ColourStripes colours />` | A collection's cover |
 
-Tiles are decorative (`aria-hidden`) unless given a `label`. Don't recolour them, add borders around them, or put text on top of a wall except the glass time badge.
+Rules:
+
+- Never use a recipe colour as text on the page: several are too light. Put the text on a block of the colour instead (the method's step numbers are done this way).
+- Don't recolour the pairs, add borders around blocks, or put anything on a label besides category, time, title and meta.
+- Blocks that only stand in for a photo are decoration (`aria-hidden`) and don't print.
 
 ---
 
 ## 07 — Dark Mode
 
-Delft at night: the same structure, inverted grounds.
+Aubergine at night: the same structure, with butter taking aubergine's place for actions.
 
 | Token | Value |
 |---|---|
-| background (night) | `#0D1428` |
-| card (night-card) | `#152040` |
-| muted (night-muted) | `#1E2B52` |
-| border (night-line) | `#2A3A66` |
-| foreground | `#E7ECF6` (13.51:1 on card) |
-| muted-foreground (mist) | `#A5B2CE` (7.51:1 on card) |
-| primary | `#8FB1F2` |
-| cta | `#FF8A45` with night text |
+| background (night) | `#1B1020` |
+| card | `#281830` |
+| muted | `#36223F` |
+| border | `#4A3554` |
+| foreground | `#F3EEE0` (14.34:1 on card) |
+| muted-foreground | `#C4B5C9` (8.55:1 on card) |
+| primary, cta | `#F8E9B4` with night text (15.16:1) |
 
-Theme follows the system by default; the header toggle offers light / dark / system (`next-themes`, class strategy).
+The recipe colours are the same at night, except plum (see 01). Theme follows the system by default; the header toggle offers light / dark / system (`next-themes`, class strategy).
 
 ---
 
 ## 08 — Iconography
 
-Lucide, 1.5–2px stroke, `size-4` in buttons, `size-5` in navigation. Icons are delft when they carry meaning (nav, section headings), slate when supportive. Recipe imagery is never an icon: use the tile.
+Lucide, 2px stroke, 18px in buttons, 20px in navigation. Icons take the colour of the text beside them. Recipe imagery is never an icon: use the colour.
 
 ---
 
 ## 09 — Accessibility
 
-- Text 4.5:1, large text and UI boundaries 3:1, in both themes (tests in `lib/color-contrast.test.ts`, `lib/auth-panel-contrast.test.ts`).
-- Visible focus: 2px delft ring with 2px offset on buttons/links; delft border + halo on inputs.
-- Touch targets ≥ 44px.
+- Text 4.5:1, large text and UI boundaries 3:1, in both themes and on all nine recipe colours (tests in `lib/color-contrast.test.ts`, `lib/recipe-colour.test.ts`, `lib/auth-panel-contrast.test.ts`).
+- Visible focus: 2px ring in the foreground colour with 2px offset on buttons and links; border and halo on fields. Inside a `recipe-surface` the ring takes the on-recipe colour.
+- Touch targets ≥ 44px. Chips and `sm` buttons are 40px (section 04): use them only in rows with at least 8px between targets, never as the only way to an action on a phone.
 - Form errors in `role="alert"`, fields linked with `aria-invalid` / `aria-describedby`.
 - Reduced motion respected globally.
+- Colour is never the only carrier: a label always names its category, and shopping-list dots repeat what the "By recipe" view says in words.
 
 ---
 
-## 10 — Implementation
+## 10 — Email
 
-- Tokens: `app/globals.css`. Fonts: `app/layout.tsx` via `next/font` (`--font-gloock`, `--font-hanken`, `--font-plex-mono`).
+`lib/email.ts` has one layout for every transactional email: the spines and wordmark on a leek page, then a white 24px-radius panel with a display heading, the message at 17px, one aubergine pill, a plain-link fallback and a footnote in fig. Night colours are applied where the mail client honours `prefers-color-scheme`. Sofia Sans loads where web fonts are supported; elsewhere the heading falls back to a condensed bold and the text to Helvetica. Email cannot read the CSS tokens, so the hex values are repeated in that file: change both together.
+
+---
+
+## 11 — Implementation
+
+- Tokens and recipe colours: `app/globals.css`. Fonts: `app/layout.tsx` via `next/font` (`--font-sofia`, `--font-sofia-condensed`).
 - Primitives: `components/ui/*` (shadcn, restyled). Use variants, not one-off colour classes.
-- Use semantic utilities (`bg-card`, `text-muted-foreground`, `text-primary`, `bg-cta`) or the named palette (`bg-glaze`, `text-delft`, `text-success`). Never raw hex in components.
+- Use semantic utilities (`bg-card`, `text-muted-foreground`, `text-primary`, `bg-cta`), the recipe pair (`bg-recipe`, `text-on-recipe`) or the named palette (`bg-leek`, `text-fig`, `text-success`). Never raw hex in components.
+- Times on labels go through `formatMinutes` (`lib/utils/format-time.ts`): "40 min", "2 h", "1 h 15".

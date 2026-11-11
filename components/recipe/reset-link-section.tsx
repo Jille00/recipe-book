@@ -62,7 +62,7 @@ export function ResetLinkSection({ recipeId, onReset, className }: ResetLinkSect
       )}
     >
       <div>
-        <p className="font-display text-lg font-normal text-foreground">Reset link</p>
+        <h3 className="text-3xl text-foreground">Reset link</h3>
         <p className="mt-0.5 text-sm text-muted-foreground">
           If the link reached people it shouldn&apos;t have, or the recipe used
           to be public, give it a new one. Everyone with the old link loses
@@ -77,13 +77,13 @@ export function ResetLinkSection({ recipeId, onReset, className }: ResetLinkSect
       >
         <AlertDialogTrigger asChild>
           <Button type="button" variant="outline" size="sm" className="shrink-0">
-            <Link2Off className="h-4 w-4" aria-hidden="true" />
+            <Link2Off aria-hidden="true" />
             Reset link
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-display font-normal">
+            <AlertDialogTitle className="font-display">
               Reset this recipe&apos;s link?
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -102,7 +102,7 @@ export function ResetLinkSection({ recipeId, onReset, className }: ResetLinkSect
               disabled={isResetting}
               className={buttonVariants({ variant: "destructive" })}
             >
-              {isResetting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+              {isResetting && <Loader2 className="animate-spin" aria-hidden="true" />}
               Reset link
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { DelftTile } from "@/components/delft/delft-tile";
+import { ColourDot } from "@/components/recipe/recipe-colour";
 import { tagPath } from "@/lib/tag-pages";
 import { cn } from "@/lib/utils";
 
@@ -11,8 +11,8 @@ interface CategoryChipsProps {
 
 /**
  * Shortcuts from /browse to the busiest tag pages, plus the full index. Each
- * pill carries a tiny tile of its category's motif (STYLE_GUIDE 04 Tag pills,
- * 06), the same tile the category wears on /tags.
+ * pill carries a dot of its category's colour (STYLE_GUIDE 04 Chips, 06), the
+ * same colour the category wears on /tags.
  */
 export function CategoryChips({ tags, className }: CategoryChipsProps) {
   if (tags.length === 0) return null;
@@ -23,14 +23,14 @@ export function CategoryChips({ tags, className }: CategoryChipsProps) {
         <Link
           key={tag.id}
           href={tagPath(tag.slug)}
-          // 36px pill; the ::after stretches the hit area to 44px, which the
+          // 40px pill; the ::after stretches the hit area to 44px, which the
           // 8px row gap leaves room for.
-          className="relative inline-flex h-9 items-center gap-2 rounded-full bg-secondary pr-3.5 pl-1.5 text-[13px] font-medium text-primary transition-colors duration-(--duration-fast) after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] hover:bg-glaze-line focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:hover:bg-night-line"
+          className="relative inline-flex h-10 items-center gap-2 rounded-full border-[1.5px] border-border bg-card px-4 text-[15px] font-semibold text-foreground transition-colors duration-(--duration-fast) after:absolute after:inset-x-0 after:-inset-y-0.5 after:content-[''] hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
-          <DelftTile seed={tag.slug} tags={[tag.slug]} className="size-6" />
+          <ColourDot seed={tag.slug} tags={[tag.slug]} />
           {tag.name}
           {tag.recipeCount !== undefined && (
-            <span className="font-mono text-xs tabular text-muted-foreground">
+            <span className="text-sm tabular text-muted-foreground">
               <span className="sr-only">(</span>
               {tag.recipeCount}
               <span className="sr-only">

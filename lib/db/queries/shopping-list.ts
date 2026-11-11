@@ -6,6 +6,8 @@ import {
   MAX_LIST_ITEMS,
   type ValidShoppingListInput,
 } from "@/lib/shopping-list/validation";
+import { recipeColour, type RecipeColour } from "@/lib/recipe-colour";
+import { recipeTagNames } from "./tag-names";
 
 // Every query here is scoped to `userId`: a list is only ever its owner's.
 
@@ -31,13 +33,17 @@ type ItemRow = {
 
 function toItem(
   row: ItemRow,
-  recipeInfo: { title: string | null; href: string | null } = { title: null, href: null }
+  recipeInfo: { title: string | null; href: string | null; colour?: RecipeColour | null } = {
+    title: null,
+    href: null,
+  }
 ): ShoppingListItem {
   return {
     id: row.id,
     recipeId: row.recipeId,
     recipeTitle: recipeInfo.title,
     recipeHref: recipeInfo.href,
+    recipeColour: recipeInfo.colour ?? null,
     text: row.text,
     amount: row.amount,
     unit: row.unit,
@@ -56,6 +62,7 @@ export async function getShoppingList(userId: string): Promise<ShoppingListItem[
       recipeCode: recipe.code,
       recipeIsPublic: recipe.isPublic,
       recipeUserId: recipe.userId,
+      recipeTags: recipeTagNames,
     })
     .from(shoppingListItem)
     .leftJoin(recipe, eq(shoppingListItem.recipeId, recipe.id))
@@ -74,6 +81,7 @@ export async function getShoppingList(userId: string): Promise<ShoppingListItem[
     return toItem(row, {
       title: row.recipeTitle,
       href: linkable ? recipePath({ code: row.recipeCode!, slug: row.recipeSlug! }) : null,
+      colour: row.recipeCode !== null ? recipeColour(row.recipeCode, row.recipeTags) : null,
     });
   });
 }

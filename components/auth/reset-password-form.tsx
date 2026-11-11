@@ -54,7 +54,7 @@ export function ResetPasswordForm() {
         <p className="text-center text-sm text-muted-foreground">
           <Link
             href="/login"
-            className="rounded-sm font-medium text-primary underline-offset-4 transition-colors duration-(--duration-fast) hover:text-primary-hover hover:underline"
+            className="inline-flex min-h-11 items-center font-bold text-foreground underline decoration-2 underline-offset-4 hover:decoration-[3px] rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             Back to sign in
           </Link>
@@ -207,7 +207,7 @@ export function ResetPasswordForm() {
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? (
           <>
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            <Loader2 className="animate-spin" aria-hidden="true" />
             Updating password...
           </>
         ) : (
@@ -221,7 +221,7 @@ export function ResetPasswordForm() {
 function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
   return (
-    <p id={id} className="text-[13px] text-destructive">
+    <p id={id} role="alert" className="text-[13px] text-destructive">
       {message}
     </p>
   );

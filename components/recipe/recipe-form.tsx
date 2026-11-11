@@ -30,6 +30,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ImageUpload } from "@/components/recipe/image-upload";
+import { ColourDot } from "@/components/recipe/recipe-colour";
+import { colourForTags } from "@/lib/recipe-colour";
 import { NutritionDisplay } from "@/components/recipe/nutrition-display";
 import { ResetLinkSection } from "@/components/recipe/reset-link-section";
 import type { Ingredient, Instruction, Difficulty } from "@/types/recipe";
@@ -46,7 +48,6 @@ import {
   X,
   AlertCircle,
   Camera,
-  Check,
   Sparkles,
   AlertTriangle,
   Loader2,
@@ -147,8 +148,8 @@ interface RecipeFormProps {
     is_public: boolean;
   };
   /**
-   * Seeds the tile shown in the photo area: the recipe's share code when
-   * editing, so it is the tile the recipe actually has.
+   * Seeds the colour shown in the photo area: the recipe's share code when
+   * editing, so it is the colour the recipe actually has.
    */
   tileSeed?: string;
 }
@@ -597,12 +598,14 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
     }
   };
 
-  // The tile the recipe will get when it has no photo: its share code once it
-  // exists, a fixed seed before that. Tags pick the motif, so it follows the
-  // tag picker.
+  // The colour the recipe will get when it has no photo. The selected tags
+  // decide it; failing that, the share code does, which only exists once the
+  // recipe is saved. Until either is known the preview stays neutral rather
+  // than promising a colour the saved recipe may not get.
   const tileTags = tags
     .filter((tag) => selectedTagIds.includes(tag.id))
-    .map((tag) => tag.slug);
+    .map((tag) => tag.name);
+  const colourKnown = Boolean(tileSeed) || colourForTags(tileTags) !== null;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
@@ -653,7 +656,7 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
-              className="h-14 font-display text-xl"
+              className="h-14 font-display text-3xl"
             />
           </div>
 
@@ -670,10 +673,10 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
           </div>
 
           <fieldset className="space-y-3" aria-describedby="tags-help">
-            <legend className="mb-1 text-sm font-medium">Tags</legend>
+            <legend className="mb-1 text-[15px] font-bold">Tags</legend>
             <p id="tags-help" className="text-[13px] text-muted-foreground">
-              Pick any that fit. Tags also choose what is painted on the
-              recipe&apos;s tile.
+              Pick any that fit. Tags also choose the recipe&apos;s
+              colour.
             </p>
             <div className="flex flex-wrap gap-2">
               {tags.map((tag) => {
@@ -685,15 +688,13 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
                     aria-pressed={selected}
                     onClick={() => toggleTag(tag.id)}
                     className={cn(
-                      "inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium transition-colors duration-(--duration-fast) ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card sm:min-h-9",
+                      "inline-flex min-h-10 items-center gap-2 rounded-full border-[1.5px] px-4 text-[15px] font-semibold transition-colors duration-(--duration-fast) ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card",
                       selected
-                        ? "bg-primary text-primary-foreground hover:bg-primary-hover"
-                        : "bg-secondary text-secondary-foreground hover:bg-glaze-line dark:hover:bg-night-line"
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card text-foreground hover:bg-muted"
                     )}
                   >
-                    {selected && (
-                      <Check className="size-3.5" aria-hidden="true" />
-                    )}
+                    <ColourDot seed={tag.slug} tags={[tag.name]} />
                     {tag.name}
                   </button>
                 );
@@ -728,20 +729,24 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
         </div>
       </FormSection>
 
-      {/* Photo, with the recipe's tile as the stand-in */}
+      {/* Photo, with the recipe's colour as the stand-in */}
       <FormSection
         id="photo"
         title="Photo"
         description={
           isEditing
-            ? "Without a photo, the recipe's tile wall is its cover."
-            : "Until you add a photo, the recipe shows a tile wall like this one."
+            ? "Without a photo, the recipe's colour is its cover."
+            : colourKnown
+              ? "Until you add a photo, the recipe's label is a block of this colour."
+              : "Pick a category to choose this recipe's colour."
         }
       >
+        {/* No seed means no colour block is drawn; the neutral block shows through. */}
+        <div className={cn(!colourKnown && !imageUrl && "rounded-xl bg-muted")}>
         <ImageUpload
           value={imageUrl}
           onChange={setImageUrl}
-          tileSeed={tileSeed ?? "new"}
+          tileSeed={colourKnown ? (tileSeed ?? "new") : undefined}
           tileTags={tileTags}
           recipeContext={{
             title,
@@ -750,6 +755,7 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
             instructions: instructions.filter((i) => i.text.trim()),
           }}
         />
+        </div>
       </FormSection>
 
       {/* Time & servings */}
@@ -800,7 +806,7 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
             accessible names). */}
         <div
           aria-hidden="true"
-          className="mb-2 hidden grid-cols-[6rem_10rem_minmax(0,1fr)_2.75rem] gap-2 text-xs font-medium tracking-[0.06em] text-muted-foreground uppercase sm:grid"
+          className="mb-2 hidden grid-cols-[6rem_10rem_minmax(0,1fr)_2.75rem] gap-2 text-sm font-bold text-muted-foreground sm:grid"
         >
           <span>Amount</span>
           <span>Unit</span>
@@ -820,7 +826,7 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
                 onChange={(e) =>
                   updateIngredient(ingredient.id, "amount", e.target.value)
                 }
-                className="px-3 text-right font-mono tabular"
+                className="px-3 text-right tabular"
               />
               <Select
                 value={ingredient.unit || "none"}
@@ -901,7 +907,7 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
             >
               <span
                 aria-hidden="true"
-                className="pt-2 text-right font-display text-[28px] leading-none text-primary tabular"
+                className="pt-2 text-right font-display text-[2.5rem] leading-none text-primary tabular"
               >
                 {index + 1}
               </span>
@@ -972,7 +978,7 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
                 <button
                   type="button"
                   onClick={focusServingsField}
-                  className="rounded-sm font-medium text-primary underline-offset-4 transition-colors hover:text-primary-hover hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-muted"
+                  className="font-bold text-foreground underline decoration-2 underline-offset-4 hover:decoration-[3px] rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   Add servings
                 </button>{" "}
@@ -1021,7 +1027,7 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
               <button
                 type="button"
                 onClick={focusServingsField}
-                className="rounded-sm font-medium text-primary underline-offset-4 transition-colors hover:text-primary-hover hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="font-bold text-foreground underline decoration-2 underline-offset-4 hover:decoration-[3px] rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
                 Add servings
               </button>
@@ -1055,7 +1061,7 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
             className="mt-0.5 size-5 shrink-0 cursor-pointer accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
           />
           <span className="flex-1">
-            <span className="block font-medium text-foreground">
+            <span className="block text-[15px] font-bold text-foreground">
               Make this recipe public
             </span>
             <span className="mt-0.5 block text-sm text-muted-foreground">
@@ -1124,7 +1130,7 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
       <AlertDialog open={discardDialogOpen} onOpenChange={setDiscardDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-display text-2xl font-normal">
+            <AlertDialogTitle className="font-display text-4xl">
               Discard your changes?
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -1149,7 +1155,7 @@ export function RecipeForm({ tags, initialData, tileSeed }: RecipeFormProps) {
       <AlertDialog open={outdatedDialogOpen} onOpenChange={setOutdatedDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-display text-2xl font-normal">
+            <AlertDialogTitle className="font-display text-4xl">
               Nutrition may be out of date
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -1191,8 +1197,8 @@ const DIFFICULTY_OPTIONS: Array<{
 ];
 
 /**
- * One section of the editor: a quiet card with a Gloock title, a line of
- * guidance in slate, and an optional action on the right.
+ * One section of the editor: a quiet card with a display title, a line of
+ * guidance, and an optional action on the right.
  */
 function FormSection({
   id,
@@ -1213,7 +1219,7 @@ function FormSection({
       <Card className="gap-0 py-0">
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 px-5 pt-6 sm:px-6">
           <div className="min-w-0 flex-1 space-y-1">
-            <h2 id={titleId} className="text-[22px] leading-tight text-foreground">
+            <h2 id={titleId} className="text-3xl leading-[0.95] text-foreground">
               {title}
             </h2>
             {description && (
@@ -1263,7 +1269,7 @@ function NumberField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           aria-describedby={suffixId}
-          className="pr-18 font-mono tabular"
+          className="pr-18 tabular"
         />
         <span
           id={suffixId}

@@ -118,7 +118,7 @@ export function ChangePasswordCard() {
 
           <div className="flex justify-end">
             <Button type="submit" variant="outline" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+              {isSubmitting && <Loader2 className="animate-spin" aria-hidden="true" />}
               {isSubmitting ? "Changing..." : "Change password"}
             </Button>
           </div>

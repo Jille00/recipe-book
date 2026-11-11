@@ -74,9 +74,9 @@ export function ExportDataCard() {
           disabled={isExporting}
         >
           {isExporting ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            <Loader2 className="animate-spin" aria-hidden="true" />
           ) : (
-            <Download className="size-4" aria-hidden="true" />
+            <Download aria-hidden="true" />
           )}
           {isExporting ? "Preparing..." : "Download my data"}
         </Button>

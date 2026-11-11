@@ -29,13 +29,13 @@ export async function generateMetadata({ params }: Props) {
   const session = await getSession();
 
   if (!session?.user) {
-    return { title: "Edit Recipe", robots: { index: false, follow: false } };
+    return { title: "Edit recipe", robots: { index: false, follow: false } };
   }
 
   const recipe = await getRecipe(session.user.id, slug);
 
   if (!recipe) {
-    return { title: "Recipe Not Found", robots: { index: false, follow: false } };
+    return { title: "Recipe not found", robots: { index: false, follow: false } };
   }
 
   return {
@@ -91,15 +91,15 @@ export default async function EditRecipePage({ params }: Props) {
       <header className="mb-8 sm:mb-10">
         <Link
           href={recipePath(recipe)}
-          className="-ml-1 mb-3 inline-flex min-h-11 items-center gap-2 rounded-md px-1 text-sm font-medium text-muted-foreground transition-colors duration-(--duration-fast) hover:text-primary"
+          className="mb-3 inline-flex min-h-11 items-center gap-2 text-[15px] font-semibold text-foreground underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
           Back to recipe
         </Link>
-        <h1 className="text-4xl leading-[1.1] tracking-[-0.01em] text-foreground sm:text-[44px]">
+        <h1 className="text-6xl leading-[0.88] text-foreground sm:text-7xl lg:text-8xl">
           Edit recipe
         </h1>
-        <p className="mt-2 truncate text-muted-foreground">{recipe.title}</p>
+        <p className="mt-4 truncate text-lg text-muted-foreground">{recipe.title}</p>
       </header>
 
       <RecipeForm tags={tags} initialData={initialData} tileSeed={recipe.code} />

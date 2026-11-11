@@ -160,11 +160,11 @@ export function NutritionDisplay({
             size="sm"
             onClick={onCancelEdit}
           >
-            <X className="h-4 w-4" aria-hidden="true" />
+            <X aria-hidden="true" />
             Cancel
           </Button>
           {/* Secondary: this sits inside the recipe form, whose main action
-              (saving the recipe) owns the orange. */}
+              (saving the recipe) is the one filled pill. */}
           <Button
             type="button"
             variant="secondary"
@@ -172,7 +172,7 @@ export function NutritionDisplay({
             onClick={handleSave}
             disabled={hasInvalid}
           >
-            <Check className="h-4 w-4" aria-hidden="true" />
+            <Check aria-hidden="true" />
             Save
           </Button>
         </div>
@@ -182,25 +182,25 @@ export function NutritionDisplay({
 
   return (
     <div className="space-y-4">
-      {/* Nutrients: label over a Plex Mono value */}
+      {/* Nutrients: label over a tabular value */}
       <dl className="grid grid-cols-3 gap-x-4 gap-y-5 sm:grid-cols-6">
         {NUTRIENT_CONFIG.map(({ key, label, unit }) => {
           const value = nutrition[key];
           return (
             <div key={key}>
-              <dt className="text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">
+              <dt className="text-sm font-bold text-muted-foreground">
                 {label}
               </dt>
               <dd className="mt-1 whitespace-nowrap">
                 {value !== null && value !== undefined ? (
                   <>
-                    <span className="font-mono text-xl tabular text-foreground">
+                    <span className="font-display text-3xl tabular text-foreground">
                       {key === "calories" ? Math.round(value) : value.toFixed(1)}
                     </span>
                     <span className="ml-1 text-sm text-muted-foreground">{unit}</span>
                   </>
                 ) : (
-                  <span className="font-mono text-xl text-muted-foreground">
+                  <span className="font-display text-3xl text-muted-foreground">
                     <span aria-hidden="true">—</span>
                     <span className="sr-only">Unknown</span>
                   </span>
@@ -220,7 +220,7 @@ export function NutritionDisplay({
           {servings ? (
             <span className="text-xs text-muted-foreground">
               Per serving, for{" "}
-              <span className="font-mono tabular">{servings}</span> servings
+              <span className="font-bold tabular">{servings}</span> servings
             </span>
           ) : null}
         </div>

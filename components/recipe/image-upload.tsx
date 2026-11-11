@@ -5,7 +5,7 @@ import Image from "next/image";
 import { toast } from "sonner";
 import { Button, Spinner } from "@/components/ui";
 import { AlertCircle, Upload, X, RefreshCw, Sparkles } from "lucide-react";
-import { DelftWall } from "@/components/delft/delft-tile";
+import { ColourBlock } from "@/components/recipe/recipe-colour";
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/image/compress-image";
 import {
@@ -28,7 +28,7 @@ interface ImageUploadProps {
   onChange: (url: string) => void;
   recipeContext?: RecipeContext;
   /**
-   * Seed (and tags) of the recipe's tile, shown behind the upload prompt as a
+   * Seed (and tags) of the recipe's colour, shown behind the upload prompt as a
    * preview of the cover the recipe gets without a photo.
    */
   tileSeed?: string;
@@ -237,7 +237,7 @@ export function ImageUpload({
       {canGenerateAI && (
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           size="sm"
           onClick={handleGenerateAI}
           disabled={isGenerating}
@@ -248,7 +248,7 @@ export function ImageUpload({
       )}
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
         size="sm"
         onClick={openFilePicker}
         disabled={isGenerating}
@@ -258,11 +258,10 @@ export function ImageUpload({
       </Button>
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
         size="sm"
         onClick={handleRemove}
         disabled={isGenerating}
-        className="hover:text-destructive"
       >
         <X aria-hidden="true" />
         Remove
@@ -274,7 +273,7 @@ export function ImageUpload({
     <div className="w-full">
       {value ? (
         <>
-          <div className="relative aspect-video overflow-hidden rounded-xl border border-border bg-muted">
+          <div className="relative aspect-video overflow-hidden rounded-3xl bg-muted">
             <Image
               src={value}
               alt="Recipe preview"
@@ -304,7 +303,7 @@ export function ImageUpload({
           aria-busy={isBusy || undefined}
           onClick={isBusy ? undefined : openFilePicker}
           className={cn(
-            "relative flex min-h-72 items-center justify-center overflow-hidden rounded-xl border-[1.5px] border-dashed p-4 transition-colors duration-(--duration-fast) ease-out sm:aspect-[2/1] sm:min-h-0 sm:p-6",
+            "relative flex min-h-72 items-center justify-center overflow-hidden rounded-3xl border-[1.5px] border-dashed p-4 transition-colors duration-(--duration-fast) ease-out sm:aspect-[2/1] sm:min-h-0 sm:p-6",
             !isBusy && "cursor-pointer",
             dragActive
               ? "border-primary ring-[3px] ring-primary/15"
@@ -315,17 +314,16 @@ export function ImageUpload({
           onDragOver={handleDrag}
           onDrop={handleDrop}
         >
-          {/* The recipe's own tile, as it will look without a photo. */}
+          {/* The recipe's own colour, as its label will look without a photo. */}
           {tileSeed && (
-            <DelftWall
+            <ColourBlock
               seed={tileSeed}
               tags={tileTags}
-              tileSize={112}
               className="absolute inset-0"
             />
           )}
 
-          <div className="relative flex w-full max-w-sm flex-col items-center rounded-lg border border-border bg-card/95 px-5 py-5 text-center shadow-medium backdrop-blur-sm">
+          <div className="relative flex w-full max-w-sm flex-col items-center rounded-2xl bg-card px-5 py-5 text-center">
             {isBusy ? (
               <div className="flex flex-col items-center gap-3 py-2">
                 <Spinner size="lg" className="text-primary" />

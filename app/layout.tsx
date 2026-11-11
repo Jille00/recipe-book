@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { Gloock, Hanken_Grotesk, IBM_Plex_Mono } from "next/font/google";
+import { Sofia_Sans, Sofia_Sans_Extra_Condensed } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
@@ -10,28 +10,19 @@ import { UnitPreferencesProvider } from "@/contexts/unit-preferences-context";
 import { SITE_OG_IMAGE, SITE_URL } from "./site-url";
 
 // Self-hosted by next/font (no render-blocking request to Google). The
-// variables feed --font-display / --font-sans / --font-mono in globals.css.
-// Gloock: titles only, like the lettering on a Delft plate. It has one weight.
-const gloock = Gloock({
+// variables feed --font-sans / --font-display in globals.css.
+// Sofia Sans: everything you read and press.
+const sofia = Sofia_Sans({
   subsets: ["latin"],
-  weight: "400",
   display: "swap",
-  variable: "--font-gloock",
+  variable: "--font-sofia",
 });
 
-// Hanken Grotesk: everything you read and press.
-const hanken = Hanken_Grotesk({
+// Sofia Sans Extra Condensed: titles, set large and tight like a crate label.
+const sofiaCondensed = Sofia_Sans_Extra_Condensed({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-hanken",
-});
-
-// IBM Plex Mono: amounts, times and counts, so they line up.
-const plexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  display: "swap",
-  variable: "--font-plex-mono",
+  variable: "--font-sofia-condensed",
 });
 
 export const metadata: Metadata = {
@@ -102,7 +93,7 @@ export default async function RootLayout({
     // before React hydrates, so the server markup never matches it.
     <html
       lang="en"
-      className={`${gloock.variable} ${hanken.variable} ${plexMono.variable}`}
+      className={`${sofia.variable} ${sofiaCondensed.variable}`}
       suppressHydrationWarning
     >
       <body className="min-h-screen antialiased">

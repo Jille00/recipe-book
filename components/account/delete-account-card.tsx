@@ -84,11 +84,9 @@ export function DeleteAccountCard() {
   };
 
   return (
-    // Danger zone: marked by a danger edge on the left and the danger colour
-    // on its one button, not by a red card.
-    <Card className="border-l-[3px] border-l-destructive/70">
+    // Marked by the danger colour on its one button, not by a red card.
+    <Card>
       <AccountCardHeader
-        eyebrow="Danger zone"
         title="Delete account"
         description="Permanently removes your account, recipes, photos, favorites, ratings, comments, collections and shopping list. This can't be undone."
       />
@@ -107,16 +105,16 @@ export function DeleteAccountCard() {
           <AlertDialogTrigger asChild>
             <Button
               variant="outline"
-              className="shrink-0 text-destructive hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive focus-visible:ring-destructive"
+              className="shrink-0 border-destructive text-destructive hover:bg-destructive hover:text-white focus-visible:ring-destructive"
             >
-              <Trash2 className="size-4" aria-hidden="true" />
+              <Trash2 aria-hidden="true" />
               Delete account
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <form ref={formRef} onSubmit={handleSubmit} noValidate className="grid gap-4">
               <AlertDialogHeader>
-                <AlertDialogTitle className="font-display text-2xl font-normal">
+                <AlertDialogTitle className="font-display text-4xl">
                   Delete your account?
                 </AlertDialogTitle>
                 <AlertDialogDescription>
@@ -157,7 +155,7 @@ export function DeleteAccountCard() {
                   Keep account
                 </AlertDialogCancel>
                 <Button type="submit" variant="destructive" disabled={isDeleting}>
-                  {isDeleting && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+                  {isDeleting && <Loader2 className="animate-spin" aria-hidden="true" />}
                   {isDeleting ? "Deleting..." : "Delete account"}
                 </Button>
               </AlertDialogFooter>

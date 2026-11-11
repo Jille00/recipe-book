@@ -5,6 +5,7 @@ import {
   NUMBER_TOKEN,
   parseAmount,
 } from "@/lib/utils/unit-conversion";
+import type { RecipeColour } from "@/lib/recipe-colour";
 
 /** A shopping list row as the client sees it. */
 export interface ShoppingListItem {
@@ -14,6 +15,8 @@ export interface ShoppingListItem {
   recipeTitle: string | null;
   /** Link to that recipe, only when the caller may still open it. */
   recipeHref: string | null;
+  /** That recipe's colour, for the dot beside the item. */
+  recipeColour?: RecipeColour | null;
   text: string;
   amount: string | null;
   unit: string | null;
@@ -32,6 +35,8 @@ export interface MergedShoppingLine {
   itemIds: string[];
   /** Distinct recipe titles the line came from, for a hint under the line. */
   sources: string[];
+  /** Those recipes' colours, in the same order: one dot each. */
+  colours: RecipeColour[];
 }
 
 export interface ShoppingListGroup {
@@ -39,6 +44,7 @@ export interface ShoppingListGroup {
   recipeId: string | null;
   title: string | null;
   href: string | null;
+  colour: RecipeColour | null;
   items: ShoppingListItem[];
 }
 
@@ -158,6 +164,7 @@ export function mergeShoppingItems(items: ShoppingListItem[]): MergedShoppingLin
       existing.allChecked = existing.allChecked && item.checked;
       if (item.recipeTitle && !existing.line.sources.includes(item.recipeTitle)) {
         existing.line.sources.push(item.recipeTitle);
+        if (item.recipeColour) existing.line.colours.push(item.recipeColour);
       }
       if (unitClass.kind === "other") {
         if (unitClass.plural) existing.pluralUnit ??= unitClass.unit;
@@ -183,6 +190,7 @@ export function mergeShoppingItems(items: ShoppingListItem[]): MergedShoppingLin
         checked: item.checked,
         itemIds: [item.id],
         sources: item.recipeTitle ? [item.recipeTitle] : [],
+        colours: item.recipeTitle && item.recipeColour ? [item.recipeColour] : [],
       },
       total:
         value === null ? null : value * (unitClass.kind === "known" ? unitClass.base : 1),
@@ -239,6 +247,7 @@ export function groupShoppingItemsByRecipe(items: ShoppingListItem[]): ShoppingL
         recipeId: item.recipeId,
         title: item.recipeTitle,
         href: item.recipeHref,
+        colour: item.recipeColour ?? null,
         items: [],
       };
       groups.set(item.recipeId, group);
@@ -248,7 +257,7 @@ export function groupShoppingItemsByRecipe(items: ShoppingListItem[]): ShoppingL
 
   const result = [...groups.values()];
   if (loose.length > 0) {
-    result.push({ recipeId: null, title: null, href: null, items: loose });
+    result.push({ recipeId: null, title: null, href: null, colour: null, items: loose });
   }
   return result;
 }

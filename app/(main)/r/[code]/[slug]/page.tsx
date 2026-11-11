@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const recipe = await getRecipe(code, session?.user?.id);
 
   if (!recipe) {
-    return { title: "Recipe Not Found", robots: { index: false, follow: false } };
+    return { title: "Recipe not found", robots: { index: false, follow: false } };
   }
 
   const description = recipe.description || `A delicious ${recipe.title} recipe`;
@@ -101,7 +101,7 @@ export default async function RecipePage({ params }: Props) {
       : null;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+    <div>
       {/* Structured data only helps search engines, which never see unlisted recipes. */}
       {recipe.isPublic && (
         <RecipeJsonLd

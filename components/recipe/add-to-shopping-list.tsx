@@ -155,7 +155,7 @@ export function AddToShoppingList({
         onClick={handleOpen}
         className={cn(compact && compactButtonClass, className)}
       >
-        <ShoppingBasket className="h-4 w-4" aria-hidden="true" />
+        <ShoppingBasket aria-hidden="true" />
         <span className={cn(compact && compactLabelClass)}>Add to list</span>
       </Button>
 
@@ -167,7 +167,7 @@ export function AddToShoppingList({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl font-normal">
+            <DialogTitle className="font-display text-4xl">
               Add to shopping list
             </DialogTitle>
             <DialogDescription>
@@ -177,8 +177,8 @@ export function AddToShoppingList({
 
           <div className="flex items-center justify-between border-b border-border pb-2">
             <span className="text-sm text-muted-foreground">
-              <span className="font-mono tabular">{selected.length}</span> of{" "}
-              <span className="font-mono tabular">{entries.length}</span> selected
+              <span className="font-bold tabular">{selected.length}</span> of{" "}
+              <span className="font-bold tabular">{entries.length}</span> selected
             </span>
             <Button type="button" variant="ghost" size="sm" onClick={toggleAll}>
               {allSelected ? "Select none" : "Select all"}
@@ -190,7 +190,7 @@ export function AddToShoppingList({
               const id = `${fieldId}-${entry.index}`;
               const isChecked = !excluded.has(entry.index);
               return (
-                <li key={entry.index} className="flex items-start gap-3 rounded-lg px-2 py-2 hover:bg-accent">
+                <li key={entry.index} className="flex min-h-11 items-start gap-3 rounded-lg px-2 py-3 hover:bg-accent">
                   <Checkbox
                     id={id}
                     checked={isChecked}

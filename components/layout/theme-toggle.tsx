@@ -89,7 +89,7 @@ export function ThemeToggle({ className }: { className?: string }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuLabel className="text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">
+        <DropdownMenuLabel className="text-sm font-bold text-muted-foreground">
           Theme
         </DropdownMenuLabel>
         <DropdownMenuRadioGroup
@@ -141,8 +141,8 @@ export function ThemeSegmentedControl({ className }: { className?: string }) {
             <ToggleGroupItem
               key={value}
               value={value}
-              // Selected: glaze fill with delft text, like the mobile nav links.
-              className="h-11 min-w-11 gap-1.5 rounded-md px-3 text-muted-foreground hover:bg-accent hover:text-foreground data-[state=on]:bg-secondary data-[state=on]:text-secondary-foreground data-[spacing=0]:rounded-md"
+              // Selected: an aubergine pill, like the mobile nav links.
+              className="h-11 min-w-11 gap-1.5 rounded-full px-3.5 text-muted-foreground hover:bg-accent hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[spacing=0]:rounded-full"
             >
               <OptionIcon className="size-4" aria-hidden="true" />
               <span className="text-sm">{label}</span>

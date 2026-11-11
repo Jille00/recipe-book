@@ -159,7 +159,7 @@ export function LoginForm() {
           <Label htmlFor="password">Password</Label>
           <Link
             href="/forgot-password"
-            className="rounded-sm text-sm font-medium text-primary underline-offset-4 transition-colors duration-(--duration-fast) hover:text-primary-hover hover:underline"
+            className="text-sm font-bold text-foreground underline decoration-2 underline-offset-4 hover:decoration-[3px] rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             Forgot password?
           </Link>
@@ -199,7 +199,7 @@ export function LoginForm() {
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? (
           <>
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            <Loader2 className="animate-spin" aria-hidden="true" />
             Signing in...
           </>
         ) : (
@@ -211,7 +211,7 @@ export function LoginForm() {
         Don&apos;t have an account?{" "}
         <Link
           href="/register"
-          className="rounded-sm font-medium text-primary underline-offset-4 transition-colors duration-(--duration-fast) hover:text-primary-hover hover:underline"
+          className="font-bold text-foreground underline decoration-2 underline-offset-4 hover:decoration-[3px] rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           Sign up
         </Link>

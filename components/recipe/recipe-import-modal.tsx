@@ -580,7 +580,7 @@ export function RecipeImportModal({
         }}
       >
         <DialogHeader>
-          <DialogTitle className="font-display text-2xl leading-tight font-normal">
+          <DialogTitle className="font-display text-4xl leading-[0.95]">
             Import a recipe
           </DialogTitle>
           <DialogDescription>{METHOD_DESCRIPTIONS[importMethod]}</DialogDescription>
@@ -607,7 +607,6 @@ export function RecipeImportModal({
                 <TabsTrigger
                   key={method}
                   value={method}
-                  className="data-[state=active]:text-primary"
                 >
                   {/* Three tabs with icons do not fit a phone-width dialog. */}
                   <Icon className="hidden sm:block" aria-hidden="true" />
@@ -638,7 +637,7 @@ export function RecipeImportModal({
                 </p>
                 <p className="mt-1 text-[13px] text-muted-foreground">
                   PNG, JPG, WebP or HEIC, up to{" "}
-                  <span className="font-mono tabular">{MAX_IMPORT_FILES}</span>{" "}
+                  <span className="font-bold tabular">{MAX_IMPORT_FILES}</span>{" "}
                   photos. Large photos are resized automatically.
                 </p>
                 <Button
@@ -672,7 +671,7 @@ export function RecipeImportModal({
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">
-                      <span className="font-mono tabular">{selectedFiles.length}</span>{" "}
+                      <span className="font-bold tabular">{selectedFiles.length}</span>{" "}
                       {selectedFiles.length !== 1 ? "photos" : "photo"} selected
                     </p>
                     <Button
@@ -694,7 +693,7 @@ export function RecipeImportModal({
                     {selectedFiles.map((sf, index) => (
                       <div
                         key={sf.id}
-                        className="group relative aspect-square overflow-hidden rounded-md border border-border bg-muted"
+                        className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-muted"
                       >
                         {sf.status === "ready" && sf.previewUrl ? (
                           <Image
@@ -727,11 +726,15 @@ export function RecipeImportModal({
                           aria-label={`Remove image ${index + 1}`}
                           // Always visible where there is no hover (touch, small
                           // screens); revealed on hover or keyboard focus above.
-                          className="absolute top-1 right-1 flex size-7 items-center justify-center rounded-full bg-ink/70 text-white transition-opacity hover:bg-ink/90 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 [@media(hover:none)]:opacity-100"
+                          // The button is a 44px corner target; the disc inside
+                          // it keeps the 28px look.
+                          className="group/remove absolute top-0 right-0 flex size-11 items-start justify-end p-1 transition-opacity focus-visible:opacity-100 focus-visible:outline-none sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 [@media(hover:none)]:opacity-100"
                         >
-                          <X className="size-3.5" aria-hidden="true" />
+                          <span className="flex size-7 items-center justify-center rounded-full bg-ink/70 text-white group-hover/remove:bg-ink/90 group-focus-visible/remove:ring-2 group-focus-visible/remove:ring-white">
+                            <X className="size-3.5" aria-hidden="true" />
+                          </span>
                         </button>
-                        <span className="absolute bottom-1 left-1 flex size-5 items-center justify-center rounded-full bg-ink/70 font-mono text-[11px] text-white tabular">
+                        <span className="absolute bottom-1 left-1 flex size-5 items-center justify-center rounded-full bg-ink/70 text-[11px] font-bold text-white tabular">
                           {index + 1}
                         </span>
                       </div>
@@ -741,7 +744,7 @@ export function RecipeImportModal({
                         type="button"
                         onClick={() => inputRef.current?.click()}
                         aria-label="Add more images"
-                        className="flex aspect-square items-center justify-center rounded-md border-[1.5px] border-dashed border-input text-muted-foreground transition-colors duration-(--duration-fast) hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        className="flex aspect-square items-center justify-center rounded-xl border-[1.5px] border-dashed border-input text-muted-foreground transition-colors duration-(--duration-fast) hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                       >
                         <Plus className="size-6" aria-hidden="true" />
                       </button>
@@ -813,6 +816,7 @@ export function RecipeImportModal({
                   />
                   <p
                     id="recipe-link-help"
+                    role={showLinkHint ? "alert" : undefined}
                     className={cn(
                       "text-[13px]",
                       showLinkHint ? "text-destructive" : "text-muted-foreground"
@@ -902,7 +906,7 @@ export function RecipeImportModal({
               className="flex flex-col items-center justify-center py-8 text-center"
             >
               <AlertTriangle className="mb-3 size-7 text-destructive" aria-hidden="true" />
-              <p className="font-display text-xl text-foreground">
+              <p className="font-display text-3xl text-foreground">
                 {importMethod === "link" ? "Import failed" : "Extraction failed"}
               </p>
               <p className="mt-1 max-w-md text-sm text-destructive">{error}</p>
@@ -962,7 +966,7 @@ export function RecipeImportModal({
                   </div>
                 )}
                 <div className="min-w-0">
-                  <h3 className="text-[22px] leading-tight">{extractedData.title}</h3>
+                  <h3 className="text-3xl leading-[0.95]">{extractedData.title}</h3>
                   {extractedData.description && (
                     <p className="mt-1 text-sm text-muted-foreground">
                       {extractedData.description}
@@ -976,7 +980,7 @@ export function RecipeImportModal({
                   <span className="flex items-center gap-1.5">
                     <Clock className="size-4" aria-hidden="true" />
                     Prep{" "}
-                    <span className="font-mono text-foreground tabular">
+                    <span className="font-bold text-foreground tabular">
                       {extractedData.prepTimeMinutes} min
                     </span>
                   </span>
@@ -985,7 +989,7 @@ export function RecipeImportModal({
                   <span className="flex items-center gap-1.5">
                     <Clock className="size-4" aria-hidden="true" />
                     Cook{" "}
-                    <span className="font-mono text-foreground tabular">
+                    <span className="font-bold text-foreground tabular">
                       {extractedData.cookTimeMinutes} min
                     </span>
                   </span>
@@ -993,7 +997,7 @@ export function RecipeImportModal({
                 {extractedData.servings && (
                   <span className="flex items-center gap-1.5">
                     <Users className="size-4" aria-hidden="true" />
-                    <span className="font-mono text-foreground tabular">
+                    <span className="font-bold text-foreground tabular">
                       {extractedData.servings}
                     </span>{" "}
                     servings
@@ -1018,9 +1022,9 @@ export function RecipeImportModal({
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-lg border border-border p-4">
-                  <h4 className="mb-2 text-xs font-medium tracking-[0.06em] text-muted-foreground uppercase">
+                  <h4 className="mb-2 text-sm font-bold text-muted-foreground">
                     Ingredients{" "}
-                    <span className="font-mono tabular">
+                    <span className="font-bold tabular">
                       ({extractedData.ingredients.length})
                     </span>
                   </h4>
@@ -1028,7 +1032,7 @@ export function RecipeImportModal({
                     {extractedData.ingredients.map((ing, i) => (
                       <li key={i} className="text-foreground">
                         {(ing.amount || ing.unit) && (
-                          <span className="font-mono text-primary tabular">
+                          <span className="font-bold text-primary tabular">
                             {[ing.amount, ing.unit].filter(Boolean).join(" ")}{" "}
                           </span>
                         )}
@@ -1039,9 +1043,9 @@ export function RecipeImportModal({
                 </div>
 
                 <div className="rounded-lg border border-border p-4">
-                  <h4 className="mb-2 text-xs font-medium tracking-[0.06em] text-muted-foreground uppercase">
+                  <h4 className="mb-2 text-sm font-bold text-muted-foreground">
                     Method{" "}
-                    <span className="font-mono tabular">
+                    <span className="font-bold tabular">
                       ({extractedData.instructions.length}{" "}
                       {extractedData.instructions.length === 1 ? "step" : "steps"})
                     </span>
@@ -1049,7 +1053,7 @@ export function RecipeImportModal({
                   <ol className="max-h-40 space-y-1 overflow-y-auto text-sm">
                     {extractedData.instructions.map((inst) => (
                       <li key={inst.step} className="text-foreground">
-                        <span className="font-mono text-primary tabular">
+                        <span className="font-bold text-primary tabular">
                           {inst.step}.
                         </span>{" "}
                         {inst.text.length > 80
@@ -1087,7 +1091,7 @@ export function RecipeImportModal({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-display text-2xl font-normal">
+            <AlertDialogTitle className="font-display text-4xl">
               Replace what you&apos;ve entered?
             </AlertDialogTitle>
             <AlertDialogDescription>

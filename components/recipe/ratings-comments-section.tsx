@@ -52,15 +52,15 @@ export function RatingsCommentsSection({
       {/* Rating */}
       <Card className="gap-5">
         <CardHeader>
-          <h2 className="text-[1.75rem] leading-[1.2] text-foreground">Rating</h2>
+          <h2 className="text-[2.75rem] leading-[0.95] text-foreground">Rating</h2>
           <CardDescription>
             {hasRatings ? (
               <>
-                <span className="font-mono tabular">
+                <span className="font-bold tabular">
                   {ratingStats.averageRating.toFixed(1)}
                 </span>{" "}
                 average from{" "}
-                <span className="font-mono tabular">{ratingStats.totalRatings}</span>{" "}
+                <span className="font-bold tabular">{ratingStats.totalRatings}</span>{" "}
                 rating{ratingStats.totalRatings !== 1 ? "s" : ""}
               </>
             ) : (
@@ -81,7 +81,7 @@ export function RatingsCommentsSection({
             {/* The viewer's own rating */}
             {isAuthenticated ? (
               <div className="flex items-center gap-2 sm:border-l sm:border-border sm:pl-6">
-                <span className="text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">
+                <span className="text-sm font-bold text-muted-foreground">
                   Your rating
                 </span>
                 <RatingInput
@@ -96,7 +96,7 @@ export function RatingsCommentsSection({
               <p className="text-sm text-muted-foreground">
                 <Link
                   href={loginHref}
-                  className="font-medium text-primary underline-offset-4 hover:underline"
+                  className="font-bold text-foreground underline decoration-2 underline-offset-4 hover:decoration-[3px] rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   Sign in
                 </Link>{" "}

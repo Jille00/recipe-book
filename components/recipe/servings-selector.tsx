@@ -15,8 +15,9 @@ interface ServingsSelectorProps {
 }
 
 /**
- * The servings cell of the recipe page's meta strip. Renders a `<dt>`/`<dd>`
- * pair in a `<div>`, so it belongs inside the strip's `<dl>`.
+ * The servings row of the recipe page's facts. Renders a `<dt>`/`<dd>` pair in
+ * a `<div>`, so it belongs inside that `<dl>`. The stepper is one outlined
+ * pill holding both buttons and the number.
  */
 export function ServingsSelector({
   scaledServings,
@@ -32,16 +33,27 @@ export function ServingsSelector({
 
   return (
     <div className={className}>
-      <dt className="text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">
-        Servings
-      </dt>
-      {/* 44px icon buttons (size="icon") meet the touch-target minimum; the
-          negative margins keep the strip's rows even. */}
-      <dd className="-mt-1 -mb-2 flex items-center">
+      <dt className="font-semibold">Serves</dt>
+      <dd className="flex items-center gap-2">
+        {isScaled && (
+          <Button
+            variant="link"
+            size="sm"
+            onClick={onReset}
+            className="h-11 px-1 print:hidden"
+            aria-label={`Reset to ${originalServings} servings`}
+          >
+            <span>
+              Reset to <span className="tabular">{originalServings}</span>
+            </span>
+          </Button>
+        )}
+        {/* 44px icon buttons meet the touch-target minimum. */}
+        <span className="flex h-12 items-center rounded-full border-2 border-foreground px-0.5 print:border-0">
         <Button
           variant="ghost"
           size="icon"
-          className="-ml-3 print:hidden"
+          className="size-11 print:hidden"
           onClick={onDecrement}
           disabled={scaledServings <= minServings}
           aria-label="Decrease servings"
@@ -49,34 +61,21 @@ export function ServingsSelector({
           <Minus className="h-4 w-4" aria-hidden="true" />
         </Button>
 
-        <span className="min-w-[2ch] text-center font-mono text-xl tabular text-foreground">
+        <span className="min-w-[2ch] text-center text-xl font-bold tabular text-foreground">
           {scaledServings}
         </span>
 
         <Button
           variant="ghost"
           size="icon"
-          className="print:hidden"
+          className="size-11 print:hidden"
           onClick={onIncrement}
           disabled={scaledServings >= maxServings}
           aria-label="Increase servings"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
         </Button>
-
-        {isScaled && (
-          <Button
-            variant="link"
-            size="sm"
-            onClick={onReset}
-            className="ml-1 h-11 px-1 print:hidden"
-            aria-label={`Reset to ${originalServings} servings`}
-          >
-            <span>
-              Reset to <span className="font-mono tabular">{originalServings}</span>
-            </span>
-          </Button>
-        )}
+        </span>
       </dd>
     </div>
   );

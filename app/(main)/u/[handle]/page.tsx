@@ -67,7 +67,7 @@ export async function generateMetadata({
   const profile = isPlausibleHandle(handle) ? await getProfile(handle) : null;
 
   if (!profile) {
-    return { title: "Profile Not Found", robots: { index: false, follow: false } };
+    return { title: "Profile not found", robots: { index: false, follow: false } };
   }
 
   const session = await getSession();
@@ -151,7 +151,7 @@ export default async function PublicProfilePage({ params, searchParams }: Props)
         <Avatar className="h-24 w-24 shrink-0 border border-border">
           {/* Decorative: the name is the heading right next to it. */}
           <AvatarImage src={profile.image || undefined} alt="" />
-          <AvatarFallback className="bg-secondary font-display text-3xl text-primary">
+          <AvatarFallback className="bg-secondary font-display text-5xl text-primary">
             {initials(profile.name)}
           </AvatarFallback>
         </Avatar>
@@ -161,7 +161,7 @@ export default async function PublicProfilePage({ params, searchParams }: Props)
             <div className="min-w-0">
               <h1
                 id="profile-name"
-                className="font-display text-4xl leading-[1.1] tracking-[-0.01em] text-foreground break-words sm:text-[44px]"
+                className="font-display text-6xl leading-[0.95] text-foreground break-words sm:text-7xl"
               >
                 {profile.name}
               </h1>
@@ -223,7 +223,7 @@ export default async function PublicProfilePage({ params, searchParams }: Props)
       {/* Public recipes */}
       <section aria-labelledby="profile-recipes">
         <div className="mb-6 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border pb-4">
-          <h2 id="profile-recipes" className="font-display text-[28px] leading-[1.2] text-foreground">
+          <h2 id="profile-recipes" className="font-display text-[2.5rem] leading-[0.95] text-foreground">
             Recipes
           </h2>
           <p className="text-sm text-muted-foreground">

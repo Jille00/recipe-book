@@ -68,7 +68,7 @@ export function SessionsCard({ sessionCount }: { sessionCount: number | null }) 
           {sessionCount !== null && sessionCount > 1 ? (
             <>
               You&apos;re signed in on{" "}
-              <span className="font-mono text-foreground tabular">{sessionCount}</span>{" "}
+              <span className="font-bold text-foreground tabular">{sessionCount}</span>{" "}
               devices or browsers.
             </>
           ) : (
@@ -83,13 +83,13 @@ export function SessionsCard({ sessionCount }: { sessionCount: number | null }) 
         >
           <AlertDialogTrigger asChild>
             <Button variant="outline" className="shrink-0">
-              <LogOut className="size-4" aria-hidden="true" />
+              <LogOut aria-hidden="true" />
               Sign out everywhere
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle className="font-display text-2xl font-normal">
+              <AlertDialogTitle className="font-display text-4xl">
                 Sign out everywhere?
               </AlertDialogTitle>
               <AlertDialogDescription>
@@ -104,7 +104,7 @@ export function SessionsCard({ sessionCount }: { sessionCount: number | null }) 
                 disabled={isSigningOut}
                 className={buttonVariants({ variant: "default" })}
               >
-                {isSigningOut && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+                {isSigningOut && <Loader2 className="animate-spin" aria-hidden="true" />}
                 {isSigningOut ? "Signing out..." : "Sign out everywhere"}
               </AlertDialogAction>
             </AlertDialogFooter>

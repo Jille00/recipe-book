@@ -28,12 +28,13 @@ function CopyrightYear() {
   return <>{year}</>;
 }
 
+// The footer is an aubergine band by day and a card-coloured one at night, so
+// its text is leek (or the night foreground) rather than the page's ink.
 const FOOTER_LINK =
-  "inline-flex min-h-11 items-center text-sm text-muted-foreground transition-colors duration-150 hover:text-primary md:min-h-9";
+  "inline-flex min-h-11 items-center text-base text-leek/75 underline-offset-4 transition-colors duration-150 hover:text-leek hover:underline dark:text-muted-foreground dark:hover:text-foreground";
 
-// Column labels: Hanken eyebrow, not Gloock (they are not titles).
-const FOOTER_HEADING =
-  "font-sans text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground";
+// Column labels: Sofia Sans Bold, not the display face (they are not titles).
+const FOOTER_HEADING = "font-sans text-base leading-normal font-bold";
 
 interface FooterProps {
   /**
@@ -52,12 +53,15 @@ export function Footer({ initialSignedIn }: FooterProps) {
     isLoading && hasServerValue ? !!initialSignedIn : isAuthenticated;
 
   return (
-    <footer className="border-t border-border bg-card print:hidden">
-      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
+    <footer className="bg-ink text-leek print:hidden dark:bg-card dark:text-foreground">
+      <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="grid gap-8 md:grid-cols-4">
           <div className="md:col-span-2">
-            <BrandMark />
-            <p className="mt-4 max-w-sm text-sm text-muted-foreground">
+            <BrandMark
+              wordmarkClassName="text-6xl sm:text-7xl"
+              className="focus-visible:ring-leek focus-visible:ring-offset-ink"
+            />
+            <p className="mt-5 max-w-sm text-leek/75 dark:text-muted-foreground">
               A cookbook for the recipes you actually make. Keep them in one
               place and share them by link.
             </p>
@@ -107,11 +111,11 @@ export function Footer({ initialSignedIn }: FooterProps) {
           </div>
         </div>
 
-        <Separator className="my-8" />
+        <Separator className="my-8 bg-leek/20 dark:bg-border" />
 
         <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-          <p className="text-sm text-muted-foreground">
-            &copy; <span className="font-mono tabular"><CopyrightYear /></span>{" "}
+          <p className="text-sm text-leek/75 dark:text-muted-foreground">
+            &copy; <span className="tabular"><CopyrightYear /></span>{" "}
             Kookboek. Made for home cooks.
           </p>
 
@@ -119,7 +123,7 @@ export function Footer({ initialSignedIn }: FooterProps) {
             href={GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-primary"
+            className="flex size-11 items-center justify-center rounded-full text-leek/75 transition-colors duration-150 hover:bg-leek/15 hover:text-leek dark:text-muted-foreground dark:hover:text-foreground"
           >
             <Github className="size-5" aria-hidden="true" />
             <span className="sr-only">Kookboek on GitHub</span>

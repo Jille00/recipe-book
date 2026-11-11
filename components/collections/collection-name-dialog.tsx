@@ -74,10 +74,10 @@ export function CollectionNameDialog({
         if (!isSaving) onOpenChange(next);
       }}
     >
-      <DialogContent className="rounded-xl bg-background sm:max-w-md">
+      <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit} noValidate className="grid gap-6">
           <DialogHeader>
-            <DialogTitle className="font-display text-[22px] leading-[1.3] font-normal">
+            <DialogTitle className="font-display text-3xl leading-[0.95]">
               {mode === "create" ? "New collection" : "Rename collection"}
             </DialogTitle>
             <DialogDescription>

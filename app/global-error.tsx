@@ -6,30 +6,28 @@
  * Everything here is inline and self-contained on purpose.
  *
  * Without the theme class it follows the OS setting instead. The colours are
- * the Delft tokens from app/globals.css (checked there by
- * lib/color-contrast.test.ts):
- *   light: ink #141b2d on the white card (17.15:1); slate #4f5b75 text 6.81:1;
- *          delft #1d3c8c eyebrow 10.11:1; white on oranje #c24e12 4.78:1.
- *   dark:  #e7ecf6 on night-card #152040 (13.51:1); mist #a5b2ce 7.51:1;
- *          delft-light #8fb1f2 7.42:1; night on oranje-bright #ff8a45 7.82:1.
+ * the Oogst tokens from app/globals.css:
+ *   light: aubergine #2d1b33 on the white card (16.0:1); fig #6a5a70 text
+ *          6.24:1; white on the aubergine button 16.0:1.
+ *   dark:  #f3eee0 on the night card #281830 (14.34:1); #c4b5c9 text 8.55:1;
+ *          night #1b1020 on the butter button #f8e9b4 15.16:1.
  */
 const styles = `
   :root { color-scheme: light dark; }
   .ge-body {
-    --ge-page: #f4f6fa;
+    --ge-page: #f1f4e8;
     --ge-card: #ffffff;
-    --ge-border: #d4dcec;
-    --ge-text: #141b2d;
-    --ge-muted: #4f5b75;
-    --ge-brand: #1d3c8c;
-    --ge-accent: #c24e12;
-    --ge-accent-hover: #a3410e;
+    --ge-border: #d8dec8;
+    --ge-text: #2d1b33;
+    --ge-muted: #6a5a70;
+    --ge-brand: #2d1b33;
+    --ge-accent: #2d1b33;
+    --ge-accent-hover: #4e2b63;
     --ge-on-accent: #ffffff;
-    --ge-link: #141b2d;
-    --ge-link-border: #d4dcec;
-    --ge-link-hover: #e3e9f5;
-    --ge-ring: #1d3c8c;
-    --ge-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    --ge-link: #2d1b33;
+    --ge-link-border: #2d1b33;
+    --ge-link-hover: #e6ebd9;
+    --ge-ring: #2d1b33;
     margin: 0;
     min-height: 100vh;
     display: flex;
@@ -39,24 +37,23 @@ const styles = `
     box-sizing: border-box;
     background-color: var(--ge-page);
     color: var(--ge-text);
-    font-family: 'Hanken Grotesk', system-ui, sans-serif;
+    font-family: 'Sofia Sans', system-ui, sans-serif;
   }
   @media (prefers-color-scheme: dark) {
     .ge-body {
-      --ge-page: #0d1428;
-      --ge-card: #152040;
-      --ge-border: #2a3a66;
-      --ge-text: #e7ecf6;
-      --ge-muted: #a5b2ce;
-      --ge-brand: #8fb1f2;
-      --ge-accent: #ff8a45;
-      --ge-accent-hover: #ffa56f;
-      --ge-on-accent: #0d1428;
-      --ge-link: #e7ecf6;
-      --ge-link-border: #6f80a8;
-      --ge-link-hover: #1e2b52;
-      --ge-ring: #8fb1f2;
-      --ge-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      --ge-page: #1b1020;
+      --ge-card: #281830;
+      --ge-border: #4a3554;
+      --ge-text: #f3eee0;
+      --ge-muted: #c4b5c9;
+      --ge-brand: #f8e9b4;
+      --ge-accent: #f8e9b4;
+      --ge-accent-hover: #fff6d6;
+      --ge-on-accent: #1b1020;
+      --ge-link: #f3eee0;
+      --ge-link-border: #f3eee0;
+      --ge-link-hover: #36223f;
+      --ge-ring: #f8e9b4;
     }
   }
   .ge-card {
@@ -64,26 +61,24 @@ const styles = `
     width: 100%;
     box-sizing: border-box;
     text-align: center;
-    border: 1px solid var(--ge-border);
-    border-radius: 10px;
+    border-radius: 24px;
     background-color: var(--ge-card);
     padding: 48px 24px;
-    box-shadow: var(--ge-shadow);
   }
   .ge-eyebrow {
     margin: 0;
-    font-family: 'Gloock', Georgia, serif;
-    font-size: 22px;
+    font-family: 'Sofia Sans Extra Condensed', 'Arial Narrow', sans-serif;
+    font-weight: 800;
+    font-size: 30px;
     line-height: 1;
     color: var(--ge-brand);
   }
   .ge-title {
     margin: 20px 0 0;
-    font-family: 'Gloock', Georgia, serif;
-    font-size: 36px;
-    line-height: 1.1;
-    letter-spacing: -0.01em;
-    font-weight: 400;
+    font-family: 'Sofia Sans Extra Condensed', 'Arial Narrow', sans-serif;
+    font-size: 52px;
+    line-height: 0.92;
+    font-weight: 800;
   }
   .ge-text {
     margin: 12px auto 0;
@@ -95,7 +90,6 @@ const styles = `
   .ge-digest {
     margin: 16px 0 0;
     font-size: 12px;
-    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     font-variant-numeric: tabular-nums;
     color: var(--ge-muted);
   }
@@ -111,13 +105,12 @@ const styles = `
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
-    min-height: 44px;
-    border-radius: 6px;
+    min-height: 48px;
+    border-radius: 999px;
     padding: 0 24px;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: 700;
     font-family: inherit;
-    letter-spacing: 0.02em;
     text-decoration: none;
     cursor: pointer;
     transition: background-color 150ms ease, border-color 150ms ease;
@@ -126,12 +119,10 @@ const styles = `
     border: none;
     background-color: var(--ge-accent);
     color: var(--ge-on-accent);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
   }
   .ge-button:hover { background-color: var(--ge-accent-hover); }
   .ge-link {
-    border: 1.5px solid var(--ge-link-border);
+    border: 2px solid var(--ge-link-border);
     color: var(--ge-link);
   }
   .ge-link:hover { background-color: var(--ge-link-hover); border-color: var(--ge-brand); }

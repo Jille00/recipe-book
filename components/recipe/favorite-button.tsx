@@ -27,6 +27,8 @@ interface FavoriteButtonProps {
   className?: string;
   /** "button" variant only: icon-only below `sm` (the recipe page's action row). */
   compact?: boolean;
+  /** "button" variant only: drawn for a block of the recipe's colour. */
+  onRecipe?: boolean;
   /** Called once the server has confirmed the new state. */
   onChange?: (favorited: boolean) => void;
 }
@@ -38,6 +40,7 @@ export function FavoriteButton({
   size = "md",
   className,
   compact = false,
+  onRecipe = false,
   onChange,
 }: FavoriteButtonProps) {
   const router = useRouter();
@@ -119,7 +122,8 @@ export function FavoriteButton({
         disabled={isPending}
         className={cn(
           // 44px touch target (style guide: medium control height).
-          "flex h-11 w-11 items-center justify-center rounded-full glass transition-all hover:scale-110",
+          // A pill on the recipe's colour block, like the time pill.
+          "flex h-11 w-11 items-center justify-center rounded-full bg-on-recipe text-recipe transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-recipe focus-visible:ring-offset-2 focus-visible:ring-offset-recipe",
           isPending && "opacity-50",
           className
         )}
@@ -131,7 +135,7 @@ export function FavoriteButton({
           className={cn(
             iconSize,
             "transition-colors",
-            isFavorited ? "fill-danger text-danger dark:fill-danger-light dark:text-danger-light" : "text-foreground"
+            isFavorited && "fill-current"
           )}
         />
       </button>
@@ -144,9 +148,9 @@ export function FavoriteButton({
         type="button"
         onClick={handleToggle}
         disabled={isPending}
-        // Outline either way: oranje belongs to the page's main action. The
-        // filled heart shows the state.
-        variant="outline"
+        // Outline either way: the filled pill belongs to the page's main
+        // action. The filled heart shows the state.
+        variant={onRecipe ? "on-recipe-outline" : "outline"}
         size={compact ? "default" : "sm"}
         className={cn(compact && compactButtonClass, className)}
         aria-pressed={isFavorited}
@@ -156,7 +160,9 @@ export function FavoriteButton({
           className={cn(
             "h-4 w-4 transition-colors",
             isFavorited &&
-              "fill-danger text-danger dark:fill-danger-light dark:text-danger-light"
+              (onRecipe
+                ? "fill-current"
+                : "fill-danger text-danger dark:fill-danger-light dark:text-danger-light")
           )}
         />
         <span className={cn(compact && compactLabelClass)}>

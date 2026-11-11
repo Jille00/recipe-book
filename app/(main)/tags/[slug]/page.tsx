@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button, Pagination } from "@/components/ui";
-import { DelftTile } from "@/components/delft/delft-tile";
+import { ColourSwatch } from "@/components/recipe/recipe-colour";
 import { EmptyState } from "@/components/page/empty-state";
 import { RecipeCard } from "@/components/recipe/recipe-card";
 import { auth } from "@/lib/auth";
@@ -104,7 +104,7 @@ export default async function TagPage({ params, searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
-      {/* Header: the category's own tile, its name and how many recipes */}
+      {/* Header: a spine of the category's colour, its name and how many recipes */}
       <header className="mb-8 sm:mb-10">
         <Link
           href="/tags"
@@ -114,13 +114,13 @@ export default async function TagPage({ params, searchParams }: Props) {
           All categories
         </Link>
         <div className="flex items-center gap-5 sm:gap-6">
-          <DelftTile
+          <ColourSwatch
             seed={tag.slug}
             tags={[tag.slug]}
-            className="size-20 shrink-0 shadow-soft sm:size-28"
+            className="h-20 w-5 rounded-md sm:h-28 sm:w-7"
           />
           <div className="min-w-0">
-            <h1 className="font-display text-4xl leading-[1.1] tracking-[-0.01em] text-foreground break-words sm:text-[44px]">
+            <h1 className="font-display text-6xl leading-[0.88] text-foreground break-words sm:text-8xl">
               {tag.name}
             </h1>
             <p className="mt-2 text-muted-foreground">

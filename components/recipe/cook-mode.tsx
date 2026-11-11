@@ -47,13 +47,13 @@ import {
   tickTimer,
 } from "@/lib/cook-mode";
 import { cn } from "@/lib/utils";
-import { DelftTile } from "@/components/delft/delft-tile";
+import { recipeColourClass } from "@/lib/recipe-colour";
 
 interface CookModeProps {
   recipeId: string;
-  /** The recipe's share code: seeds its Delft tile, shown as a small mark. */
+  /** The recipe's share code: seeds its colour when the tags don't pick one. */
   code?: string;
-  /** Tag slugs, which pick the tile's motif. */
+  /** Tag names, which pick the recipe's colour. */
   tags?: readonly string[];
   title: string;
   /** Already scaled and unit-converted (recipe-detail's convertedIngredients) */
@@ -263,9 +263,9 @@ export function CookMode({ recipeId, code, tags, title, ingredients, instruction
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {/* The recipe page's one main action */}
-        <Button>
-          <ChefHat className="h-4 w-4" aria-hidden="true" />
-          Cook
+        <Button size="lg">
+          <ChefHat className="size-5" aria-hidden="true" />
+          Start cooking
         </Button>
       </DialogTrigger>
       <DialogContent
@@ -275,24 +275,24 @@ export function CookMode({ recipeId, code, tags, title, ingredients, instruction
           event.preventDefault();
           nextButtonRef.current?.focus();
         }}
-        // Always Delft at night: a calm, low-glare focus mode for the kitchen.
-        // `dark` swaps the tokens for everything inside.
-        className="dark inset-0 top-0 left-0 flex h-dvh w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 bg-background p-0 text-foreground shadow-none sm:max-w-none"
+        // The whole screen takes the recipe's colour (STYLE_GUIDE 06):
+        // `recipe-surface` remaps the tokens for everything inside.
+        className={cn(
+          recipeColourClass(code ?? recipeId, tags),
+          "recipe-surface inset-0 top-0 left-0 flex h-dvh w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 p-0 shadow-none sm:max-w-none"
+        )}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 border-b border-border px-4 py-3 sm:px-6">
-          {code && (
-            <DelftTile seed={code} tags={tags} className="size-10 shrink-0 rounded-[2px]" />
-          )}
+        <div className="flex items-center gap-3 px-4 py-4 sm:px-8 sm:py-6">
           <div className="min-w-0 flex-1">
-            <DialogTitle className="truncate font-display text-xl leading-tight font-normal text-foreground sm:text-2xl">
+            <DialogTitle className="truncate font-sans text-base leading-normal font-semibold text-foreground">
               {title}
             </DialogTitle>
             <DialogDescription className="sr-only">
               Cook mode shows one step at a time. Use the left and right arrow
               keys to move between steps, and Escape to exit.
             </DialogDescription>
-            <p className="font-mono text-xs tabular text-muted-foreground" aria-hidden="true">
+            <p className="font-display text-3xl leading-none tabular sm:text-[2.5rem]" aria-hidden="true">
               Step {step + 1} of {stepCount}
             </p>
           </div>
@@ -311,7 +311,7 @@ export function CookMode({ recipeId, code, tags, title, ingredients, instruction
             </Button>
           )}
           <DialogClose asChild>
-            <Button variant="ghost" size="icon" aria-label="Exit cook mode">
+            <Button variant="outline" size="icon" aria-label="Exit cook mode">
               <X className="h-5 w-5" aria-hidden="true" />
             </Button>
           </DialogClose>
@@ -319,18 +319,18 @@ export function CookMode({ recipeId, code, tags, title, ingredients, instruction
         <Progress
           value={((step + 1) / stepCount) * 100}
           aria-label={`Step ${step + 1} of ${stepCount}`}
-          className="h-1 rounded-none bg-primary/15"
+          className="mx-4 h-2 w-auto bg-primary/25 sm:mx-8"
         />
 
         {/* Finished timers */}
         {alerts.length > 0 && (
-          <div role="alert" className="space-y-2 border-b border-warning-light/30 bg-warning-light/15 px-4 py-3 sm:px-6">
+          <div role="alert" className="mx-4 mt-4 space-y-2 rounded-2xl bg-card px-4 py-3 sm:mx-8">
             {alerts.map((key) => {
               const stepIndex = Number(key.split(":")[0]);
               return (
                 <div key={key} className="flex flex-wrap items-center gap-3">
                   <BellRing
-                    className="h-5 w-5 shrink-0 text-warning-light motion-safe:animate-bounce"
+                    className="h-5 w-5 shrink-0 motion-safe:animate-bounce"
                     aria-hidden="true"
                   />
                   <p className="flex-1 font-medium text-foreground">
@@ -364,12 +364,9 @@ export function CookMode({ recipeId, code, tags, title, ingredients, instruction
           >
             <div
               key={step}
-              className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10 sm:px-12 sm:py-16 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-300"
+              className="flex max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8 sm:py-14 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-300"
             >
-              <p className="text-xs font-medium uppercase tracking-[0.06em] text-primary">
-                Step {step + 1} of {stepCount}
-              </p>
-              <p className="max-w-[32ch] font-display text-[1.75rem] leading-[1.3] text-foreground sm:text-[2.25rem] lg:text-[2.75rem] lg:leading-[1.2]">
+              <p className="font-display text-5xl leading-[0.95] text-foreground text-balance sm:text-7xl lg:text-[5.75rem] lg:leading-[0.92]">
                 {splitByDurations(currentStep.text, currentStep.durations).map(
                   (segment, index) =>
                     segment.durationIndex === null ? (
@@ -377,7 +374,7 @@ export function CookMode({ recipeId, code, tags, title, ingredients, instruction
                     ) : (
                       <span
                         key={index}
-                        className="rounded-[2px] bg-primary/15 px-1 text-primary"
+                        className="underline decoration-[0.06em] underline-offset-[0.12em]"
                       >
                         {segment.text}
                       </span>
@@ -414,12 +411,12 @@ export function CookMode({ recipeId, code, tags, title, ingredients, instruction
               id={ingredientsId}
               aria-label="Ingredients"
               className={cn(
-                "min-h-0 w-full overflow-y-auto bg-card lg:block lg:w-80 lg:border-l lg:border-border xl:w-96",
+                "min-h-0 w-full overflow-y-auto bg-card lg:my-8 lg:mr-8 lg:block lg:w-80 lg:rounded-3xl xl:w-96",
                 showIngredients ? "block" : "hidden"
               )}
             >
               <div className="px-6 py-6">
-                <h2 className="mb-4 text-2xl text-foreground">Ingredients</h2>
+                <h2 className="mb-4 text-4xl text-foreground">Ingredients</h2>
                 <ul className="space-y-1">
                   {ingredients.map((ingredient, index) => {
                     const quantity = ingredientQuantity(ingredient);
@@ -467,7 +464,7 @@ export function CookMode({ recipeId, code, tags, title, ingredients, instruction
 
         {/* Timers still going on other steps */}
         {otherTimers.length > 0 && (
-          <div className="flex flex-wrap gap-2 border-t border-border px-4 py-2 sm:px-6">
+          <div className="flex flex-wrap gap-2 px-4 py-2 sm:px-8">
             {otherTimers.map(([key, timer]) => {
               const stepIndex = Number(key.split(":")[0]);
               const remaining = timerRemaining(timer, now);
@@ -497,7 +494,7 @@ export function CookMode({ recipeId, code, tags, title, ingredients, instruction
         )}
 
         {/* Navigation */}
-        <div className="flex items-center gap-3 border-t border-border px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
+        <div className="flex items-center gap-3 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-8 sm:pb-8">
           <Button
             variant="outline"
             size="lg"
@@ -563,8 +560,8 @@ function StepTimer({ label, seconds, timer, now, onStart, onPause, onReset }: St
       role="group"
       aria-label={`Timer for ${label}`}
       className={cn(
-        "flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card p-4",
-        isDone && "border-primary bg-primary/10"
+        "flex max-w-xl flex-wrap items-center gap-4 rounded-3xl bg-card p-4",
+        isDone && "bg-primary/20"
       )}
     >
       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/15">
@@ -578,15 +575,14 @@ function StepTimer({ label, seconds, timer, now, onStart, onPause, onReset }: St
         <p
           role="timer"
           className={cn(
-            "font-mono text-3xl font-medium tabular text-foreground",
-            isDone && "text-primary"
+            "font-display text-5xl leading-none tabular text-foreground"
           )}
         >
           {isDone ? "Done" : formatClock(remaining)}
         </p>
         <p className="text-sm text-muted-foreground">
           {describeDuration(seconds)}
-          {timer.status === "paused" && " · paused"}
+          {timer.status === "paused" && ", paused"}
         </p>
       </div>
       <div className="ml-auto flex items-center gap-2">

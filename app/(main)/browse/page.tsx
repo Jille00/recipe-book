@@ -42,8 +42,8 @@ export async function generateMetadata({
   const title = query
     ? `Search: ${query}`
     : page > 1
-      ? `Browse Recipes - Page ${page}`
-      : "Browse Recipes";
+      ? `Browse recipes - Page ${page}`
+      : "Browse recipes";
 
   // Filter permutations are endless; only the plain (and paginated) listing is
   // worth indexing, and each page canonicalises to its own URL.
